@@ -1,0 +1,9 @@
+- git:
+    local-name: ../forks/flatland
+    uri: https://github.com/avidbots/flatland.git
+    version: main
+
+- git:
+    local-name: ../forks/navigation
+    uri: https://github.com/ros-planning/navigation.git
+    version: melodic-devel
