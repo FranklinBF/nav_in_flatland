@@ -9,12 +9,18 @@ git clone https://github.com/FranklinBF/navigation_flatland.git
 ````
 
 ### install forks
+````
 cd navigation_flatland
 rosws update
+````
 
 ### catkin_make
-go to workspace
+````
+go to catkin_ws
 catkin_make
+````
 
 ### start and launch
+````
 roslaunch flatland_bringup/launch/start_flatland.launch 
+````
