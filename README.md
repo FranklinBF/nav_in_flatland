@@ -12,3 +12,6 @@ rosws update
 ### catkin_make
 go to workspace
 catkin_make
+
+### start and launch
+roslaunch flatland_bringup/launch/start_flatland.launch 
