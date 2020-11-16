@@ -22,11 +22,11 @@ layers:  # Support for arbitrary number of layers
     color: [1.0, 0.0, 0.0, 0.5]  # List of floats [r,g,b,a] to color debug boundary
 
 
-models:
-  - name: cleaner1
-    namespace: "aaaaaaaaaaaBBBBBB" 
-    pose: [13, 0, 0]
-    model: "/headless/project/ROS/ws_flatland/src/flatland_models/obstacles/cleaner.model.yaml"
+# models:
+#   - name: cleaner1
+#     namespace: "aaaaaaaaaaaBBBBBB" 
+#     pose: [13, 0, 0]
+#     model: "/headless/project/ROS/ws_flatland/src/flatland_models/obstacles/cleaner.model.yaml"
 
 # plugins:
 #   - name: test1

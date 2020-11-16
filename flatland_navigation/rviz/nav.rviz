@@ -5,10 +5,7 @@ Panels:
     Property Tree Widget:
       Expanded:
         - /Global Options1
-        - /LaserScan1
-        - /MyRobot_MarkerArray1
-        - /MyRobot_MarkerArray1/Namespaces1
-        - /TF1/Frames1
+        - /my_robot1/Namespaces1
       Splitter Ratio: 0.6526610255241394
     Tree Height: 791
   - Class: rviz/Selection
@@ -276,88 +273,23 @@ Visualization Manager:
     - Class: rviz/MarkerArray
       Enabled: true
       Marker Topic: /flatland_server/debug/model/myrobot0
-      Name: MyRobot_MarkerArray
+      Name: my_robot
       Namespaces:
         "": true
       Queue Size: 100
       Value: true
-    - Class: rviz/MarkerArray
-      Enabled: false
-      Marker Topic: /flatland_server/debug/layer/3d_3d
-      Name: MarkerArray
-      Namespaces:
-        {}
-      Queue Size: 100
-      Value: false
     - Class: rviz/MarkerArray
       Enabled: true
       Marker Topic: /flatland_server/debug/layer/static_3d
-      Name: MarkerArray
+      Name: static_layer_3d
       Namespaces:
         "": true
       Queue Size: 100
-      Value: true
-    - Class: rviz/TF
-      Enabled: true
-      Frame Timeout: 15
-      Frames:
-        All Enabled: false
-        aaaaaaaaaaaBBBBBB_base:
-          Value: true
-        aaaaaaaaaaaBBBBBB_front_wheel:
-          Value: true
-        aaaaaaaaaaaBBBBBB_laser_front:
-          Value: true
-        aaaaaaaaaaaBBBBBB_rear_left_wheel:
-          Value: true
-        aaaaaaaaaaaBBBBBB_rear_right_wheel:
-          Value: true
-        base_footprint:
-          Value: true
-        laser_mount:
-          Value: true
-        left_wheel:
-          Value: false
-        map:
-          Value: true
-        odom:
-          Value: true
-        rear_wheel:
-          Value: false
-        right_wheel:
-          Value: false
-      Marker Scale: 1
-      Name: TF
-      Show Arrows: true
-      Show Axes: true
-      Show Names: true
-      Tree:
-        map:
-          aaaaaaaaaaaBBBBBB_base:
-            aaaaaaaaaaaBBBBBB_front_wheel:
-              {}
-            aaaaaaaaaaaBBBBBB_laser_front:
-              {}
-            aaaaaaaaaaaBBBBBB_rear_left_wheel:
-              {}
-            aaaaaaaaaaaBBBBBB_rear_right_wheel:
-              {}
-          odom:
-            base_footprint:
-              laser_mount:
-                {}
-              left_wheel:
-                {}
-              rear_wheel:
-                {}
-              right_wheel:
-                {}
-      Update Interval: 0
       Value: true
     - Class: rviz/MarkerArray
       Enabled: true
       Marker Topic: /flatland_server/debug/layer/static
-      Name: MarkerArray
+      Name: static_layer
       Namespaces:
         "": true
       Queue Size: 100
@@ -365,17 +297,17 @@ Visualization Manager:
     - Class: rviz/MarkerArray
       Enabled: true
       Marker Topic: /flatland_server/debug/model/walker_model0
-      Name: MarkerArray
+      Name: walker
       Namespaces:
-        {}
+        "": true
       Queue Size: 100
       Value: true
     - Class: rviz/MarkerArray
       Enabled: true
       Marker Topic: /flatland_server/debug/model/cleaner1
-      Name: MarkerArray
+      Name: cleaner
       Namespaces:
-        "": true
+        {}
       Queue Size: 100
       Value: true
   Enabled: true
@@ -401,7 +333,7 @@ Visualization Manager:
   Value: true
   Views:
     Current:
-      Angle: 0.5599871277809143
+      Angle: -0.010012811049818993
       Class: rviz/TopDownOrtho
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
@@ -411,11 +343,11 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Scale: 25.40556526184082
+      Scale: 23.037073135375977
       Target Frame: <Fixed Frame>
       Value: TopDownOrtho (rviz)
-      X: 5.329407691955566
-      Y: -0.4117102324962616
+      X: 14.632430076599121
+      Y: 10.368836402893066
     Saved: ~
 Window Geometry:
   Displays:
@@ -433,5 +365,5 @@ Window Geometry:
   Views:
     collapsed: false
   Width: 1920
-  X: 231
-  Y: 198
+  X: -171
+  Y: 196
