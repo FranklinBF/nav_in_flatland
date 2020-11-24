@@ -1,6 +1,4 @@
 # Turtlebot
-
-
 bodies:  # List of named bodies
   - name: base
     pose: [0, 0, 0] 

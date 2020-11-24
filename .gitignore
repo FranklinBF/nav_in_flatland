@@ -30,3 +30,29 @@
 *.exe
 *.out
 *.app
+
+# OS
+.DS_Store
+.directory
+
+# Build directory
+build/
+
+# Vim
+*.vim
+*.swp
+
+# python
+__pycache__
+
+<<<<<<< HEAD
+
+#vscode
+.vscode/
+=======
+#vscode
+.vscode/
+
+# editor related folder
+>>>>>>> arena-ros
+**/.vscode

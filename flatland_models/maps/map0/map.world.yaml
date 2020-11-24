@@ -6,8 +6,7 @@ properties:
   # optional, defaults to 10, number of position iterations for the Box2D
   # physics solver
   position_iterations: 10
-layers:  # Support for arbitrary number of layers
-  # - name: "robot"  # So that sensors can trigger on just the robot
+layers: 
   - name: "static"
     map: "map.yaml"  # leading / denotes absolute file path, otherwise relative
     color: [0, 1, 0, 1]  # List of floats [r,g,b,a] to color debug boundary
