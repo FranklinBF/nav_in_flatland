@@ -32,7 +32,14 @@ go to catkin_ws
 catkin_make
 ````
 
-### start and launch
+### quick start and launch
 ````
-roslaunch flatland_bringup/launch/start_flatland.launch 
+roslaunch flatland_bringup start_flatland.launch 
 ````
+
+### use task generator to spawn random obstacles
+````
+rosrun flatland_task task_generator.py 
+````
+
+
