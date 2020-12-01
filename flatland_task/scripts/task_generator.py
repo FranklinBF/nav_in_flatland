@@ -1,5 +1,6 @@
 #! /usr/bin/env python
 
+from codecs import xmlcharrefreplace_errors
 from logging import error
 import time
 import random
@@ -7,9 +8,12 @@ import math
 import numpy as np
 import yaml
 from collections import OrderedDict
+import move_base
 
 import rospy
 import rospkg
+
+
 
 #from tf.transformations import *
 import tf
@@ -25,7 +29,14 @@ from nav_msgs.msg import OccupancyGrid
 from nav_msgs.msg import Path
 from nav_msgs.srv import GetMap,GetMapRequest
 
+# set postion
 from geometry_msgs.msg import Pose2D, PoseWithCovarianceStamped,PoseStamped
+# set goal
+from move_base_msgs.msg import MoveBaseAction, MoveBaseGoal
+from geometry_msgs.msg import PoseStamped
+from actionlib_msgs.msg import GoalStatusArray
+import actionlib
+
 from geometry_msgs.msg import Twist, Point 
 from std_msgs.msg import Bool
 from std_srvs.srv import SetBool,Empty
@@ -33,48 +44,63 @@ from std_srvs.srv import SetBool,Empty
 
 
 
+
+
 class TaskGenerator():
     def __init__(self,ns,robot_name,robot_radius):
+        self.rate=rospy.Rate(100)
         self.NS=ns
         self.ROBOT_RADIUS = robot_radius
         self.ROBOT_NAME=robot_name
+        self.local_range=1.0
         
         
         # model files
         self._flatland_models_path = rospkg.RosPack().get_path('flatland_models')
 
+        # map & freespace on static map
         self._map=OccupancyGrid()
         self._freespace=None
+
+        # obstacles
         self._static_obstacles=[]
         self._dynamic_obstacles=[]
         self._peds=[]
 
-        self._path = Path()
+        # goal,path,move_base_status
+        self._global_path = Path()
+        self._old_global_path_stamp=rospy.Time.now() # timestamp of the last global plan
+        self._move_base_status = ""    # recent id of move_base status
 
         # services client
         self._service_client_get_map=rospy.ServiceProxy("%s/static_map" % self.NS,GetMap)
         self._service_client_move_robot_to = rospy.ServiceProxy('%s/move_model' % self.NS, MoveModel)
         self._service_client_delete_model = rospy.ServiceProxy('%s/delete_model' % self.NS, DeleteModel)
         self._service_client_spawn_model = rospy.ServiceProxy('%s/spawn_model' % self.NS, SpawnModel)
-
+        
         # topic subscriber
         #self._map_sub=rospy.Subscriber("%s/map" % self.NS, OccupancyGrid, self._map_callback)
-        
-        
-        
+        self._global_path_sub = rospy.Subscriber("%s/move_base/NavfnROS/plan" % self.NS, Path, self._global_path_callback)
 
+        self._goal_status_sub = rospy.Subscriber("%s/move_base/status" % self.NS, GoalStatusArray,
+                                                  self.goal_status_callback, queue_size=1)
+        
+        
         # topic publisher
         self._initialpose_pub=rospy.Publisher('%s/initialpose' % self.NS, PoseWithCovarianceStamped, queue_size=1)
         self._goal_pub = rospy.Publisher('%s/move_base_simple/goal' % self.NS, PoseStamped, queue_size=1)
         
-        # tf
+        # action client
+        self._action_move_base_client = actionlib.SimpleActionClient('move_base',MoveBaseAction)
+
+        # tf 
         self._tf_broadcaster = tf.TransformBroadcaster()
         self._tf_listener=tf.TransformListener()
         
         # clear world
 
-        
-        
+        self.ctrl_c = False
+        rospy.on_shutdown(self.shutdownhook)
 
     """
     1. load map
@@ -87,19 +113,38 @@ class TaskGenerator():
     8. place peds in the path
     """
 
-    """ Static obstacles """
+    """ remove object """
+    def remove_object(self,name):
+        srv_request=DeleteModelRequest()
+        srv_request.name=name
+        rospy.wait_for_service('%s/delete_model' % self.NS)
+        result=self._service_client_delete_model.call(srv_request)
+        print(result)
+        print("Deleted model:",name)
+
+    def remove_objects(self,*group_names):
+        rospy.Duration(1)
+        topics=rospy.get_published_topics()
+        for t in topics:
+            topic_name=t[0]
+            for group_name in group_names:
+                if group_name in topic_name:
+                    object_name=topic_name.split("/")[-1]
+                    print(object_name)
+                    self.remove_object(object_name)
+
     def remove_all_static_obstacles(self):
-        for m in self._static_obstacles:
-            srv_request=DeleteModelRequest()
-            srv_request.name=m.name
-            rospy.wait_for_service('%s/delete_model' % self.NS)
-            result=self._service_client_delete_model.call(srv_request)
+        self.remove_objects("stat_obj")
         self._static_obstacles=[]
-    
-    def spawn_static_obstacle(self, model_name, index, x,y,theta):
+
+    def remove_all_dynamic_obstacles(self):
+        pass
+
+    """ Spawn static obstacles """
+    def spawn_object(self, model_yaml_path,group_name,index, x,y,theta):
         srv_request = SpawnModelRequest()
-        srv_request.yaml_path="%s/obstacles/%s"%(self._flatland_models_path,model_name)
-        srv_request.name="stat_obj_%d" % index
+        srv_request.yaml_path=model_yaml_path #"%s/obstacles/%s"%(self._flatland_models_path,model_name)
+        srv_request.name=group_name+"_%d" %index #"stat_obj_%d" % index
         srv_request.ns = self.NS
         
         pose=Pose2D()
@@ -110,35 +155,44 @@ class TaskGenerator():
 
         rospy.wait_for_service('%s/spawn_model' % self.NS)
 
-        try:
-            self._service_client_spawn_model.call(srv_request)
-        except (TypeError):
-            print('Spawn object: TypeError.')
-            return
-        except (rospy.ServiceException):
-            print('Spawn object: rospy.ServiceException. Closing serivce')
-            try:
-                self._service_client_spawn_model.close()
-            except AttributeError:
-                print('Spawn object close(): AttributeError.')
-                return
-            return
-        except AttributeError:
-            print('Spawn object: AttributeError.')
-            return
+        # try to call service 
+        response=self._service_client_spawn_model.call(srv_request)
+
+        if response.success==False: # if service not succeeds, do something and redo service 
+            print(response.message)
+            print("delete old object and try again: spawn object")
+            self.remove_object(srv_request.name)
+            self.spawn_static_obstacle(model_name, index, x,y,theta)
+        else:                       # if service succeeds, print success
+            #print("sucess")
+            obstacle=Model()
+            obstacle.yaml_path=srv_request.yaml_path
+            obstacle.name=srv_request.name
+            obstacle.ns=srv_request.ns
+            obstacle.pose=srv_request.pose
+            self._static_obstacles.append(obstacle)
         
-        obstacle=Model()
-        obstacle.yaml_path=srv_request.yaml_path
-        obstacle.name=srv_request.name
-        obstacle.ns=srv_request.ns
-        obstacle.pose=srv_request.pose
-        self._static_obstacles.append(obstacle)
         return 
 
-    def generate_random_static_obstacle_yaml(self):
-        model_name="random.model.yaml"
-        yaml_path="%s/obstacles/%s"%(self._flatland_models_path,model_name)
+    def spawn_static_obstacle(self,model_name,index,x,y,theta):
+        model_yaml_path="%s/obstacles/%s"%(self._flatland_models_path,model_name)
+        group_name="stat_obj"
+        self.spawn_object(model_yaml_path,group_name,index, x,y,theta)
+
+    def spawn_random_static_obstacles(self,max_num_obstacles):
+        if max_num_obstacles == 0:
+            num_static_obstacles = 0
+        else:
+            num_static_obstacles = random.randint(1, max_num_obstacles)
         
+        model_name="random.model.yaml"
+        for index in range(0,num_static_obstacles):
+            self.generate_random_static_obstacle_yaml(model_name)
+            x, y, theta = self.get_random_pos_on_map(self._map,self._freespace)
+            self.spawn_static_obstacle(model_name,index,x, y, theta)
+        
+    def generate_random_static_obstacle_yaml(self,model_name="random.model.yaml"):
+        yaml_path="%s/obstacles/%s"%(self._flatland_models_path,model_name)
         
         type_list=["circle","polygon"]#
         min_obstacle_radius=0.5
@@ -151,7 +205,7 @@ class TaskGenerator():
         body["name"]="random"
         body["pose"]=[0,0,0]
         body["type"]="dynamic"
-        body["color"]=[0.2, 0.8, 0.2, 0.75]
+        body["color"]=[1, 0.2, 0.1, 1.0] #[0.2, 0.8, 0.2, 0.75]
         body["footprints"]=[]
 
         # define footprint 
@@ -177,8 +231,8 @@ class TaskGenerator():
             for i in range(random_num_vert):
                 angle=2*math.pi*(float(i)/float(random_num_vert))
                 vert=[math.cos(angle)*random_length, math.sin(angle)*random_length]
-                print(vert)
-                print(angle)
+                #print(vert)
+                #print(angle)
                 f["points"].append(vert)
         
         body["footprints"].append(f)
@@ -230,15 +284,16 @@ class TaskGenerator():
         index_grid=freespace[index]
         x,y=coordinate_pixel_to_meter(index_grid,map)
         
-
+        n=1
         # check the random pos is valid or not
         while(not self.is_pos_valid(x,y,map)):
             index=random.randint(0,len(freespace))
             index_grid=freespace[index]
             x,y=coordinate_pixel_to_meter(index_grid,map)
+            n=n+1
             
         theta = random.uniform(-math.pi, math.pi) # in radius
-        print(" found ")
+        print(" found a random point in freespace, within number of trail: ",n)
         return x, y, theta
 
     def is_pos_valid(self,x,y,map):
@@ -252,16 +307,16 @@ class TaskGenerator():
             for j in range(y_index-cell_radius, y_index+cell_radius, 1):
                 index = j * map.info.width + i
                 if index>=len(map.data):
-                    print("a")
+                    
                     return False
                 try:
                     value=map.data[index]
                 except IndexError:
                     print("IndexError: index: %d, map_length: %d"%(index, len(map.data)))
-                    print("b")
+                    
                     return False
                 if value!=0:
-                    print("c=",value)
+                    
                     return False
         return True
 
@@ -307,7 +362,7 @@ class TaskGenerator():
         initpose.pose.pose.position.x = x
         initpose.pose.pose.position.y = y
         #quaternion = Quaternion(axis=[0, 0, 1], angle=theta)
-        quaternion = tf.transformations.quaternion_from_euler(0,0,theta,axes="rzyx")
+        quaternion = tf.transformations.quaternion_from_euler(0,0,theta)
         initpose.pose.pose.orientation.x = quaternion[0]
         initpose.pose.pose.orientation.y = quaternion[1]
         initpose.pose.pose.orientation.z = quaternion[2]
@@ -319,7 +374,20 @@ class TaskGenerator():
                                           0.0,0.0,0.0,0.00000,0.0,0.0,
                                           0.0,0.0,0.0,0.0,0.00000,0.0,
                                           0.0,0.0,0.0,0.0,0.0,0.00000]
+
+        
         self._initialpose_pub.publish(initpose)
+        """
+        while not self.ctrl_c:
+            connections = self._initialpose_pub.get_num_connections()
+            print("c=",connections)
+            if connections > 0:
+                self._initialpose_pub.publish(initpose)
+                rospy.loginfo("initial pose Published")
+                break
+            else:
+                self.rate.sleep()
+        """
         return
     
     """ Robot goal position """
@@ -328,25 +396,166 @@ class TaskGenerator():
         self.pub_robot_goal(x, y, theta)
         return x, y, theta
 
-    def pub_robot_goal(self,x,y,theta):
+    def pub_robot_goal(self,x=1,y=0,theta=0):
+        # save gloabl path stamp
+        self._old_global_path_stamp=self._global_path.header.stamp
+
+        # prepare goal
         goal = PoseStamped()
         goal.header.stamp = rospy.get_rostime()
         goal.header.frame_id = "map"
         goal.pose.position.x = x
         goal.pose.position.y = y
-        goal.pose.position.z = 0
-        quaternion = tf.transformations.quaternion_from_euler(0,0,theta,axes="rzyx")
-        
+
+        quaternion = tf.transformations.quaternion_from_euler(0,0,theta)
         goal.pose.orientation.x = quaternion[0]
         goal.pose.orientation.y = quaternion[1]
         goal.pose.orientation.z = quaternion[2]
         goal.pose.orientation.w = quaternion[3]
-        self._goal_pub.publish(goal)
-        return 
         
+        # continuous publish the goal until action server has accept the goal: method1 
+        
+        """
+        This is because publishing in topics sometimes fails the first time you publish.
+        In continuous publishing systems, this is no big deal, but in systems that publish only
+        once, it IS very important.
+        """
+        
+        while not self.ctrl_c:
+            connections = self._goal_pub.get_num_connections()
+            if connections > 1:
+                self._goal_pub.publish(goal)
+                rospy.loginfo("goal Published")
+                break
+            else:
+                self.rate.sleep()
+        # continuous publish the goal until action server has accept the goal: method2
+        """
+        while(self._move_base_status!=0):
+            print("last_element =",self._move_base_status)
+            print("status =",self._move_base_status)
+            rate.sleep()
+        """
+        
+    def pub_robot_goal_to_movebase(self,x=1,y=0,theta=0):
+        def feedback_callback(feedback):    
+            print('[Feedback] planing')
+        
+        # prepare goal
+        goal = MoveBaseGoal()
+        goal.target_pose.header.frame_id = "map"
+        goal.target_pose.header.stamp = rospy.get_rostime()#print(rospy.Time.now())
+        
+        goal.target_pose.pose.position.x = x
+        goal.target_pose.pose.position.y = y
+        goal.target_pose.pose.position.z = 0
+        quaternion = tf.transformations.quaternion_from_euler(0,0,theta)
+        print(quaternion)
+        print(tf.transformations.euler_from_quaternion(quaternion))
+        
+        goal.target_pose.pose.orientation.x = quaternion[0]
+        goal.target_pose.pose.orientation.y = quaternion[1]
+        goal.target_pose.pose.orientation.z = quaternion[2]
+        goal.target_pose.pose.orientation.w = quaternion[3]
+
+        # wait for server connection
+        rospy.loginfo('Waiting for action Server: '+"/move_base")
+        self._action_move_base_client.wait_for_server()
+        rospy.loginfo('Action Server Found...'+"/move_base")
+        # send goal
+        self._action_move_base_client.send_goal(goal,feedback_cb=feedback_callback)
+
+        """
+        # monitor state
+        state_result = self._action_move_base_client.get_state()
+        for i in range(100):
+            print(i)
+            if 1>50:
+                self._action_move_base_client.cancel_goal()
+                break
+        """
+
+        """
+        wait = self._action_move_base_client.wait_for_result()
+        if not wait:
+            rospy.logerr("Action server not available!")
+            rospy.signal_shutdown("Action server not available!")
+        else:
+            return self._action_move_base_client.get_result()
+        """
+
+    def goal_status_callback(self, data):
+        """
+        Recovery method for stable learning:
+        Checking goal status callback from global planner.
+        If goal is not valid, new goal will be published.
+        :param status_callback
+        """
+        if len(data.status_list) > 0:
+            last_element = data.status_list[-1]
+            self._move_base_status=last_element.status
+            #print(last_element.goal_id.id)
+            #print(last_element.status)
         
 
+    """global path"""
+    def _global_path_callback(self,data):
+        self._global_path=data
+    
+    def check_is_new_path_available(self):
+        """waiting for path to be published"""
+        is_available=False
+        begin=time.time()
+        timeout=0.1 # realtime 0.1 second
+        
+        # check if exsit new global path within timeout time
+        while(time.time()-begin)<timeout:
+            if self._global_path.header.stamp<=self._old_global_path_stamp or len(self._global_path.poses)==0:
+                time.sleep(0.0001)
+            else:
+                is_available = True
+                self._old_global_path_stamp = self._global_path.header.stamp
+                break
+        
+        if not is_available:
+            print("cannot get new global path")
+        
+        return is_available
 
+    def generate_waypoints(self):
+        pass
+
+    """Tasks"""
+    def set_task(self):
+        #clear objects
+        rospy.loginfo("remove all static obstacles")
+        self.remove_all_static_obstacles()
+        
+
+        # set robot init position
+        rospy.loginfo("set init robot pos")
+        self.set_random_robot_pos()
+       
+
+        # add objects
+        rospy.loginfo("spawn obstacles")
+        self.spawn_random_static_obstacles(max_num_obstacles=10)
+        
+
+        # set robot goal position
+        rospy.loginfo("set random goal")
+        self.set_random_robot_goal()
+        
+        while((self._move_base_status==1) | (self._move_base_status==0)):
+            self.rate.sleep()
+
+        print(self._move_base_status)   
+        if self._move_base_status==3:
+            rospy.loginfo("succeed to reach the goal")
+            return True
+        else:
+            rospy.loginfo("failed to reach the goal")
+            return False
     """ Test purpose """
     def tf_listen_map_to_odom(self):
         # listen tf map->odom
@@ -364,7 +573,10 @@ class TaskGenerator():
             self._tf_broadcaster.sendTransform(translation, rotation, time, child, parent)
             
     
-        
+    """shutdown"""
+    def shutdownhook(self):
+        # works better than the rospy.is_shutdown()
+        self.ctrl_c = True
 
 
 if __name__ == '__main__':
@@ -374,24 +586,52 @@ if __name__ == '__main__':
     robot_name="myrobot"
     task=TaskGenerator(ns,robot_name,robot_radius)
     task.get_static_map()
-    model_name="walker.model.yaml"
     
-    '''
-    for index in range(0,5):
-        x, y, theta=task.get_random_pos_on_map(task._map,task._freespace)
-        task.spawn_static_obstacle(model_name,index,x,y,theta)
+    for n in range(10):
+        print("-------------------------------------------------")
+        print( "Task episode", n)
+        print("-------------------------------------------------")
+        task.set_task()
     
-    for i in range(0,5):
-        task.set_random_robot_pos()
+    
+    
+    
+    
+    #task.spawn_random_static_obstacles(max_num_obstacles=10)
+    """
+    for t in topics:
+        if "stat_obj" in t[0]:
+                print(t[0].split("/")[-1])
+    
+    print("@"*10)
+    for i in range(0,50):
         task.set_random_robot_goal()
-        time.sleep(10)
-        
-    '''
+        time.sleep(1)
+    """
+    #task.pub_robot_goal(x=3,y=2,theta=0)
+    
+    #task.check_is_new_path_available()
+    
+    
+    """
+    
+    
+
     for index in range(0,20):
         task.generate_random_static_obstacle_yaml()
         x, y, theta=task.get_random_pos_on_map(task._map,task._freespace)
         model_name="random.model.yaml"
         task.spawn_static_obstacle(model_name,index,x,y,theta)
+    
+    
+    for i in range(0,5):
+        task.set_random_robot_pos()
+        #task.set_random_robot_goal()
+        #time.sleep(10)
+    """
+    #task.pub_robot_goal(2,0,3.14)
+    #a=task.movebase_client(2,0)
+   
     #time.sleep(10)
     #task.remove_all_static_obstacles()
     

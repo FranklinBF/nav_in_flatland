@@ -1,7 +1,7 @@
 <launch>
 
-  <arg name="map_path"   default="$(find flatland_models)/maps/map0/map.yaml"/>
-  <arg name="world_path"   default="$(find flatland_models)/maps/map0/map.world.yaml"/>
+  <arg name="map_path"   default="$(find flatland_models)/maps/map1/map.yaml"/>
+  <arg name="world_path"   default="$(find flatland_models)/maps/map1/map.world.yaml"/>
   <arg name="global_frame_id" default="map"/>
   <arg name="scan_topic" default="scan"/> <!-- default laser topic in flatland -->
   
