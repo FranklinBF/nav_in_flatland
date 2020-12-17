@@ -16,11 +16,12 @@
     roslaunch flatland_Server server.launch world_path:="/some/world.yaml" initial_rate:="30.0"
   -->
   <!-- <arg name="world_path"   default="$(find flatland_models)/maps/map1/map.world.yaml"/> -->
-  <arg name="update_rate" default="10000.0"/>
-  <arg name="step_size" default="0.005"/>
+  <arg name="update_rate" default="100.0"/>
+  <arg name="step_size" default="0.03"/>
   <arg name="show_viz" default="true"/>
   <arg name="viz_pub_rate" default="30.0"/>
   <arg name="use_rviz" default="true"/>  
+  <arg name="train_mode" default="false"/>  
 
   <env name="ROSCONSOLE_FORMAT" value="[${severity} ${time} ${logger}]: ${message}" />
 
@@ -34,6 +35,7 @@
     <param name="step_size" value="$(arg step_size)" />
     <param name="show_viz" value="$(arg show_viz)" />
     <param name="viz_pub_rate" value="$(arg viz_pub_rate)" />
+    <param name="train_mode" value="$(arg train_mode)" />
   </node>
 
 
