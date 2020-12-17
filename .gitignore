@@ -45,14 +45,8 @@ build/
 # python
 __pycache__
 
-<<<<<<< HEAD
 
 #vscode
 .vscode/
-=======
-#vscode
-.vscode/
 
-# editor related folder
->>>>>>> arena-ros
 **/.vscode
