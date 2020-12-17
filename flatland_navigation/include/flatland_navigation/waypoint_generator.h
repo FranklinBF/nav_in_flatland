@@ -72,7 +72,7 @@ class WaypointGenerator
 
     
 
-    WaypointGenerator(const ros::NodeHandle& node_handle);
+    WaypointGenerator(const ros::NodeHandle& node_handle,double look_ahead_distance, double tolerance);
 	~WaypointGenerator(){};
 
     

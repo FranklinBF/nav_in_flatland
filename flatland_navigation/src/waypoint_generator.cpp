@@ -6,11 +6,9 @@ using bfmt = boost::format;
 
 
 
-WaypointGenerator::WaypointGenerator(const ros::NodeHandle& node_handle): _nh{node_handle}{
-    
-    _look_ahead_distance=0.5;
-    _tolerance=0.3;
-
+WaypointGenerator::WaypointGenerator(const ros::NodeHandle& node_handle,double look_ahead_distance, double tolerance)
+    : _nh(node_handle),_look_ahead_distance(look_ahead_distance),_tolerance(tolerance)
+{
     // Services client
 	std::string global_plan_service_name = "/move_base/NavfnROS/make_plan";  
     _global_plan_client= _nh.serviceClient<nav_msgs::GetPlan>(global_plan_service_name);  
@@ -76,15 +74,10 @@ void WaypointGenerator::goal_callback(const geometry_msgs::PoseStamped msg){
                 
                 // get wpNodes from global plan
                 int N=_global_plan.poses.size();
-                
-                
                 for(int i=0;i<N;i++){
-                    cout<<"vector size path="<<_wpNodes.size()<<"   path size="<<_global_plan.poses.size()<<endl;
-                    cout<<i<<endl;
                     WaypointNodePtr wpNodePtr=new WaypointNode(i,_global_plan.poses.at(i),goal);
-                    cout<<"---"<<endl;
                     _wpNodes.push_back(wpNodePtr);
-                    cout<<"***"<<endl;
+                   
                 }
 
                 // get first subgoal and publish it
@@ -107,7 +100,7 @@ void WaypointGenerator::goal_callback(const geometry_msgs::PoseStamped msg){
 }
 
 bool WaypointGenerator::subgoal_service(flatland_navigation::Subgoal::Request& request, flatland_navigation::Subgoal::Response& response) {
-    ROS_INFO("Ask subgoal");
+  
   if(get_next_subgoal()){
       publish_subgoal();
       publish_subgoal_vis();
@@ -117,8 +110,6 @@ bool WaypointGenerator::subgoal_service(flatland_navigation::Subgoal::Request& r
       response.success=false;
       response.message="Failed to call subgoal";
   }
-  
-  ROS_INFO("Ask subgoal");
   return true;
 }
 
@@ -259,14 +250,25 @@ double WaypointGenerator::metric_dist(geometry_msgs::PoseStamped pose1,geometry_
 int main(int argc, char** argv) {
     cout<<"waypoint_generator node start"<<endl;
     ros::init(argc, argv, "waypoint_generator");
-    ros::NodeHandle node;
+    ros::NodeHandle node_handle;
     ros::WallRate r(100);
-    WaypointGenerator wg(node);
+    
+    // get param
+    double look_ahead_distance = 3;  
+    node_handle.getParam("look_ahead_distance", look_ahead_distance);
 
-    ros::ServiceClient subgoal_client= node.serviceClient<flatland_navigation::Subgoal>("flatland_navigation/Subgoal"); 
+    double waypoint_tolerance=0.3;
+    node_handle.getParam("waypoint_tolerance", waypoint_tolerance);
 
-            /* flatland_navigation::Subgoal srv;
-            srv.request.x="";
+    WaypointGenerator wg(node_handle,look_ahead_distance,waypoint_tolerance);
+    
+    ROS_INFO("Ready Subgoal Service server.");
+    ros::spin();
+    
+    //ros::ServiceClient subgoal_client= node.serviceClient<flatland_navigation::Subgoal>("flatland_navigation/Subgoal"); 
+    
+    /* flatland_navigation::Subgoal srv;
+            srv.request={};
             cout<<"Request"<<endl;
             cout<<wg._global_plan.poses.size()<<endl;
             if (subgoal_client.call(srv))
@@ -280,19 +282,16 @@ int main(int argc, char** argv) {
                 cout<<srv.response.message<<endl;
             }  */
     
-    
-
-    int q=1;
-    while (ros::ok()) {
-        if(q%100==1){
-            wg.get_next_subgoal();
-            wg.publish_subgoal();
-            wg.publish_subgoal_vis();
-        }
-        q=q+1;
-        ros::spinOnce();
-        r.sleep();
-    }
+    // while (ros::ok()) {
+    //     if(q%100==1){
+    //         wg.get_next_subgoal();
+    //         wg.publish_subgoal();
+    //         wg.publish_subgoal_vis();
+    //     }
+    //     q=q+1;
+    //     ros::spinOnce();
+    //     r.sleep();
+    // }
 
     return 0;
 }
