@@ -1,6 +1,6 @@
 # A cylindar that walks back and forth
 bodies:
-  - name: base
+  - name: waker
     pose: [0, 0, 0] 
     type: dynamic  
     color: [1, 1, 1, 0.75] 
@@ -13,8 +13,13 @@ bodies:
 plugins:
   - type: Tween
     name: Tween 
-    body: base
+    body: waker
     delta: [5, 3, 3.141592]
-    duration: 2.0
+    duration: 30.0
     mode: yoyo
     easing: quadraticInOut
+  
+  - type: ModelTfPublisher
+    name: tf_publisher
+    publish_tf_world: false
+    # exclude: ["approx_footprint"]
