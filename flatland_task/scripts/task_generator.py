@@ -23,6 +23,9 @@ from flatland_msgs.srv import DeleteModel,DeleteModelRequest
 from flatland_msgs.srv import SpawnModel,SpawnModelRequest
 from flatland_msgs.srv import MoveModel,MoveModelRequest
 
+from flatland_msgs.srv import StepWorld
+from std_msgs.msg import Float64, Bool
+
 from flatland_msgs.msg import Model
 
 from nav_msgs.msg import OccupancyGrid
@@ -40,10 +43,6 @@ import actionlib
 from geometry_msgs.msg import Twist, Point 
 from std_msgs.msg import Bool
 from std_srvs.srv import SetBool,Empty
-
-
-
-
 
 
 class TaskGenerator():
@@ -77,6 +76,8 @@ class TaskGenerator():
         self._service_client_move_robot_to = rospy.ServiceProxy('%s/move_model' % self.NS, MoveModel)
         self._service_client_delete_model = rospy.ServiceProxy('%s/delete_model' % self.NS, DeleteModel)
         self._service_client_spawn_model = rospy.ServiceProxy('%s/spawn_model' % self.NS, SpawnModel)
+        self._sim_step = rospy.ServiceProxy('%s/step_world' % self.NS, StepWorld)
+
         
         # topic subscriber
         #self._map_sub=rospy.Subscriber("%s/map" % self.NS, OccupancyGrid, self._map_callback)
@@ -115,6 +116,7 @@ class TaskGenerator():
 
     """ remove object """
     def remove_object(self,name):
+
         srv_request=DeleteModelRequest()
         srv_request.name=name
         rospy.wait_for_service('%s/delete_model' % self.NS)
@@ -162,7 +164,7 @@ class TaskGenerator():
             print(response.message)
             print("delete old object and try again: spawn object")
             self.remove_object(srv_request.name)
-            self.spawn_static_obstacle(model_name, index, x,y,theta)
+            self.spawn_static_obstacle(srv_request.name, index, x,y,theta)
         else:                       # if service succeeds, print success
             #print("sucess")
             obstacle=Model()
@@ -497,7 +499,6 @@ class TaskGenerator():
             #print(last_element.goal_id.id)
             #print(last_element.status)
         
-
     """global path"""
     def _global_path_callback(self,data):
         self._global_path=data
@@ -578,21 +579,46 @@ class TaskGenerator():
         # works better than the rospy.is_shutdown()
         self.ctrl_c = True
 
+    """Step"""
+    def take_sim_step(self):
+        """
+        Executing one simulation step of 0.1 sec
+        """
+        msg = Float64()
+        msg.data = 100.0
+        rospy.wait_for_service('%s/step_world' % self.NS)
+        ret=self._sim_step(msg)
+        #print("result=",ret)
+        return
+
 
 if __name__ == '__main__':
+    print("1111")
     rospy.init_node('aaa', anonymous=True)
+    print("111222221")
     ns=""
     robot_radius=0.5
     robot_name="myrobot"
     task=TaskGenerator(ns,robot_name,robot_radius)
-    task.get_static_map()
+    print("333333")
     
+    """
     for n in range(10):
         print("-------------------------------------------------")
         print( "Task episode", n)
         print("-------------------------------------------------")
         task.set_task()
+    """
+    print("a")
+    i=0
+    while(1):
+        i=i+1
+        task.take_sim_step()
+        #print("step once:",i)
+        #time.sleep(0.0001)
     
+    
+
     
     
     
