@@ -102,8 +102,10 @@ void WaypointGenerator::goal_callback(const geometry_msgs::PoseStamped msg){
 bool WaypointGenerator::subgoal_service(flatland_navigation::Subgoal::Request& request, flatland_navigation::Subgoal::Response& response) {
   
   if(get_next_subgoal()){
+
       publish_subgoal();
       publish_subgoal_vis();
+      response.subgoal=_subgoal;
       response.success=true;
       response.message="success";
   }else{
