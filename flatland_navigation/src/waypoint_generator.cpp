@@ -224,20 +224,24 @@ bool WaypointGenerator::get_current_robot_pose(geometry_msgs::PoseStamped &curre
     geometry_msgs::TransformStamped transform_base_to_map;
 
     // try to get robot_base tf in map
-    try{
-        transform_base_to_map=tf_buffer.lookupTransform("map","base_footprint",ros::Time(0),ros::Duration(1.0));
+    double start=ros::WallTime::now().toSec();
+    while(ros::WallTime::now().toSec()-start<0.2){
+        try{
+            transform_base_to_map=tf_buffer.lookupTransform("map","base_footprint",ros::Time(0),ros::Duration(1.0));
+            current.header.stamp=ros::Time::now();
+            current.header.frame_id = "map";
+            current.pose.position.x=transform_base_to_map.transform.translation.x;
+            current.pose.position.y=transform_base_to_map.transform.translation.y;
+            current.pose.position.z=transform_base_to_map.transform.translation.z;
+            current.pose.orientation=transform_base_to_map.transform.rotation;
+            return true;
+        }catch(tf2::TransformException &ex){
+            ROS_WARN("[waypoint_generator] Failed to get robot current location error %s\n", ex.what());
         
-    }catch(tf2::TransformException &ex){
-        ROS_WARN("[waypoint_generator] Failed to get robot current location error %s\n", ex.what());
-        return false;
+        }
     }
-    current.header.stamp=ros::Time::now();
-    current.header.frame_id = "map";
-    current.pose.position.x=transform_base_to_map.transform.translation.x;
-    current.pose.position.y=transform_base_to_map.transform.translation.y;
-    current.pose.position.z=transform_base_to_map.transform.translation.z;
-    current.pose.orientation=transform_base_to_map.transform.rotation;
-    return true;
+    return false;
+    
 
 }
 
