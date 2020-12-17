@@ -72,6 +72,7 @@
 <!-- Waypoint generator -->
 <arg name="look_ahead_distance" default="1.0"/>
 <arg name="waypoint_tolerance" default="0.3"/>
+
 <node name="waypoint_server" pkg="flatland_navigation" type="waypoint_generator">
   <param name="look_ahead_distance" value="$(arg look_ahead_distance)"/>
   <param name="waypoint_tolerance" value="$(arg waypoint_tolerance)"/>
@@ -85,7 +86,7 @@
 
 <!--  ************** rviz  ***************  -->
 <group if="$(arg use_rviz)">
-  <node name="flatland_rviz" pkg="rviz" type="rviz" output="screen" args="-d $(find flatland_navigation)/rviz/nav.rviz"/>
+  <node name="flatland_rviz" pkg="rviz" type="rviz" output="screen" args="-d $(find flatland_bringup)/rviz/nav.rviz"/>
 </group>
 
 
