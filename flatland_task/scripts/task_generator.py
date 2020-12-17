@@ -19,15 +19,16 @@ import rospkg
 import tf
 from geometry_msgs.msg import TransformStamped
 
+# delete model, spawn model, move model
 from flatland_msgs.srv import DeleteModel,DeleteModelRequest
 from flatland_msgs.srv import SpawnModel,SpawnModelRequest
 from flatland_msgs.srv import MoveModel,MoveModelRequest
 
+# Step the flatland world
 from flatland_msgs.srv import StepWorld
 from std_msgs.msg import Float64, Bool
 
-from flatland_msgs.msg import Model
-
+# Map & Path
 from nav_msgs.msg import OccupancyGrid
 from nav_msgs.msg import Path
 from nav_msgs.srv import GetMap,GetMapRequest
@@ -41,7 +42,6 @@ from actionlib_msgs.msg import GoalStatusArray
 import actionlib
 
 from geometry_msgs.msg import Twist, Point 
-from std_msgs.msg import Bool
 from std_srvs.srv import SetBool,Empty
 
 
