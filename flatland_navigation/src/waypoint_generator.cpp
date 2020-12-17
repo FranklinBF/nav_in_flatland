@@ -250,15 +250,22 @@ double WaypointGenerator::metric_dist(geometry_msgs::PoseStamped pose1,geometry_
 int main(int argc, char** argv) {
     cout<<"waypoint_generator node start"<<endl;
     ros::init(argc, argv, "waypoint_generator");
+    
+    //ros::NodeHandle node_handle("~"); every topic will be with namespace
     ros::NodeHandle node_handle;
     ros::WallRate r(100);
     
     // get param
-    double look_ahead_distance = 3;  
-    node_handle.getParam("look_ahead_distance", look_ahead_distance);
+    double look_ahead_distance;// = 3;
+    std::string param_look_ahead_distance = ros::this_node::getName() + "/look_ahead_distance";
+    node_handle.getParam(param_look_ahead_distance, look_ahead_distance);
+    ROS_ERROR("distance %s %.1f",param_look_ahead_distance,look_ahead_distance);
+    
 
-    double waypoint_tolerance=0.3;
-    node_handle.getParam("waypoint_tolerance", waypoint_tolerance);
+    double waypoint_tolerance;//=0.3;
+    std::string param_waypoint_tolerance = ros::this_node::getName() + "/waypoint_tolerance";
+    node_handle.getParam(param_waypoint_tolerance, waypoint_tolerance);
+    ROS_ERROR("param_waypoint_tolerance %s %.1f",param_waypoint_tolerance,waypoint_tolerance);
 
     WaypointGenerator wg(node_handle,look_ahead_distance,waypoint_tolerance);
     
