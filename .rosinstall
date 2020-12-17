@@ -1,7 +1,7 @@
 - git:
     local-name: ../forks/flatland
-    uri: https://github.com/FranklinBF/flatland_base_modified.git
-    version: main
+    uri: https://github.com/FranklinBF/flatland.git
+    version: arena_flatland
 
 - git:
     local-name: ../forks/navigation
