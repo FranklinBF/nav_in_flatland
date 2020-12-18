@@ -20,6 +20,7 @@ import tf
 from geometry_msgs.msg import TransformStamped
 
 # delete model, spawn model, move model
+from flatland_msgs.msg import Model
 from flatland_msgs.srv import DeleteModel,DeleteModelRequest
 from flatland_msgs.srv import SpawnModel,SpawnModelRequest
 from flatland_msgs.srv import MoveModel,MoveModelRequest
@@ -557,6 +558,7 @@ class TaskGenerator():
         else:
             rospy.loginfo("failed to reach the goal")
             return False
+    
     """ Test purpose """
     def tf_listen_map_to_odom(self):
         # listen tf map->odom
@@ -573,7 +575,6 @@ class TaskGenerator():
             parent="map"
             self._tf_broadcaster.sendTransform(translation, rotation, time, child, parent)
             
-    
     """shutdown"""
     def shutdownhook(self):
         # works better than the rospy.is_shutdown()
@@ -585,10 +586,10 @@ class TaskGenerator():
         Executing one simulation step of 0.1 sec
         """
         msg = Float64()
-        msg.data = 100.0
+        msg.data = 1.0
         rospy.wait_for_service('%s/step_world' % self.NS)
         ret=self._sim_step(msg)
-        #print("result=",ret)
+        print("result=",ret)
         return
 
 
@@ -600,9 +601,10 @@ if __name__ == '__main__':
     robot_radius=0.5
     robot_name="myrobot"
     task=TaskGenerator(ns,robot_name,robot_radius)
+    task.get_static_map()
     print("333333")
     
-    """
+    
     for n in range(10):
         print("-------------------------------------------------")
         print( "Task episode", n)
@@ -611,11 +613,14 @@ if __name__ == '__main__':
     """
     print("a")
     i=0
-    while(1):
+    start=time.time()
+    while(time.time()-start<2):
         i=i+1
         task.take_sim_step()
+        time.sleep(0.01)
         #print("step once:",i)
         #time.sleep(0.0001)
+    """
     
     
 
