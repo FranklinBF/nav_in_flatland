@@ -529,6 +529,9 @@ class TaskGenerator():
 
     """Tasks"""
     def set_task(self):
+        # load static cost map
+        task.get_static_map()
+        
         #clear objects
         rospy.loginfo("remove all static obstacles")
         self.remove_all_static_obstacles()
@@ -601,7 +604,7 @@ if __name__ == '__main__':
     robot_radius=0.5
     robot_name="myrobot"
     task=TaskGenerator(ns,robot_name,robot_radius)
-    task.get_static_map()
+    
     print("333333")
     
     
