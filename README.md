@@ -1,4 +1,4 @@
-# navigation_flatland
+# nav_in_flatland
 
 # What is this repository for?
 Train DRL agents on ROS compatible simulations for autonomous navigation in highly dynamic environments. Flatland-DRL integration is based on Ronja Gueldenring's repo: drl_local_planner_ros_stable_baselines. Following features are included:
@@ -22,7 +22,7 @@ git clone https://github.com/FranklinBF/navigation_flatland.git
 
 ### install forks
 ````
-cd navigation_flatland
+cd nav_in_flatland
 rosws update
 ````
 
