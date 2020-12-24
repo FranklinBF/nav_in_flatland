@@ -39,7 +39,20 @@ roslaunch flatland_bringup start_flatland.launch
 
 ### use task generator to spawn random obstacles
 ````
-rosrun flatland_task task_generator.py 
+rosrun task_generator task_generator.py 
 ````
-
-
+### Structure of the packges
+1. flatland bringup: final launch file
+2. nav: 
+   1. plan_global
+   2. plan_local
+   3. plan_manage
+   4. plan_manage_move_base
+   5. plan_msgs
+3. simulator_setup
+   1. maps
+   2. obstacles
+   3. robot
+4. task_generator
+5. utils
+   1. rviz_plugin
