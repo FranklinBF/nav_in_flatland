@@ -42,6 +42,9 @@ from geometry_msgs.msg import PoseStamped
 from actionlib_msgs.msg import GoalStatusArray
 import actionlib
 
+#sensor
+from sensor_msgs.msg import LaserScan
+
 from geometry_msgs.msg import Twist, Point 
 from std_srvs.srv import SetBool,Empty
 
@@ -54,9 +57,12 @@ class TaskGenerator():
         self.ROBOT_NAME=robot_name
         self.local_range=1.0
         
-        
+        # laser
+        self._scan = LaserScan()
+        self._flag_get_obs=False
+
         # model files
-        self._flatland_models_path = rospkg.RosPack().get_path('flatland_models')
+        self._flatland_models_path = rospkg.RosPack().get_path('simulator_setup')
 
         # map & freespace on static map
         self._map=OccupancyGrid()
@@ -87,7 +93,8 @@ class TaskGenerator():
         self._goal_status_sub = rospy.Subscriber("%s/move_base/status" % self.NS, GoalStatusArray,
                                                   self.goal_status_callback, queue_size=1)
         
-        
+        self._obs_sub=rospy.Subscriber("%s/scan"% self.NS, LaserScan,self._get_obs_callback)
+
         # topic publisher
         self._initialpose_pub=rospy.Publisher('%s/initialpose' % self.NS, PoseWithCovarianceStamped, queue_size=1)
         self._goal_pub = rospy.Publisher('%s/move_base_simple/goal' % self.NS, PoseStamped, queue_size=1)
@@ -592,8 +599,15 @@ class TaskGenerator():
         msg.data = 1.0
         rospy.wait_for_service('%s/step_world' % self.NS)
         ret=self._sim_step(msg)
-        print("result=",ret)
+        #print("result=",ret)
         return
+
+
+    def _get_obs_callback(self,data):
+        #print(dir(data.header))
+        #print(dir(data.header.stamp))
+        print(data.header.stamp.to_sec())
+        self._flag_get_obs=True
 
 
 if __name__ == '__main__':
@@ -607,7 +621,7 @@ if __name__ == '__main__':
     
     print("333333")
     
-    
+    """
     for n in range(10):
         print("-------------------------------------------------")
         print( "Task episode", n)
@@ -617,13 +631,25 @@ if __name__ == '__main__':
     print("a")
     i=0
     start=time.time()
-    while(time.time()-start<2):
+    r=rospy.Rate(10)
+    #time.time()-start<2
+    while(task._flag_get_obs==False):
         i=i+1
+        #print("start")
+        #r.sleep()
+        #print("step")
+        #print(i)
         task.take_sim_step()
-        time.sleep(0.01)
+        
+        if(task._flag_get_obs==True):
+            #print("got")
+            task._flag_get_obs=False
+        
+        
+        
         #print("step once:",i)
-        #time.sleep(0.0001)
-    """
+        
+    
     
     
 

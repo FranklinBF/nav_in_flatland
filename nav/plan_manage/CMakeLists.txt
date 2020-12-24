@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.0.2)
-project(flatland_navigation)
+project(plan_manage)
 
 ## Compile as C++11, supported in ROS Kinetic and newer
 # add_compile_options(-std=c++11)
@@ -8,18 +8,17 @@ project(flatland_navigation)
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
+  geometry_msgs
+  nav_msgs
   roscpp
   rospy
-  std_msgs
-  geometry_msgs
   sensor_msgs
-  nav_msgs
-  tf
+  std_msgs
   tf2
   tf2_geometry_msgs
-  tf2_msgs
   tf2_ros
-  message_generation
+
+  plan_msgs
 )
 
 ## System dependencies are found with CMake's conventions
@@ -63,10 +62,11 @@ find_package(catkin REQUIRED COMPONENTS
 # )
 
 ## Generate services in the 'srv' folder
-add_service_files(
-  FILES
-  Subgoal.srv
-)
+# add_service_files(
+#   FILES
+#   Service1.srv
+#   Service2.srv
+# )
 
 ## Generate actions in the 'action' folder
 # add_action_files(
@@ -76,11 +76,10 @@ add_service_files(
 # )
 
 ## Generate added messages and services with any dependencies listed here
-generate_messages(
-  DEPENDENCIES
-  std_msgs  # Or other packages containing msgs
-  geometry_msgs
-)
+# generate_messages(
+#   DEPENDENCIES
+#   geometry_msgs#   nav_msgs#   sensor_msgs#   std_msgs
+# )
 
 ################################################
 ## Declare ROS dynamic reconfigure parameters ##
@@ -113,19 +112,8 @@ generate_messages(
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
   INCLUDE_DIRS include
-#  LIBRARIES flatland_navigation
-CATKIN_DEPENDS roscpp   
-CATKIN_DEPENDS
-    roscpp
-    rospy
-    std_msgs
-    geometry_msgs
-    nav_msgs
-    sensor_msgs
-    tf2
-    tf2_msgs
-    tf2_ros
-    tf2_geometry_msgs
+#  LIBRARIES plan_manage
+  CATKIN_DEPENDS geometry_msgs nav_msgs roscpp rospy sensor_msgs std_msgs plan_msgs
 #  DEPENDS system_lib
 )
 
@@ -137,13 +125,12 @@ CATKIN_DEPENDS
 ## Your package locations should be listed before other locations
 include_directories(
   include
-  include/${PROJECT_NAME}
   ${catkin_INCLUDE_DIRS}
 )
 
 ## Declare a C++ library
 # add_library(${PROJECT_NAME}
-#   src/${PROJECT_NAME}/flatland_navigation.cpp
+#   src/${PROJECT_NAME}/plan_manage.cpp
 # )
 
 ## Add cmake target dependencies of the library
@@ -154,7 +141,7 @@ include_directories(
 ## Declare a C++ executable
 ## With catkin_make all packages are built within a single CMake context
 ## The recommended prefix ensures that target names across packages don't collide
-add_executable(waypoint_generator src/waypoint_generator.cpp)
+add_executable(waypoint_generator_node src/waypoint_generator_node.cpp)
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
@@ -164,10 +151,10 @@ add_executable(waypoint_generator src/waypoint_generator.cpp)
 
 ## Add cmake target dependencies of the executable
 ## same as for the library above
-# add_dependencies(${PROJECT_NAME}_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
-add_dependencies(waypoint_generator flatland_navigation_generate_messages_cpp)
+add_dependencies(waypoint_generator_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+
 ## Specify libraries to link a library or executable target against
-target_link_libraries(waypoint_generator
+target_link_libraries(waypoint_generator_node
   ${catkin_LIBRARIES}
 )
 
@@ -218,7 +205,7 @@ target_link_libraries(waypoint_generator
 #############
 
 ## Add gtest based cpp test target and link libraries
-# catkin_add_gtest(${PROJECT_NAME}-test test/test_flatland_navigation.cpp)
+# catkin_add_gtest(${PROJECT_NAME}-test test/test_plan_manage.cpp)
 # if(TARGET ${PROJECT_NAME}-test)
 #   target_link_libraries(${PROJECT_NAME}-test ${PROJECT_NAME})
 # endif()

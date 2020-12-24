@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.0.2)
-project(flatland_task)
+project(task_generator)
 
 ## Compile as C++11, supported in ROS Kinetic and newer
 # add_compile_options(-std=c++11)
@@ -107,7 +107,7 @@ find_package(catkin REQUIRED COMPONENTS
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
 #  INCLUDE_DIRS include
-#  LIBRARIES flatland_task
+#  LIBRARIES task_generator
 #  CATKIN_DEPENDS geometry_msgs message_generation roscpp rospy sensor_msgs std_msgs
 #  DEPENDS system_lib
 )
@@ -125,7 +125,7 @@ include_directories(
 
 ## Declare a C++ library
 # add_library(${PROJECT_NAME}
-#   src/${PROJECT_NAME}/flatland_task.cpp
+#   src/${PROJECT_NAME}/task_generator.cpp
 # )
 
 ## Add cmake target dependencies of the library
@@ -136,7 +136,7 @@ include_directories(
 ## Declare a C++ executable
 ## With catkin_make all packages are built within a single CMake context
 ## The recommended prefix ensures that target names across packages don't collide
-# add_executable(${PROJECT_NAME}_node src/flatland_task_node.cpp)
+# add_executable(${PROJECT_NAME}_node src/task_generator_node.cpp)
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
@@ -200,7 +200,7 @@ include_directories(
 #############
 
 ## Add gtest based cpp test target and link libraries
-# catkin_add_gtest(${PROJECT_NAME}-test test/test_flatland_task.cpp)
+# catkin_add_gtest(${PROJECT_NAME}-test test/test_task_generator.cpp)
 # if(TARGET ${PROJECT_NAME}-test)
 #   target_link_libraries(${PROJECT_NAME}-test ${PROJECT_NAME})
 # endif()

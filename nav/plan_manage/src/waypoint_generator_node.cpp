@@ -1,4 +1,5 @@
-#include "flatland_navigation/waypoint_generator.h"
+#include "waypoint_generator.h"
+
 
 using namespace std;
 using bfmt = boost::format;
@@ -99,7 +100,7 @@ void WaypointGenerator::goal_callback(const geometry_msgs::PoseStamped msg){
 
 }
 
-bool WaypointGenerator::subgoal_service(flatland_navigation::Subgoal::Request& request, flatland_navigation::Subgoal::Response& response) {
+bool WaypointGenerator::subgoal_service(plan_msgs::Subgoal::Request& request, plan_msgs::Subgoal::Response& response) {
   
   if(get_next_subgoal()){
 
@@ -278,7 +279,7 @@ int main(int argc, char** argv) {
     ROS_INFO("Ready Subgoal Service server.");
     ros::spin();
     
-    //ros::ServiceClient subgoal_client= node.serviceClient<flatland_navigation::Subgoal>("flatland_navigation/Subgoal"); 
+    //ros::ServiceClient subgoal_client= node.serviceClient<plan_msgs::Subgoal>("/Subgoal"); 
     
     /* flatland_navigation::Subgoal srv;
             srv.request={};

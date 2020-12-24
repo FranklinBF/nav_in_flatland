@@ -22,10 +22,10 @@
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 
 
-#include <flatland_navigation/node.h>
+#include <node.h>
 #include <vector>
 
-#include <flatland_navigation/Subgoal.h>
+#include <plan_msgs/Subgoal.h>
 #include <std_srvs/EmptyRequest.h>
 
 
@@ -81,7 +81,7 @@ class WaypointGenerator
     void goal_callback( const geometry_msgs::PoseStamped msg);
 
     bool get_next_subgoal();
-    bool subgoal_service(flatland_navigation::Subgoal::Request& request, flatland_navigation::Subgoal::Response& response);
+    bool subgoal_service(plan_msgs::Subgoal::Request& request, plan_msgs::Subgoal::Response& response);
 
     void publish_subgoal();
     void publish_subgoal_vis();

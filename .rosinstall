@@ -3,7 +3,7 @@
     uri: https://github.com/FranklinBF/flatland.git
     version: arena_flatland
 
-#- git:
-#    local-name: ../forks/navigation
-#    uri: https://github.com/ros-planning/navigation.git
-#    version: melodic-devel
+- git:
+    local-name: ../forks/navigation
+    uri: https://github.com/ros-planning/navigation.git
+    version: melodic-devel
