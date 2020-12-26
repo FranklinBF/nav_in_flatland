@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.0.2)
-project(plan_local)
+project(plan_localization)
 
 ## Compile as C++11, supported in ROS Kinetic and newer
 # add_compile_options(-std=c++11)
@@ -9,14 +9,17 @@ project(plan_local)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
   geometry_msgs
+  message_filters
   nav_msgs
-  plan_msgs
   roscpp
   rospy
   sensor_msgs
-  std_msgs
+  tf2_geometry_msgs
+  tf2_ros
+  angles
+  rosconsole  
 )
-
+find_package(Boost REQUIRED)
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
 
@@ -74,7 +77,7 @@ find_package(catkin REQUIRED COMPONENTS
 ## Generate added messages and services with any dependencies listed here
 # generate_messages(
 #   DEPENDENCIES
-#   geometry_msgs#   nav_msgs#   plan_msgs#   sensor_msgs#   std_msgs
+#   geometry_msgs#   nav_msgs#   sensor_msgs#   tf2_geometry_msgs
 # )
 
 ################################################
@@ -108,10 +111,12 @@ find_package(catkin REQUIRED COMPONENTS
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
 #  INCLUDE_DIRS include
-#  LIBRARIES plan_local
-#  CATKIN_DEPENDS geometry_msgs nav_msgs plan_msgs roscpp rospy sensor_msgs std_msgs
-#  DEPENDS system_lib
+#  LIBRARIES plan_localization
+ CATKIN_DEPENDS geometry_msgs  nav_msgs roscpp rospy
 )
+
+#  DEPENDS system_lib
+
 
 ###########
 ## Build ##
@@ -122,11 +127,12 @@ catkin_package(
 include_directories(
 # include
   ${catkin_INCLUDE_DIRS}
+  ${Boost_INCLUDE_DIRS}
 )
 
 ## Declare a C++ library
 # add_library(${PROJECT_NAME}
-#   src/${PROJECT_NAME}/plan_local.cpp
+#   src/${PROJECT_NAME}/plan_localization.cpp
 # )
 
 ## Add cmake target dependencies of the library
@@ -137,7 +143,8 @@ include_directories(
 ## Declare a C++ executable
 ## With catkin_make all packages are built within a single CMake context
 ## The recommended prefix ensures that target names across packages don't collide
-# add_executable(${PROJECT_NAME}_node src/plan_local_node.cpp)
+# add_executable(${PROJECT_NAME}_node src/plan_localization_node.cpp)
+add_executable(fake_localization src/fake_localization.cpp)
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
@@ -148,11 +155,17 @@ include_directories(
 ## Add cmake target dependencies of the executable
 ## same as for the library above
 # add_dependencies(${PROJECT_NAME}_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+add_dependencies(fake_localization ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 ## Specify libraries to link a library or executable target against
 # target_link_libraries(${PROJECT_NAME}_node
 #   ${catkin_LIBRARIES}
 # )
+
+target_link_libraries(fake_localization
+    ${catkin_LIBRARIES}
+    ${Boost_LIBRARIES}
+    )
 
 #############
 ## Install ##
@@ -201,7 +214,7 @@ include_directories(
 #############
 
 ## Add gtest based cpp test target and link libraries
-# catkin_add_gtest(${PROJECT_NAME}-test test/test_plan_local.cpp)
+# catkin_add_gtest(${PROJECT_NAME}-test test/test_plan_localization.cpp)
 # if(TARGET ${PROJECT_NAME}-test)
 #   target_link_libraries(${PROJECT_NAME}-test ${PROJECT_NAME})
 # endif()
