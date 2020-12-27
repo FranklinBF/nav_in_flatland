@@ -7,7 +7,6 @@
 
   <arg name="odom_ground_truth" default="/odometry/ground_truth"/>
 
-  
   <arg name="scan_topic" default="scan"/> <!-- default laser topic in flatland -->
   
   <!--  ******************** flatland********************  -->
@@ -24,7 +23,7 @@
   <arg name="show_viz" default="true"/>
   <arg name="viz_pub_rate" default="30.0"/>
   <arg name="use_rviz" default="true"/>  
-  <arg name="train_mode" default="false"/>  
+  <arg name="train_mode" default="true"/>  
   <env name="ROSCONSOLE_FORMAT" value="[${severity} ${time} ${logger}]: ${message}" />
 
   <!-- launch flatland server -->

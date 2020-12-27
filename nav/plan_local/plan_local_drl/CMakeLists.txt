@@ -16,6 +16,7 @@ find_package(catkin REQUIRED COMPONENTS
   tf2
   tf2_geometry_msgs
   tf2_ros
+  flatland_msgs
 )
 
 ## System dependencies are found with CMake's conventions
@@ -110,7 +111,7 @@ find_package(catkin REQUIRED COMPONENTS
 catkin_package(
 #  INCLUDE_DIRS include
 #  LIBRARIES plan_local_drl
-#  CATKIN_DEPENDS geometry_msgs nav_msgs roscpp rospy sensor_msgs tf2 tf2_geometry_msgs tf2_ros
+#    CATKIN_DEPENDS geometry_msgs nav_msgs roscpp rospy sensor_msgs tf2 tf2_geometry_msgs tf2_ros
 #  DEPENDS system_lib
 )
 
