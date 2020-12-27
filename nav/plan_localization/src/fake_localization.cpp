@@ -97,7 +97,7 @@ class FakeOdomNode
   public:
     FakeOdomNode(void)
     {
-      m_posePub = m_nh.advertise<geometry_msgs::PoseWithCovarianceStamped>("amcl_pose",1,true);
+      m_posePub = m_nh.advertise<geometry_msgs::PoseWithCovarianceStamped>("robot_pose",1,true);
       m_particlecloudPub = m_nh.advertise<geometry_msgs::PoseArray>("particlecloud",1,true);
       m_tfServer = new tf2_ros::TransformBroadcaster();
       m_tfBuffer = new tf2_ros::Buffer();
@@ -113,8 +113,8 @@ class FakeOdomNode
       private_nh.param("delta_y", delta_y_, 0.0);
       private_nh.param("delta_yaw", delta_yaw_, 0.0);      
       private_nh.param("transform_tolerance", transform_tolerance_, 0.1);
-      //private_nh.param("base_pose_ground_truth", base_pose_ground_truth_);
-      private_nh.getParam("base_pose_ground_truth", base_pose_ground_truth_);
+      private_nh.param("base_pose_ground_truth", base_pose_ground_truth_,std::string("/odometry/ground_truth"));
+      //private_nh.getParam("base_pose_ground_truth", base_pose_ground_truth_);
          
       m_particleCloud.header.stamp = ros::Time::now();
       m_particleCloud.header.frame_id = global_frame_id_;
@@ -128,7 +128,7 @@ class FakeOdomNode
       
       
       stuff_sub_ = nh.subscribe(base_pose_ground_truth_, 100, &FakeOdomNode::stuffFilter, this);
-      filter_sub_ = new message_filters::Subscriber<nav_msgs::Odometry>(nh, "", 100);
+      filter_sub_ = new message_filters::Subscriber<nav_msgs::Odometry>(nh, "", 100); // this is a dummy message filter subscriber, the subscribed msg will be added manuelly
       filter_ = new tf2_ros::MessageFilter<nav_msgs::Odometry>(*filter_sub_, *m_tfBuffer, base_frame_id_, 100, nh);
       filter_->registerCallback(boost::bind(&FakeOdomNode::update, this, _1));
 
@@ -185,6 +185,7 @@ class FakeOdomNode
       boost::shared_ptr<nav_msgs::Odometry> stuff_msg(new nav_msgs::Odometry);
       *stuff_msg = *odom_msg;
       stuff_msg->header.frame_id = odom_frame_id_;
+      // manuelly add msg to filter
       filter_->add(stuff_msg);
     }
 
