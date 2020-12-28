@@ -1,45 +1,58 @@
+#! /usr/bin/env python
+
 import rospy
 from geometry_msgs.msg import Twist
 from gym import spaces
+import numpy as np
+
+from tf.transformations import *
 
 
-
-
-self.action = np.array([0.0, 0.0])
-        self.v_max_ = 0.8 # ?1.5?
-        self.w_max_ = 1.2
-        self.__possible_actions = {
-            0: [0.0, -self.w_max_],
-            1: [self.v_max_, 0.0],
-            2: [0.0, self.w_max_],
-            3: [self.v_max_, self.w_max_ / 2],
-            4: [self.v_max_, -self.w_max_ / 2],
-            5: [0.0, 0.0]
-            # 6: [0.09, 0.0],
-        }
-        action_size = len(self.__possible_actions)
-
-        action_space = spaces.Discrete(action_size)
 
 class ActionCollector():
     def __init__(self):
         self.v_max_ = 0.8 
         self.w_max_ = 1.2
-        self.possible_actions={
-            0: [0.0, -self.w_max_],
-            1: [self.v_max_, 0.0],
-            2: [0.0, self.w_max_],
-            3: [self.v_max_, self.w_max_ / 2],
-            4: [self.v_max_, -self.w_max_ / 2],
-            5: [0.0, 0.0]
+        self.action_library={
+            0: {"linear":0.0,           "angular": -self.w_max_},
+            1: {"linear":self.v_max_,   "angular":0.0},
+            2: {"linear":0.0,           "angular":self.w_max_},
+            3: {"linear":self.v_max_,   "angular":self.w_max_ / 2},
+            4: {"linear":self.v_max_,   "angular":-self.w_max_ / 2},
+            5: {"linear":0.0,           "angular": 0.0}
         }
-        self.N_DISCRETE_ACTIONS = len(self.possible_actions)
-        self.action_space = spaces.Discrete(N_DISCRETE_ACTIONS)
-        
-        
-        
-    def get_cmd_vel_(self, action):
+        self.N_DISCRETE_ACTIONS = len(self.action_library)
+        self.action_space = spaces.Discrete(self.N_DISCRETE_ACTIONS)
+    
+    def get_action_space(self):
+        return self.action_space  
+     
+    def get_cmd_vel(self, action_id):
         vel_msg = Twist()
-        vel_msg.linear.x = action[0]
-        vel_msg.angular.z = action[1]
+        vel_msg.linear.x = self.action_library[action_id]["linear"]
+        vel_msg.angular.z = self.action_library[action_id]["angular"]
         return vel_msg
+    
+
+if __name__ == '__main__':
+    action_collector=ActionCollector()
+    print(action_collector.get_cmd_vel(1))
+    
+    box = spaces.Box(low=3.0, high=4, shape=(2,2))
+    print(box) 
+    box.seed(4)
+    for _ in range(1):
+        print(box.sample())
+    
+    min_position = 0
+    max_position = 10
+    max_speed = 2
+    goal_position = 0.5 
+    low = np.array([min_position, -max_speed])
+    high = np.array([max_position, max_speed])
+    action_space = spaces.Discrete(3)  # action space,是离散的
+    observation_space = spaces.Box(low, high) # 状态空间是连续的
+    print("*"*10)
+    print(observation_space)
+    for _ in range(2):
+        print(observation_space.sample())

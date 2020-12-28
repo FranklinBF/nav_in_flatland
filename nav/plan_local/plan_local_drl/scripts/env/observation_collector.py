@@ -1,5 +1,4 @@
 #! /usr/bin/env python
-
 import rospy
 import random
 import numpy as np
@@ -54,11 +53,17 @@ from tf.transformations import *
 
 class ObservationCollector():
     def __init__(self):
-        # flag of new sensor info
-        self._flag_new_laser=False
-        self._flag_new_robot_pose=False
-        self._flag_new_subgoal=False
+        # state_size_t = rospy.get_param("%s/rl_agent/scan_size"% ns)
+        # state_size = (state_size_t,2, 1)
+        # observation_space = spaces.Box(low=0, high=10, shape=state_size, dtype=np.float)
         
+        # state_size_t = rospy.get_param("%s/rl_agent/scan_size"% ns) + rospy.get_param("%s/rl_agent/num_of_wps"%ns)*2
+        # state_size = (1, state_size_t, 1)
+        
+        # [self.static_scan_, self.ped_scan_, self.merged_scan_, self.input_img_, self.wp_, self.twist_, self.__transformed_goal] = self.__state_collector.get_state()
+       
+        
+        # flag of new sensor info
         self._flag_all_received=False
 
         self._scan = LaserScan()
@@ -93,6 +98,8 @@ class ObservationCollector():
         observations["scan"]=self._scan
         observations["robot_pose"]=self._robot_pose
         observations["subgoal"]=self._subgoal
+        print("abc"*10)
+        print(self._scan.ranges.shape)//362
         return observations
     
     def call_service_takeSimStep(self):

@@ -1,6 +1,7 @@
 import gym
 from gym import spaces
 from plan_local_drl.scripts.env.observation_collector import ObservationCollector
+from plan_local_drl.scripts.env.action_collector import ActionCollector
 
 
 
@@ -23,6 +24,10 @@ class FlatlandEnv(gym.Env):
     
     # observation collector
     self.observation_collector = ObservationCollector()
+    
+    # action collector
+    self.action_collector=ActionCollector()
+    self.action_space=self.action_collector.get_action_space()
     
     # action agent publisher
     self.agent_action_pub = rospy.Publisher('drl_action_agent' % (self.NS), Twist, queue_size=1)
