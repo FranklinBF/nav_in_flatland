@@ -20,49 +20,24 @@ import message_filters
 # for transformations
 from tf.transformations import *
 
-# #include <message_filters/subscriber.h>
-# #include <message_filters/sync_policies/approximate_time.h>
-# #include <message_filters/sync_policies/exact_time.h>
-# #include <message_filters/time_synchronizer.h>
+from gym import spaces
 
-#   typedef message_filters::sync_policies::ApproximateTime<sensor_msgs::Image, nav_msgs::Odometry>SyncPolicyImageOdom;
-  
-#   shared_ptr<message_filters::Subscriber<sensor_msgs::Image>> depth_sub_;
-#   shared_ptr<message_filters::Subscriber<geometry_msgs::PoseStamped>> pose_sub_;
-#   shared_ptr<message_filters::Subscriber<nav_msgs::Odometry>> odom_sub_;
-#   SynchronizerImagePose sync_image_pose_;
-#   SynchronizerImageOdom sync_image_odom_;
 
-#   ros::Subscriber indep_depth_sub_, indep_odom_sub_, indep_pose_sub_, indep_cloud_sub_;
-#   ros::Publisher map_pub_, esdf_pub_, map_inf_pub_, update_range_pub_;
-#   ros::Publisher unknown_pub_, depth_pub_;
-#   ros::Timer occ_timer_, esdf_timer_, vis_timer_;
 
-# depth_sub_.reset(new message_filters::Subscriber<sensor_msgs::Image>(node_, "/sdf_map/depth", 50));
-# pose_sub_.reset(new message_filters::Subscriber<geometry_msgs::PoseStamped>(node_, "/sdf_map/pose", 25));
-# sync_image_pose_.reset(new message_filters::Synchronizer<SyncPolicyImagePose>(SyncPolicyImagePose(100), *depth_sub_, *pose_sub_));
-# sync_image_pose_->registerCallback(boost::bind(&SDFMap::depthPoseCallback, this, _1, _2));
-
-# image_sub = message_filters.Subscriber('image', Image)
-# info_sub = message_filters.Subscriber('camera_info', CameraInfo)
-
-# ts = message_filters.TimeSynchronizer([image_sub, info_sub], 10)
-# ts.registerCallback(callback)
-# rospy.spin()
-
+_L = 360  # lidar size
+_RS = 3   # robotstate size
+_G= 3    # goal size
 
 class ObservationCollector():
     def __init__(self):
-        # state_size_t = rospy.get_param("%s/rl_agent/scan_size"% ns)
-        # state_size = (state_size_t,2, 1)
-        # observation_space = spaces.Box(low=0, high=10, shape=state_size, dtype=np.float)
-        
-        # state_size_t = rospy.get_param("%s/rl_agent/scan_size"% ns) + rospy.get_param("%s/rl_agent/num_of_wps"%ns)*2
-        # state_size = (1, state_size_t, 1)
-        
-        # [self.static_scan_, self.ped_scan_, self.merged_scan_, self.input_img_, self.wp_, self.twist_, self.__transformed_goal] = self.__state_collector.get_state()
-       
-        
+
+        # define observation_space
+        self.observation_space = spaces.Tuple((
+            spaces.Box(low=0, high=10, shape=(_L,), dtype=np.float32),
+            spaces.Box(low=-10, high=10, shape=(_RS,), dtype=np.float32) ,
+            spaces.Box(low=-10, high=10, shape=(_G,), dtype=np.float32) 
+        ))
+
         # flag of new sensor info
         self._flag_all_received=False
 
@@ -85,6 +60,9 @@ class ObservationCollector():
         self._service_name_subgoal="/subgoal"
         self._subgoal_client=rospy.ServiceProxy(self._service_name_subgoal, Subgoal)
     
+    def get_observation_space(self):
+        return self.observation_space
+
     def get_observations(self):
         # reset flag 
         self._flag_all_received=False
@@ -98,9 +76,14 @@ class ObservationCollector():
         observations["scan"]=self._scan
         observations["robot_pose"]=self._robot_pose
         observations["subgoal"]=self._subgoal
-        print("abc"*10)
-        print(self._scan.ranges.shape)//362
-        return observations
+
+        scan=self._scan.ranges.astype(np.float32)
+        robot_pose=np.array([self._robot_pose.x,self._robot_pose.y,self._robot_pose.theta]).astype(np.float32)
+        subgoal=np.array([self._subgoal.x,self._subgoal.y,self._subgoal.theta])
+        obs = (scan, robot_pose,subgoal)  
+        print("***"*10)
+        print(obs[1])
+        return obs
     
     def call_service_takeSimStep(self):
         request=StepWorldRequest()
@@ -146,7 +129,7 @@ class ObservationCollector():
         pose_with_cov=msg_PoseWithCovarianceStamped.pose
         pose=pose_with_cov.pose
         return self.pose3D_to_pose2D(pose)
-        
+ 
     # utils
     @staticmethod
     def pose3D_to_pose2D(pose3d):
@@ -171,9 +154,7 @@ if __name__ == '__main__':
     r=rospy.Rate(100)
     while(i<=3):
         i=i+1
-        print("****************************************8")
         obs=state_collector.get_observations()
-        print(obs.keys())
         time.sleep(5)
         
 

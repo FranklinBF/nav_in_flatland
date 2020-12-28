@@ -56,3 +56,14 @@ if __name__ == '__main__':
     print(observation_space)
     for _ in range(2):
         print(observation_space.sample())
+    
+    observation_space=spaces.Tuple((
+            spaces.Box(low=0, high=10, shape=(10,), dtype=np.float32),
+            spaces.Box(low=-10, high=0, shape=(3+2,), dtype=np.float32) 
+        ))
+    print("2"*10)
+    print(observation_space.sample())
+    print(type(observation_space.sample()))
+
+    reward=spaces.Discrete(4)
+    print(type(reward.sample()))
