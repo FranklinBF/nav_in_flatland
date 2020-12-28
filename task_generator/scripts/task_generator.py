@@ -26,7 +26,7 @@ from flatland_msgs.srv import SpawnModel,SpawnModelRequest
 from flatland_msgs.srv import MoveModel,MoveModelRequest
 
 # Step the flatland world
-from flatland_msgs.srv import StepWorld
+from flatland_msgs.srv import StepWorld,StepWorldRequest
 from std_msgs.msg import Float64, Bool
 
 # Map & Path
@@ -593,10 +593,9 @@ class TaskGenerator():
     """Step"""
     def take_sim_step(self):
         """
-        Executing one simulation step of 0.1 sec
+        
         """
-        msg = Float64()
-        msg.data = 1.0
+        msg = StepWorldRequest()
         rospy.wait_for_service('%s/step_world' % self.NS)
         ret=self._sim_step(msg)
         #print("result=",ret)
