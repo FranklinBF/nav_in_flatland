@@ -276,7 +276,7 @@ class FakeOdomNode
 
 int main(int argc, char** argv)
 {
-  ros::init(argc, argv, "fake_localization");
+  ros::init(argc, argv, "dummy_localization");
 
   FakeOdomNode odom;
 
