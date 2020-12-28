@@ -610,43 +610,39 @@ class TaskGenerator():
 
 
 if __name__ == '__main__':
-    print("1111")
-    rospy.init_node('aaa', anonymous=True)
-    print("111222221")
+
+    rospy.init_node('Task', anonymous=True)
     ns=""
     robot_radius=0.5
     robot_name="myrobot"
     task=TaskGenerator(ns,robot_name,robot_radius)
     
-    print("333333")
+   
     
-    """
+    """Test1: running task"""
     for n in range(10):
         print("-------------------------------------------------")
         print( "Task episode", n)
         print("-------------------------------------------------")
         task.set_task()
+    
+    
+    """Test2: simulator step service"""
     """
     print("a")
     i=0
     start=time.time()
     r=rospy.Rate(10)
-    #time.time()-start<2
     while(task._flag_get_obs==False):
         i=i+1
-        #print("start")
-        #r.sleep()
-        #print("step")
-        #print(i)
+      
         task.take_sim_step()
-        
         if(task._flag_get_obs==True):
-            #print("got")
+     
             task._flag_get_obs=False
+    """
         
-        
-        
-        #print("step once:",i)
+
         
     
     
@@ -655,44 +651,6 @@ if __name__ == '__main__':
     
     
     
-    
-    #task.spawn_random_static_obstacles(max_num_obstacles=10)
-    """
-    for t in topics:
-        if "stat_obj" in t[0]:
-                print(t[0].split("/")[-1])
-    
-    print("@"*10)
-    for i in range(0,50):
-        task.set_random_robot_goal()
-        time.sleep(1)
-    """
-    #task.pub_robot_goal(x=3,y=2,theta=0)
-    
-    #task.check_is_new_path_available()
-    
-    
-    """
-    
-    
-
-    for index in range(0,20):
-        task.generate_random_static_obstacle_yaml()
-        x, y, theta=task.get_random_pos_on_map(task._map,task._freespace)
-        model_name="random.model.yaml"
-        task.spawn_static_obstacle(model_name,index,x,y,theta)
-    
-    
-    for i in range(0,5):
-        task.set_random_robot_pos()
-        #task.set_random_robot_goal()
-        #time.sleep(10)
-    """
-    #task.pub_robot_goal(2,0,3.14)
-    #a=task.movebase_client(2,0)
-   
-    #time.sleep(10)
-    #task.remove_all_static_obstacles()
     
     
     
