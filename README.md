@@ -32,15 +32,31 @@ go to catkin_ws
 catkin_make
 ````
 
-### quick start and launch
+### quick start simulation env and launch
 ````
-roslaunch flatland_bringup start_flatland.launch 
+roslaunch flatland_bringup start_flatland.launch  train_mode:=false
 ````
 
-### use task generator to spawn random obstacles
+
+###  start plan manager with FSM
+````
+rosrun plan_manage plan_manager_node
+````
+
+### [optional]use task generator to spawn random obstacles
 ````
 rosrun task_generator task_generator.py 
 ````
+
+### [optional]use flatland_gym_env
+````
+roslaunch flatland_bringup start_flatland.launch  train_mode:=true
+
+rosrun plan_local_drl flatland_gym_env.py
+
+````
+
+
 ### Structure of the packges
 1. flatland bringup: final launch file
 2. nav: 
