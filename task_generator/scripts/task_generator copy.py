@@ -16,7 +16,7 @@ import rospkg
 
 
 #from tf.transformations import *
-import tf
+# import tf
 from geometry_msgs.msg import TransformStamped
 
 # delete model, spawn model, move model
@@ -111,8 +111,8 @@ class TaskGenerator():
         self._action_move_base_client = actionlib.SimpleActionClient('move_base',MoveBaseAction)
 
         # tf 
-        self._tf_broadcaster = tf.TransformBroadcaster()
-        self._tf_listener=tf.TransformListener()
+        # self._tf_broadcaster = tf.TransformBroadcaster()
+        # self._tf_listener=tf.TransformListener()
         
         # clear world
 

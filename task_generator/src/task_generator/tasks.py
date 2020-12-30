@@ -28,7 +28,7 @@ class ABSTask(ABC):
         a funciton to reset the task. Make sure that _map_lock is used.
         """
 
-    def _update_map(self, map_:OccupancyGrid):
+    def _update_map(self, map_: OccupancyGrid):
         with self._map_lock:
             self.obstacles_manager.update_map(map_)
             self.robot_manager.update_map(map_)
@@ -46,8 +46,15 @@ class RandomTask(ABSTask):
             fail_times = 0
             while fail_times < max_fail_times:
                 try:
-                    self.obstacles_manager.reset_pos_obstacles_random()
-                    self.robot_manager.set_start_pos_goal_pos()
+                    start_pos, goal_pos = self.robot_manager.set_start_pos_goal_pos()
+                    self.obstacles_manager.reset_pos_obstacles_random(
+                        forbidden_zones=[
+                            (start_pos.x,
+                             start_pos.x,
+                             self.robot_manager.ROBOT_RADIUS),
+                            (goal_pos.x,
+                             goal_pos.y,
+                             self.robot_manager.ROBOT_RADIUS)])
                 except Exception:
                     fail_times += 1
             if fail_times == max_fail_times:
@@ -89,3 +96,12 @@ class ManualTask(ABSTask):
             self._goal = goal
             self._new_goal_received = True
         self._manual_goal_con.notify()
+
+def get_predefined_task():
+    service_client_get_map = rospy.ServiceProxy("static_map", GetMap)
+    response = service_client_get_map()
+    robot_manager = RobotManager(response.map,"myrobot.model.yaml")
+    static_obstacles_manager = StaticObstaclesManager(map)
+    static_obstacles_manager.register_obstacles("random.model.yaml",3)
+    task =RandomTask(static_obstacles_manager,robot_manager)
+    return task

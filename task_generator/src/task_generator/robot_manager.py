@@ -1,17 +1,17 @@
-from math import ceil
+# from math import ceil, sqrt
 import math
-import random
+from geometry_msgs.msg import Pose2D, PoseWithCovarianceStamped, PoseStamped
+import os
+from sys import maxsize
 import threading
 from typing import Union
 from flatland_msgs.srv import MoveModel, MoveModelRequest
 from flatland_msgs.srv import StepWorld, StepWorldRequest
 from actionlib_msgs.msg import GoalStatusArray
-from geometry_msgs.msg import Pose2D, PoseWithCovarianceStamped, PoseStamped
-import os
+
 import rospy
+# import tf
 from nav_msgs.msg import OccupancyGrid, Path
-import numpy as np
-import tf
 from rospy.names import resolve_name
 
 from .utils import generate_freespace_indices, get_random_pos_on_map
@@ -23,8 +23,9 @@ class RobotManager:
     is managed
     """
 
-    def __init__(self, map_: OccupancyGrid, robot_yaml_path):
-        self.ROBOT_NAME = os.path.basename(robot_yaml_path).split('.')[0]
+    def __init__(self, map_: OccupancyGrid, robot_yaml_file):
+        self.ROBOT_NAME = os.path.basename(robot_yaml_file).split('.')[0]
+        self.ROBOT_RADIUS = 0.3
         # setup proxy to handle  services provided by flatland
         rospy.wait_for_service('move_model', timeout=20)
         rospy.wait_for_service('step_world', timeout=20)
@@ -77,29 +78,66 @@ class RobotManager:
 
     def set_start_pos_random(self):
         start_pos = Pose2D()
-        start_pos.x, start_pos, start_pos.theta = get_random_pos_on_map(self._free_space_indices, self.map)
+        start_pos.x, start_pos, start_pos.theta = get_random_pos_on_map(
+            self._free_space_indices, self.map, self.ROBOT_RADIUS)
         self.move_robot(start_pos)
 
-    def set_start_pos_goal_pos(self, start_pos: Union[Pose2D, None] = None, goal_pos: Union[Pose2D, None] = None):
+    def set_start_pos_goal_pos(self, start_pos: Union[Pose2D, None]
+                               = None, goal_pos: Union[Pose2D, None] = None, min_dist=1):
         """set up start position and the goal postion. Path validation checking will be conducted. If it failed, an
         exception will be raised.
 
         Args:
             start_pos (Union[Pose2D,None], optional): start position. if None, it will be set randomly. Defaults to None.
             goal_pos (Union[Pose2D,None], optional): [description]. if None, it will be set randomly .Defaults to None.
-
+            min_dist (float): minimum distance between start_pos and goal_pos
         Exception:
             Exception("can not generate a path with the given start position and the goal position of the robot")
         """
-        if start_pos is None:
-            start_pos = Pose2D()
-            start_pos.x, start_pos, start_pos.theta = get_random_pos_on_map(self._free_space_indices, self.map)
-        if goal_pos is None:
-            start_pos = Pose2D()
-            goal_pos.x, goal_pos.y, goal_pos.theta = get_random_pos_on_map(self._free_space_indices, self.map)
-        self.move_robot(start_pos)
-        # publish the goal, if the gobal plath planner can't generate a path, a, exception will be raised.
-        self.publish_goal(goal_pos.x,goal_pos.y,goal_pos.theta)
+
+        def dist(x1, y1, x2, y2):
+            return sqrt((x1 - x2)**2 + (y1 - y2)**2)
+
+        if start_pos is None or goal_pos is None:
+            # if any of them need to be random generated, we set a higher threshold,otherwise only try once
+            max_try_times = 20
+        else:
+            max_try_times = 1
+
+        i_try = 0
+        start_pos_ = None
+        goal_pos_ = None
+        while i_try < max_try_times:
+
+            if start_pos is None:
+                start_pos_ = Pose2D()
+                start_pos_.x, start_pos_.y, start_pos_.theta = get_random_pos_on_map(
+                    self._free_space_indices, self.map, self.ROBOT_RADIUS)
+            else:
+                start_pos_ = start_pos
+            if goal_pos is None:
+                goal_pos_ = Pose2D()
+                goal_pos_.x, goal_pos_.y, goal_pos_.theta = get_random_pos_on_map(
+                    self._free_space_indices, self.map, self.ROBOT_RADIUS)
+            else:
+                goal_pos_ = goal_pos
+
+            if dist(start_pos_.x, start_pos_.y, goal_pos_.x, goal_pos_.y) < min_dist:
+                i_try += 1
+                continue
+            # move the robot to the start pos
+            self.move_robot(start_pos)
+            try:
+                # publish the goal, if the gobal plath planner can't generate a path, a, exception will be raised.
+                self.publish_goal(goal_pos.x, goal_pos.y, goal_pos.theta)
+                break
+            except Exception:
+                i_try += 1
+        if i_try == max_try_times:
+            # TODO Define specific type of Exception
+            raise Exception("can not generate a path with the given start position and the goal position of the robot")
+        else:
+            return start_pos_, goal_pos_
 
     def _validate_path(self):
         """ after publish the goal, the global planner should publish path. If it's not published within 0.1s, an exception will
@@ -128,7 +166,7 @@ class RobotManager:
         initpose.header.frame_id = "map"
         initpose.pose.pose.position.x = x
         initpose.pose.pose.position.y = y
-        quaternion = tf.transformations.quaternion_from_euler(0,0,theta)
+        quaternion = tf.transformations.quaternion_from_euler(0, 0, theta)
 
         initpose.pose.pose.orientation.w = quaternion[0]
         initpose.pose.pose.orientation.x = quaternion[1]
@@ -149,13 +187,13 @@ class RobotManager:
         goal.header.frame_id = "map"
         goal.pose.position.x = x
         goal.pose.position.y = y
-        quaternion = tf.transformations.quaternion_from_euler(0,0,theta)
+        quaternion = tf.transformations.quaternion_from_euler(0, 0, theta)
         goal.pose.orientation.w = quaternion[0]
         goal.pose.orientation.x = quaternion[1]
         goal.pose.orientation.y = quaternion[2]
         goal.pose.orientation.z = quaternion[3]
         self._goal_pub.publish(goal)
-        # self._validate_path()
+        self._validate_path()
 
     def _global_path_callback(self, global_path: Path):
         with self._global_path_con:

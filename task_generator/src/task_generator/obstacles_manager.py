@@ -4,6 +4,7 @@ import random
 from typing import Union
 import re
 import yaml
+import os 
 from flatland_msgs.srv import DeleteModel, DeleteModelRequest
 from flatland_msgs.srv import SpawnModel, SpawnModelRequest
 from flatland_msgs.srv import MoveModel, MoveModelRequest
@@ -28,10 +29,10 @@ class StaticObstaclesManager:
         rospy.wait_for_service('spawn_model', timeout=20)
         rospy.wait_for_service('step_world', timeout=20)
         # allow for persistent connections to services
-        self._srv_move_model = rospy.ServiceProxy('move_model', MoveModel,persistent=True)
-        self._srv_delete_model = rospy.ServiceProxy('delete_model', DeleteModel,persistent=True)
-        self._srv_spawn_model = rospy.ServiceProxy('spawn_model', SpawnModel,persistent=True)
-        self._srv_sim_step = rospy.ServiceProxy('step_world', StepWorld,persistent=True)
+        self._srv_move_model = rospy.ServiceProxy('move_model', MoveModel, persistent=True)
+        self._srv_delete_model = rospy.ServiceProxy('delete_model', DeleteModel, persistent=True)
+        self._srv_spawn_model = rospy.ServiceProxy('spawn_model', SpawnModel, persistent=True)
+        self._srv_sim_step = rospy.ServiceProxy('step_world', StepWorld, persistent=True)
 
         self.update_map(map_)
         # model files
@@ -43,11 +44,11 @@ class StaticObstaclesManager:
         # a tuple stores the indices of the non-occupied spaces. format ((y,....),(x,...)
         self._free_space_indices = generate_freespace_indices(self.map)
 
-    def register_obstacles(self, model_yaml_file: str, num_instance: int):
+    def register_obstacles(self, model_yaml_file_name: str, num_instance: int):
         """register the static obstacles and request flatland to respawn the them.
 
         Args:
-            model_yaml_file (string): model file path
+            model_yaml_file (string): model file name
             num_instance (string): the number of the obstacle instance to be created.
 
         Raises:
@@ -56,26 +57,31 @@ class StaticObstaclesManager:
         Returns:
             self: support chain creation.
         """
-        obstacle_name_prefix = "static_obj"
-        count_same _type = sum(
-            1 if obstacle_name.startswith(group_name) else 0
-            for obstacle_name in self._static_obstacle_name_list if obstacle_name.startswith(group_name))
+        static_obstacle_name_prefix = "static_obj"
+        obstacle_type = model_yaml_file_name.split('.')[0]
+        name_prefix = static_obstacle_name_prefix + '_' + obstacle_type
+        count_same_type = sum(
+            1 if obstacle_name.startswith(name_prefix) else 0
+            for obstacle_name in self._static_obstacle_name_list)
 
-        for instance_idx in range(num_curr_instances_same_group, num_curr_instances_same_group + num_instance):
+        for instance_idx in range(count_same_type, count_same_type + num_instance):
             max_num_try = 2
             i_curr_try = 0
             while i_curr_try < max_num_try:
                 spawn_request = SpawnModelRequest()
-                spawn_request.yaml_path = model_yaml_file
-                spawn_request.name = f'{group_name}_{instance_idx:02d}'
+                spawn_request.yaml_path = os.path.join(self._flatland_models_path,"obstacles",model_yaml_file_name)
+                spawn_request.name = f'{name_prefix}_{instance_idx:02d}'
                 spawn_request.ns = rospy.get_namespace()
-                x, y, theta = get_random_pos_on_map(self._free_space_indices, self.map)
+                # x, y, theta = get_random_pos_on_map(self._free_space_indices, self.map,)
+                x = self.map.info.origin.position.x - self.map.info.map_resolution * self.map.info.height
+                y = self.map.info.origin.position.y - self.map.info.map_resolution * self.map.info.width 
+                theta = theta = random.uniform(-math.pi, math.pi)
                 spawn_request.pose.x = x
                 spawn_request.pose.y = y
                 spawn_request.pose.theta = theta
                 # try to call service
                 response = self._srv_spawn_model.call(spawn_request)
-                if response.success :  # if service not succeeds, do something and redo service
+                if not response.success:  # if service not succeeds, do something and redo service
                     rospy.logwarn(
                         f"spawn object {spawn_request.name} failed! trying again... [{i_curr_try+1}/{max_num_try} tried]")
                     rospy.logwarn(response.message)
@@ -108,18 +114,20 @@ class StaticObstaclesManager:
 
         self._srv_move_model(srv_request)
 
-    def reset_pos_obstacles_random(self, active_obstacle_rate: float = 1):
+    def reset_pos_obstacles_random(self, active_obstacle_rate: float = 1, forbidden_zones: Union[list, None] = None):
         """randomly set the position of all the obstacles. In order to dynamically control the number of the obstacles within the
         map while keep the efficiency. we can set the parameter active_obstacle_rate so that the obstacles non-active will moved to the
         outside of the map
 
         Args:
             active_obstacle_rate (float): a parameter change the number of the obstacles within the map
+            forbidden_zones (list): a list of tuples with the format (x,y,r),where the the obstacles should not be reset.
         """
         active_obstacle_names = random.sample(self._static_obstacle_name_list, int(
             len(self._static_obstacle_name_list) * active_obstacle_rate))
         non_active_obstacle_names = set(self._static_obstacle_name_list) - set(active_obstacle_names)
 
+        # non_active obstacles will be moved to outside of the map
         map_resolution = self.map.info.resolution
         pos_non_active_obstacle = Pose2D()
         pos_non_active_obstacle.x = self.map.info.origin.position.x - map_resolution * self.map.info.width
@@ -128,8 +136,9 @@ class StaticObstaclesManager:
         for obstacle_name in active_obstacle_names:
             move_model_request = MoveModelRequest()
             move_model_request.name = obstacle_name
+            # TODO 0.2 is the obstacle radius. it should be set automatically in future.
             move_model_request.pose.x, move_model_request.pose.y, _ = get_random_pos_on_map(
-                self._free_space_indices, self.map)
+                self._free_space_indices, self.map, 0.2, forbidden_zones)
 
             self._srv_move_model(move_model_request)
 
