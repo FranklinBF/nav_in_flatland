@@ -50,15 +50,16 @@ private:
 
     geometry_msgs::PoseStamped goal_;              // global goal
     geometry_msgs::PoseStamped subgoal_;           // mid goal(waypoint/subgoal)
-
+    
     //Eigen::Vector3d odom_pos_, odom_vel_;  
     //Eigen::Vector3d start_pt_, start_vel_;  
     //Eigen::Vector3d end_pt_, end_vel_;      
     RobotStatePtr cur_state_;        // robot odometry state: x y theta, vx vy w_theta
     RobotStatePtr start_state_;      // start state
     RobotStatePtr end_state_;        // goal state
+    ros::Time start_time_;
 
-
+    
     /* ROS utils */
     ros::NodeHandle node_;
     

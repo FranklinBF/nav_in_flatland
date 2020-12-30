@@ -24,6 +24,7 @@ bool PlanCollector::generate_global_plan(RobotState &start_state,RobotState &end
     {   
         // set global_plan
         global_path_=srv.response.plan;
+        
         return true;
     }
     else{
@@ -62,6 +63,8 @@ nav_msgs::Path global_path, double obstacle_info, double sensor_info){
     
     if(subgoal_id>0){
         subgoal_=global_path.poses[subgoal_id];
+        subgoal_state_=new RobotState(subgoal_.pose);
+
         return true;
     }else{
         return false;

@@ -79,10 +79,12 @@
 <arg name="look_ahead_distance" default="1.0"/>
 <arg name="waypoint_tolerance" default="0.3"/>
 
-<node name="waypoint_server" pkg="plan_manage" type="waypoint_generator_node">
+<!-- <node name="plan_manager" pkg="plan_manage" type="plan_manager_node"/> -->
+
+<!-- <node name="waypoint_server" pkg="plan_manage" type="waypoint_generator_node">
   <param name="look_ahead_distance" value="$(arg look_ahead_distance)"/>
   <param name="waypoint_tolerance" value="$(arg waypoint_tolerance)"/>
-</node>
+</node> -->
 
 <!--  ************** flatland viz  ***************  -->
 <group if="$(arg show_viz)">

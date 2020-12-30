@@ -7,6 +7,7 @@ project(plan_manage)
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
+find_package(Eigen3 REQUIRED)
 find_package(catkin REQUIRED COMPONENTS
   geometry_msgs
   nav_msgs
@@ -112,7 +113,7 @@ find_package(catkin REQUIRED COMPONENTS
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
   INCLUDE_DIRS include
-#  LIBRARIES plan_manage
+  LIBRARIES plan_manage
   CATKIN_DEPENDS geometry_msgs nav_msgs roscpp rospy sensor_msgs std_msgs plan_msgs
 #  DEPENDS system_lib
 )
@@ -125,7 +126,10 @@ catkin_package(
 ## Your package locations should be listed before other locations
 include_directories(
   include
+  include/${PROJECT_NAME}
   ${catkin_INCLUDE_DIRS}
+  SYSTEM
+  ${EIGEN3_INCLUDE_DIR}
 )
 
 ## Declare a C++ library
@@ -141,7 +145,13 @@ include_directories(
 ## Declare a C++ executable
 ## With catkin_make all packages are built within a single CMake context
 ## The recommended prefix ensures that target names across packages don't collide
-add_executable(waypoint_generator_node src/waypoint_generator_node.cpp)
+
+add_executable(plan_manager_node 
+    src/plan_collector.cpp
+    src/plan_manager.cpp 
+  )
+
+
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
@@ -151,10 +161,12 @@ add_executable(waypoint_generator_node src/waypoint_generator_node.cpp)
 
 ## Add cmake target dependencies of the executable
 ## same as for the library above
-add_dependencies(waypoint_generator_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+
+add_dependencies(plan_manager_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 ## Specify libraries to link a library or executable target against
-target_link_libraries(waypoint_generator_node
+
+target_link_libraries(plan_manager_node
   ${catkin_LIBRARIES}
 )
 

@@ -26,10 +26,11 @@ public:
     // global 
     geometry_msgs::PoseStamped goal_;              // global goal
     nav_msgs::Path global_path_;                // global path
+    
 
     // mid
     geometry_msgs::PoseStamped subgoal_;              // subgoal
-
+    RobotStatePtr subgoal_state_;
 
     // local
 
