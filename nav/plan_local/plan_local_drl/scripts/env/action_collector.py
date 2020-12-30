@@ -50,8 +50,8 @@ if __name__ == '__main__':
     goal_position = 0.5 
     low = np.array([min_position, -max_speed])
     high = np.array([max_position, max_speed])
-    action_space = spaces.Discrete(3)  # action space,是离散的
-    observation_space = spaces.Box(low, high) # 状态空间是连续的
+    action_space = spaces.Discrete(3)  # action space
+    observation_space = spaces.Box(low, high) # 
     print("*"*10)
     print(observation_space)
     for _ in range(2):

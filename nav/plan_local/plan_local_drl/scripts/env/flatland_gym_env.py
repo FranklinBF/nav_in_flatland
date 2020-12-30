@@ -57,7 +57,6 @@ class FlatlandEnv(gym.Env):
 
     return obs, reward, done, info
 
-
   def reset(self):
     # set task
     
@@ -68,10 +67,10 @@ class FlatlandEnv(gym.Env):
     return obs  # reward, done, info can't be included
 
   def render(self, mode='human'):
-    ...
+    pass
   
   def close (self):
-    ...
+    pass
   
   def is_done(self,obs):
     done=False
@@ -100,5 +99,5 @@ if __name__ == '__main__':
 
       obs, rewards, done, info = flatland_env.step(action)
 
-      time.sleep(2)
+      time.sleep(0.1)
       
