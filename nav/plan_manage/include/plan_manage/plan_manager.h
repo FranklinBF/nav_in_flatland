@@ -42,7 +42,7 @@ private:
 
     /* parameters */
     int mode_;  // 1 train , 2 test
-
+    
     
     /* planning data */
     bool have_goal_, have_odom_;
