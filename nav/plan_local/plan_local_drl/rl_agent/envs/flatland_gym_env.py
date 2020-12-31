@@ -1,11 +1,12 @@
 #! /usr/bin/env python
 import gym
 from gym import spaces
-from stable_baselines.common.env_checker import check_env
+from stable_baselines3.common.env_checker import check_env
 
-from observation_collector import ObservationCollector
-from action_collector import ActionCollector
-from reward_collector import RewardCollector
+from rl_agent.utils.observation_collector import ObservationCollector
+from rl_agent.utils.action_collector import ActionCollector
+from rl_agent.utils.reward_collector import RewardCollector
+from task_generator.tasks import ABSTask
 
 import rospy
 from geometry_msgs.msg import Twist
@@ -16,7 +17,7 @@ class FlatlandEnv(gym.Env):
   """Custom Environment that follows gym interface"""
   metadata = {'render.modes': ['human']}
 
-  def __init__(self):
+  def __init__(self,task:ABSTask):
     super(FlatlandEnv, self).__init__()
     # Define action and observation space
     # They must be gym.spaces objects
@@ -35,7 +36,10 @@ class FlatlandEnv(gym.Env):
     # action agent publisher
     #self.agent_action_pub = rospy.Publisher('drl_action_agent', Twist, queue_size=1)
     self.agent_action_pub = rospy.Publisher('cmd_vel', Twist, queue_size=1)
-    
+    self.task = task
+    # get observation
+    obs=self.observation_collector.get_observations()
+
   def step(self, action):
     # encode action to cmd_vel
     cmd_vel=self.action_collector.get_cmd_vel(action_id=action)
@@ -58,12 +62,13 @@ class FlatlandEnv(gym.Env):
     return obs, reward, done, info
 
   def reset(self):
+   
     # set task
-    
+    # regenerate start position end goal position of the robot and change the obstacles accordingly
+    self.task.reset()
     # set goal, start global plan
-    
     # get observation
-    obs=self.observation_space.sample()
+    obs=self.observation_collector.get_observations()
     return obs  # reward, done, info can't be included
 
   def render(self, mode='human'):

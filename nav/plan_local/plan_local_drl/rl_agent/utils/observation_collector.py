@@ -1,4 +1,7 @@
 #! /usr/bin/env python
+from typing import Tuple
+
+from numpy.core.numeric import normalize_axis_tuple
 import rospy
 import random
 import numpy as np
@@ -32,7 +35,7 @@ class ObservationCollector():
     def __init__(self):
 
         # define observation_space
-        self.observation_space = spaces.Tuple((
+        self.observation_space = ObservationCollector._stack_spaces((
             spaces.Box(low=0, high=10, shape=(_L,), dtype=np.float32),
             spaces.Box(low=-10, high=10, shape=(_RS,), dtype=np.float32) ,
             spaces.Box(low=-10, high=10, shape=(_G,), dtype=np.float32) 
@@ -154,6 +157,16 @@ class ObservationCollector():
         yaw = euler[2]
         pose2d.theta=yaw
         return pose2d
+    @staticmethod
+    def _stack_spaces(ss:Tuple[spaces.Box]):
+        low = []
+        high = []
+        for space in ss:
+            low.extend(space.low.tolist())
+            high.extend(space.high.tolist())
+        return spaces.Box(np.array(low).flatten(),np.array(high).flatten())
+
+
         
    
 

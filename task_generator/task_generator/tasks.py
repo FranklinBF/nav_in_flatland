@@ -116,7 +116,9 @@ def get_predefined_task():
         models_folder_path, 'robot', "myrobot.model.yaml"))
 
     obstacles_manager = ObstaclesManager(map_response.map)
+    # only generate 3 static obstaticles
     obstacles_manager.register_obstacles(3,os.path.join(models_folder_path,"obstacles",'random.model.yaml'),'static')
+    # generate 5 static or dynamic obstaticles
     # obstacles_manager.register_random_obstacles(5)
 
     task = RandomTask(obstacles_manager, robot_manager)

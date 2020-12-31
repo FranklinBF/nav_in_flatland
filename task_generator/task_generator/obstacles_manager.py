@@ -20,13 +20,14 @@ class ObstaclesManager:
     A manager class using flatland provided services to spawn, move and delete obstacles.
     """
 
-    def __init__(self, map_: OccupancyGrid):
+    def __init__(self, map_: OccupancyGrid,is_training = True):
 
         # setup proxy to handle  services provided by flatland
         rospy.wait_for_service('move_model', timeout=20)
         rospy.wait_for_service('delete_model', timeout=20)
         rospy.wait_for_service('spawn_model', timeout=20)
-        #rospy.wait_for_service('step_world', timeout=20)
+        if is_training:
+            rospy.wait_for_service('step_world', timeout=20)
         # allow for persistent connections to services
         self._srv_move_model = rospy.ServiceProxy(
             'move_model', MoveModel, persistent=True)
