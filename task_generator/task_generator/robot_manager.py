@@ -10,7 +10,7 @@ from flatland_msgs.srv import StepWorld, StepWorldRequest
 from actionlib_msgs.msg import GoalStatusArray
 
 import rospy
-# import tf
+import tf
 from nav_msgs.msg import OccupancyGrid, Path
 from rospy.names import resolve_name
 
@@ -33,14 +33,17 @@ class RobotManager:
         #self._srv_sim_step = rospy.ServiceProxy('step_world', StepWorld)
 
         # subcriber
-        self._global_path_sub = rospy.Subscriber("move_base/NavfnROS/plan", Path, self._global_path_callback)
+        # self._global_path_sub = rospy.Subscriber(
+        #     "move_base/NavfnROS/plan", Path, self._global_path_callback)
         # self._goal_status_sub = rospy.Subscriber("move_base/status", GoalStatusArray,
         #                                          self.goal_status_callback, queue_size=1)
 
         # publisher
         # publish the start position of the robot
-        self._initialpose_pub = rospy.Publisher('initialpose', PoseWithCovarianceStamped, queue_size=1)
-        self._goal_pub = rospy.Publisher('move_base_simple/goal', PoseStamped, queue_size=1)
+        self._initialpose_pub = rospy.Publisher(
+            'initialpose', PoseWithCovarianceStamped, queue_size=1)
+        self._goal_pub = rospy.Publisher(
+            'move_base_simple/goal', PoseStamped, queue_size=1,latch=True)
 
         self.update_map(map_)
 
@@ -51,7 +54,7 @@ class RobotManager:
         self._old_global_path_timestamp = None
         self._new_global_path_generated = False
         # a condition variable used for
-        self._global_path_con = threading.Condition
+        self._global_path_con = threading.Condition()
         self._static_obstacle_name_list = []
 
     def update_map(self, new_map: OccupancyGrid):
@@ -74,7 +77,7 @@ class RobotManager:
         # call service
         self._srv_move_model(srv_request)
         # publish robot position
-        self._pub_initial_position(pose.x, pose.y, pose.theta)
+        # self._pub_initial_position(pose.x, pose.y, pose.theta)
 
     def set_start_pos_random(self):
         start_pos = Pose2D()
@@ -96,7 +99,7 @@ class RobotManager:
         """
 
         def dist(x1, y1, x2, y2):
-            return sqrt((x1 - x2)**2 + (y1 - y2)**2)
+            return math.sqrt((x1 - x2)**2 + (y1 - y2)**2)
 
         if start_pos is None or goal_pos is None:
             # if any of them need to be random generated, we set a higher threshold,otherwise only try once
@@ -112,13 +115,13 @@ class RobotManager:
             if start_pos is None:
                 start_pos_ = Pose2D()
                 start_pos_.x, start_pos_.y, start_pos_.theta = get_random_pos_on_map(
-                    self._free_space_indices, self.map, self.ROBOT_RADIUS)
+                    self._free_space_indices, self.map, self.ROBOT_RADIUS*2)
             else:
                 start_pos_ = start_pos
             if goal_pos is None:
                 goal_pos_ = Pose2D()
                 goal_pos_.x, goal_pos_.y, goal_pos_.theta = get_random_pos_on_map(
-                    self._free_space_indices, self.map, self.ROBOT_RADIUS)
+                    self._free_space_indices, self.map, self.ROBOT_RADIUS*2)
             else:
                 goal_pos_ = goal_pos
 
@@ -126,16 +129,17 @@ class RobotManager:
                 i_try += 1
                 continue
             # move the robot to the start pos
-            self.move_robot(start_pos)
+            self.move_robot(start_pos_)
             try:
                 # publish the goal, if the gobal plath planner can't generate a path, a, exception will be raised.
-                self.publish_goal(goal_pos.x, goal_pos.y, goal_pos.theta)
+                self.publish_goal(goal_pos_.x, goal_pos_.y, goal_pos_.theta)
                 break
             except Exception:
                 i_try += 1
         if i_try == max_try_times:
             # TODO Define specific type of Exception
-            raise Exception("can not generate a path with the given start position and the goal position of the robot")
+            raise rospy.ServiceException(
+                "can not generate a path with the given start position and the goal position of the robot")
         else:
             return start_pos_, goal_pos_
 
@@ -148,9 +152,11 @@ class RobotManager:
         """
 
         with self._global_path_con:
-            self._global_path_con.wait_for(predicate=self._new_global_path_generated, timeout=0.1)
+            self._global_path_con.wait_for(
+                predicate=self._new_global_path_generated, timeout=0.1)
             if not self._new_global_path_generated:
-                raise Exception("can not generate a path with the given start position and the goal position of the robot")
+                raise Exception(
+                    "can not generate a path with the given start position and the goal position of the robot")
             else:
                 self._new_global_path_generated = False  # reset it
 
@@ -193,14 +199,14 @@ class RobotManager:
         goal.pose.orientation.y = quaternion[2]
         goal.pose.orientation.z = quaternion[3]
         self._goal_pub.publish(goal)
-        self._validate_path()
+        # self._validate_path()
 
     def _global_path_callback(self, global_path: Path):
         with self._global_path_con:
             self._global_path = global_path
             if self._old_global_path_timestamp is None or global_path.header.stamp > self._old_global_path_timestamp:
                 self._new_global_path_generated = True
-        self._global_path_con.notify()
+            self._global_path_con.notify()
 
     def __mean_square_dist_(self, x, y):
         return math.sqrt(math.pow(x, 2) + math.pow(y, 2))
