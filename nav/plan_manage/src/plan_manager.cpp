@@ -16,7 +16,7 @@ void PlanManager::init(ros::NodeHandle& nh) {
     /* initialize main modules */
     planner_collector_.reset(new PlanCollector);
     planner_collector_->initPlanModules(nh);
-    //visualization_.reset(new PlanningVisualization(nh));
+    visualization_.reset(new PlanningVisualization(nh));
 
     /* init variables */
     exec_state_  = FSM_EXEC_STATE::INIT;
@@ -30,9 +30,6 @@ void PlanManager::init(ros::NodeHandle& nh) {
 
     goal_sub_ =nh.subscribe("/goal", 1, &PlanManager::goalCallback, this);
     odom_sub_ = nh.subscribe("/odom", 1, &PlanManager::odometryCallback, this);
-
-    
-
     subgoal_pub_  = nh.advertise<geometry_msgs::PoseStamped>("/subgoal",10);
 
     /* test purpose*/
@@ -68,6 +65,7 @@ void PlanManager::goalCallback(const geometry_msgs::PoseStampedPtr& msg) {
     // set have_goal
     cout << "Goal set!" << endl;
     have_goal_ = true;
+    visualization_->drawGoal(end_state_->to_PoseStampted(), 0.3, Eigen::Vector4d(1, 0, 0, 1.0));
 
     // init start_time for this task
     start_time_=ros::Time::now();
@@ -80,8 +78,6 @@ void PlanManager::odometryCallback(const nav_msgs::OdometryConstPtr& msg){
   // set have_odom(means localization system is ready)
   have_odom_ = true;
 }
-
-
 
 void PlanManager::execFSMCallback(const ros::TimerEvent& e) {
   // print state with a fixed rate
@@ -119,7 +115,7 @@ void PlanManager::execFSMCallback(const ros::TimerEvent& e) {
 
 
     case GEN_NEW_GLOBAL: {
-      if(mode_=TRAIN){
+      if(mode_==TRAIN){
         changeFSMExecState(REPLAN_MID, "FSM");
         return;
       }
@@ -140,7 +136,7 @@ void PlanManager::execFSMCallback(const ros::TimerEvent& e) {
     }
 
     case EXEC_LOCAL: {
-      if(mode_=TRAIN){
+      if(mode_==TRAIN){
         //cout<<"EXEC_LOCAL"<<"Train mode"<<endl;
         return;
       }
@@ -203,9 +199,11 @@ void PlanManager::execFSMCallback(const ros::TimerEvent& e) {
     }
 
     case REPLAN_MID: {
-      if(mode_=TRAIN){
+      if(mode_==TRAIN){
         subgoal_pub_.publish(end_state_->to_PoseStampted());
+        visualization_->drawSubgoal(end_state_->to_PoseStampted(), 0.3, Eigen::Vector4d(1, 1, 1, 1.0));
         cout<<"MID_REPLAN Success"<<endl;
+        cout<<"TRAIN"<<endl;
         changeFSMExecState(EXEC_LOCAL, "FSM");
         return;
       }
@@ -221,7 +219,11 @@ void PlanManager::execFSMCallback(const ros::TimerEvent& e) {
       if (get_subgoal_success) {
         // success: publish new subgoal & going to state EXEC_LOCAL
         subgoal_pub_.publish(planner_collector_->subgoal_);
+        visualization_->drawSubgoal(planner_collector_->subgoal_, 0.3, Eigen::Vector4d(1, 1, 1, 1.0));
         cout<<"MID_REPLAN Success"<<endl;
+        cout<<planner_collector_->subgoal_.pose.position<<endl;
+        cout<<"MID_REPLAN***************************************"<<endl;
+        
         changeFSMExecState(EXEC_LOCAL, "FSM");
       } else {
         // failed: going to state GEN_NEW_GLOBAL, to do new global plan

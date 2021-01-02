@@ -18,6 +18,7 @@
 
 #include <plan_manage/robot_state.h>
 #include <plan_manage/plan_collector.h>
+#include <plan_visualization/planning_visualization.h>
 
 
 
@@ -38,7 +39,7 @@ private:
 
     /* planning utils */
     PlanCollector::Ptr planner_collector_;
-    //PlanningVisualization::Ptr visualization_;
+    PlanningVisualization::Ptr visualization_;
 
     /* parameters */
     int mode_;  // 1 train , 2 test

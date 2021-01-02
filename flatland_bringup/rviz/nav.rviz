@@ -9,6 +9,8 @@ Panels:
         - /MarkerArray5/Namespaces1
         - /Path1
         - /PoseArray1
+        - /Marker2
+        - /Marker3
       Splitter Ratio: 0.6526610255241394
     Tree Height: 791
   - Class: rviz/Selection
@@ -599,6 +601,22 @@ Visualization Manager:
       Topic: /subgoal_vis
       Unreliable: false
       Value: true
+    - Class: rviz/Marker
+      Enabled: true
+      Marker Topic: /planning_vis/goal
+      Name: Marker
+      Namespaces:
+        "": true
+      Queue Size: 100
+      Value: true
+    - Class: rviz/Marker
+      Enabled: true
+      Marker Topic: /planning_vis/subgoal
+      Name: Marker
+      Namespaces:
+        {}
+      Queue Size: 100
+      Value: true
   Enabled: true
   Global Options:
     Background Color: 0; 0; 0
@@ -656,5 +674,5 @@ Window Geometry:
   Views:
     collapsed: false
   Width: 1920
-  X: 0
-  Y: 31
+  X: 207
+  Y: 66
