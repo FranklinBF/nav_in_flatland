@@ -7,7 +7,7 @@ import os
 from flatland_msgs.srv import DeleteModel, DeleteModelRequest
 from flatland_msgs.srv import SpawnModel, SpawnModelRequest
 from flatland_msgs.srv import MoveModel, MoveModelRequest
-from flatland_msgs.srv import StepWorld, StepWorldRequest
+from flatland_msgs.srv import StepWorld
 from nav_msgs.msg import OccupancyGrid
 from geometry_msgs.msg import Pose2D
 import rospy
@@ -116,7 +116,7 @@ class ObstaclesManager:
         tmp_folder = os.path.join(rospkg.RosPack().get_path(
             'simulator_setup'), 'tmp_random_obstacles')
         os.makedirs(tmp_folder, exist_ok=True)
-        for n in range(num_obstacles):
+        for _ in range(num_obstacles):
             tmp_model_name = 'random.model.yaml'
             obstacle_type = self.generate_random_static_obstacle_yaml(
                 tmp_folder, tmp_model_name)
@@ -173,7 +173,7 @@ class ObstaclesManager:
             move_model_request = MoveModelRequest()
             move_model_request.name = obstacle_name
             # TODO 0.2 is the obstacle radius. it should be set automatically in future.
-            move_model_request.pose.x, move_model_request.pose.y, _ = get_random_pos_on_map(
+            move_model_request.pose.x, move_model_request.pose.y, move_model_request.pose.theta = get_random_pos_on_map(
                 self._free_space_indices, self.map, 0.2, forbidden_zones)
 
             self._srv_move_model(move_model_request)
