@@ -1,18 +1,16 @@
 # from math import ceil, sqrt
 import math
-from geometry_msgs.msg import Pose2D, PoseWithCovarianceStamped, PoseStamped
+import yaml
 import os
-from sys import maxsize
 import threading
 from typing import Union
-from flatland_msgs.srv import MoveModel, MoveModelRequest
-from flatland_msgs.srv import StepWorld, StepWorldRequest
-from actionlib_msgs.msg import GoalStatusArray
-
 import rospy
 import tf
+from flatland_msgs.srv import MoveModel, MoveModelRequest
+from flatland_msgs.srv import StepWorld
+from geometry_msgs.msg import Pose2D, PoseWithCovarianceStamped, PoseStamped
+
 from nav_msgs.msg import OccupancyGrid, Path
-from rospy.names import resolve_name
 
 from .utils import generate_freespace_indices, get_random_pos_on_map
 
@@ -23,14 +21,22 @@ class RobotManager:
     is managed
     """
 
-    def __init__(self, map_: OccupancyGrid, robot_yaml_file):
-        self.ROBOT_NAME = os.path.basename(robot_yaml_file).split('.')[0]
-        self.ROBOT_RADIUS = 0.3
+    def __init__(self, map_: OccupancyGrid, robot_yaml_path: str, is_training_mode: bool):
+        """[summary]
+
+        Args:
+            map_ (OccupancyGrid): the map info
+            robot_yaml_path (str): the file name of the robot yaml file.
+            is_training_mode (bool): a flag to indicate the mode (training or test)
+        """
+        self.is_training_mode = is_training_mode
+        self._get_robot_configration(robot_yaml_path)
         # setup proxy to handle  services provided by flatland
         rospy.wait_for_service('move_model', timeout=20)
         #rospy.wait_for_service('step_world', timeout=20)
         self._srv_move_model = rospy.ServiceProxy('move_model', MoveModel)
-        #self._srv_sim_step = rospy.ServiceProxy('step_world', StepWorld)
+        # it's only needed in training mode to send the clock signal.
+        self._step_world = rospy.ServiceProxy("step_world", StepWorld)
 
         # subcriber
         # self._global_path_sub = rospy.Subscriber(
@@ -40,10 +46,10 @@ class RobotManager:
 
         # publisher
         # publish the start position of the robot
-        self._initialpose_pub = rospy.Publisher(
-            'initialpose', PoseWithCovarianceStamped, queue_size=1)
+        # self._initialpose_pub = rospy.Publisher(
+        #     'initialpose', PoseWithCovarianceStamped, queue_size=1)
         self._goal_pub = rospy.Publisher(
-            'move_base_simple/goal', PoseStamped, queue_size=1,latch=True)
+            '/goal', PoseStamped, queue_size=1, latch=True)
 
         self.update_map(map_)
 
@@ -56,6 +62,26 @@ class RobotManager:
         # a condition variable used for
         self._global_path_con = threading.Condition()
         self._static_obstacle_name_list = []
+
+    def _get_robot_configration(self, robot_yaml_path):
+        """get robot info e.g robot name, radius, Laser related infomation
+
+        Args:
+            robot_yaml_path ([type]): [description]
+        """
+        self.ROBOT_NAME = os.path.basename(robot_yaml_path).split('.')[0]
+        with open(robot_yaml_path, 'r') as f:
+            robot_data = yaml.load(f)
+            # get robot radius
+            for body in robot_data['bodies']:
+                if body['name'] == "base_footprint":
+                    for footprint in body['footprints']:
+                        if footprint['type'] == 'circle':
+                            self.ROBOT_RADIUS = footprint.setdefault('radius', 0.5)
+            # get laser_update_rate
+            for plugin in robot_data['plugins']:
+                if plugin['type'] == 'Laser':
+                    self.LASER_UPDATE_RATE = plugin.setdefault('update_rate', 1)
 
     def update_map(self, new_map: OccupancyGrid):
         self.map = new_map
@@ -76,6 +102,13 @@ class RobotManager:
 
         # call service
         self._srv_move_model(srv_request)
+        if self.is_training_mode:
+            # a necessaray procedure to let the flatland publish the
+            # laser,odom's Transformation, which are needed for creating
+            # global path
+            for _ in range(self.LASER_UPDATE_RATE + 1):
+                self._step_world()
+
         # publish robot position
         # self._pub_initial_position(pose.x, pose.y, pose.theta)
 
@@ -115,13 +148,13 @@ class RobotManager:
             if start_pos is None:
                 start_pos_ = Pose2D()
                 start_pos_.x, start_pos_.y, start_pos_.theta = get_random_pos_on_map(
-                    self._free_space_indices, self.map, self.ROBOT_RADIUS*2)
+                    self._free_space_indices, self.map, self.ROBOT_RADIUS * 2)
             else:
                 start_pos_ = start_pos
             if goal_pos is None:
                 goal_pos_ = Pose2D()
                 goal_pos_.x, goal_pos_.y, goal_pos_.theta = get_random_pos_on_map(
-                    self._free_space_indices, self.map, self.ROBOT_RADIUS*2)
+                    self._free_space_indices, self.map, self.ROBOT_RADIUS * 4)
             else:
                 goal_pos_ = goal_pos
 
@@ -134,7 +167,7 @@ class RobotManager:
                 # publish the goal, if the gobal plath planner can't generate a path, a, exception will be raised.
                 self.publish_goal(goal_pos_.x, goal_pos_.y, goal_pos_.theta)
                 break
-            except Exception:
+            except rospy.ServiceException:
                 i_try += 1
         if i_try == max_try_times:
             # TODO Define specific type of Exception
@@ -155,7 +188,7 @@ class RobotManager:
             self._global_path_con.wait_for(
                 predicate=self._new_global_path_generated, timeout=0.1)
             if not self._new_global_path_generated:
-                raise Exception(
+                raise rospy.ServiceException(
                     "can not generate a path with the given start position and the goal position of the robot")
             else:
                 self._new_global_path_generated = False  # reset it
@@ -193,7 +226,7 @@ class RobotManager:
         goal.header.frame_id = "map"
         goal.pose.position.x = x
         goal.pose.position.y = y
-        quaternion = tf.transformations.quaternion_from_euler(0, 0, theta)
+        quaternion = tf.transformations.quaternion_from_euler(0, 0, 0)
         goal.pose.orientation.w = quaternion[0]
         goal.pose.orientation.x = quaternion[1]
         goal.pose.orientation.y = quaternion[2]

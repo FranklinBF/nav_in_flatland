@@ -76,8 +76,8 @@ class ObservationCollector():
         self._flag_all_received=False
         
         # sim a step forward until all sensor msg uptodate
-        while(self._flag_all_received==False):
-            self.call_service_takeSimStep()
+        # while(self._flag_all_received==False):
+        self.call_service_takeSimStep()
         
         # collect observations    
         observations={}
@@ -89,17 +89,20 @@ class ObservationCollector():
         scan=self._scan.ranges.astype(np.float32)
         robot_pose=np.array([self._robot_pose.x,self._robot_pose.y,self._robot_pose.theta]).astype(np.float32)
         subgoal=np.array([self._subgoal.x,self._subgoal.y,self._subgoal.theta])
-        obs = (scan, robot_pose,subgoal)  
+        obs = np.hstack([scan, robot_pose,subgoal])
         return obs
     
     def call_service_takeSimStep(self):
         request=StepWorldRequest()
+        tic = time.time()
         rospy.wait_for_service(self._service_name_step)
+        toc =time.time()
+        # print("wait for service needed time: {}".format(toc-tic))
         try:
             response=self._sim_step_client(request)
-            print("step service=",response)
+            rospy.logdebug("step service=",response)
         except rospy.ServiceException as e:
-            print("step Service call failed: %s"%e)
+            rospy.logdebug("step Service call failed: %s"%e)
 
     def callback_subgoal(self,msg_Subgoal):
         self._subgoal=self.process_subgoal_msg(msg_Subgoal)

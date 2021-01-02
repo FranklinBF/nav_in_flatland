@@ -6,6 +6,10 @@ Panels:
       Expanded:
         - /Global Options1
         - /my_robot1/Namespaces1
+        - /MarkerArray1
+        - /MarkerArray2
+        - /MarkerArray3
+        - /MarkerArray4
         - /MarkerArray5/Namespaces1
         - /Path1
         - /PoseArray1
@@ -13,7 +17,7 @@ Panels:
         - /Marker3
         - /Marker4
       Splitter Ratio: 0.6526610255241394
-    Tree Height: 791
+    Tree Height: 797
   - Class: rviz/Selection
     Name: Selection
   - Class: rviz/Tool Properties
@@ -389,26 +393,26 @@ Visualization Manager:
       Value: true
     - Class: rviz/MarkerArray
       Enabled: true
-      Marker Topic: /flatland_server/debug/model/stat_obj_0
+      Marker Topic: /flatland_server/debug/model/obstacles_static_random_00
       Name: MarkerArray
       Namespaces:
-        {}
+        "": true
       Queue Size: 100
       Value: true
     - Class: rviz/MarkerArray
       Enabled: true
-      Marker Topic: /flatland_server/debug/model/stat_obj_1
+      Marker Topic: /flatland_server/debug/model/obstacles_static_random_01
       Name: MarkerArray
       Namespaces:
-        {}
+        "": true
       Queue Size: 100
       Value: true
     - Class: rviz/MarkerArray
       Enabled: true
-      Marker Topic: /flatland_server/debug/model/stat_obj_2
+      Marker Topic: /flatland_server/debug/model/obstacles_static_random_02
       Name: MarkerArray
       Namespaces:
-        {}
+        "": true
       Queue Size: 100
       Value: true
     - Class: rviz/MarkerArray
@@ -651,7 +655,7 @@ Visualization Manager:
   Value: true
   Views:
     Current:
-      Angle: -6.510014057159424
+      Angle: -8.01500129699707
       Class: rviz/TopDownOrtho
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
