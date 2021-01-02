@@ -12,10 +12,10 @@ import time
 s = time.time()
 model.learn(total_timesteps=1000)
 print("steps per second: {}".format(1000/(time.time()-s)))
-obs = env.reset()
-for i in range(1000):
-    action, _state = model.predict(obs, deterministic=True)
-    obs, reward, done, info = env.step(action)
-    env.render()
-    if done:
-      obs = env.reset()
+# obs = env.reset()
+# for i in range(1000):
+#     action, _state = model.predict(obs, deterministic=True)
+#     obs, reward, done, info = env.step(action)
+#     env.render()
+#     if done:
+#       obs = env.reset()

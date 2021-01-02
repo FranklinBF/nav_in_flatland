@@ -7,6 +7,7 @@ from stable_baselines3.common.env_checker import check_env
 from rl_agent.utils.observation_collector import ObservationCollector
 from rl_agent.utils.action_collector import ActionCollector
 from rl_agent.utils.reward_collector import RewardCollector
+from rl_agent.utils.debug import timeit
 from task_generator.tasks import ABSTask
 
 import rospy
@@ -50,12 +51,14 @@ class FlatlandEnv(gym.Env):
         s = time.time()
         # encode action to cmd_vel
         cmd_vel = self.action_collector.get_cmd_vel(action_id=action)
-
+        print("cmd vel: {}".format(time.time()-s))
         # publish cmd_vel
+        
         self.agent_action_pub.publish(cmd_vel)
-
         # wait for new observations
+        s = time.time()
         obs = self.observation_collector.get_observations()
+        print("get observation: {}".format(time.time()-s)) 
 
         # check if done
         done = self.is_done(obs)
@@ -65,7 +68,6 @@ class FlatlandEnv(gym.Env):
 
         # info
         info = {}
-        print("one step needed time: {}".format(time.time()-s))
         return obs, reward, done, info
 
     def reset(self):
@@ -98,7 +100,7 @@ class FlatlandEnv(gym.Env):
         # if(robot_pose[0]>10):
         #   done=True
         i = randint(0, 100)
-        done = i > 90
+        done = i > 95
         return done
 
 
