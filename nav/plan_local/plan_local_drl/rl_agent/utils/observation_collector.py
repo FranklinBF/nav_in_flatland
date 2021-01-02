@@ -76,8 +76,8 @@ class ObservationCollector():
         self._flag_all_received=False
         
         # sim a step forward until all sensor msg uptodate
-        # while(self._flag_all_received==False):
-        self.call_service_takeSimStep()
+        while(self._flag_all_received==False):
+            self.call_service_takeSimStep()
         
         # collect observations    
         observations={}
