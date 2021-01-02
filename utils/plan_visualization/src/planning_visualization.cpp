@@ -10,6 +10,9 @@ PlanningVisualization::PlanningVisualization(ros::NodeHandle& nh) {
   subgoal_pub_ = node.advertise<visualization_msgs::Marker>("/planning_vis/subgoal", 20);
   pubs_.push_back(subgoal_pub_);
 
+  global_path_pub_ = node.advertise<visualization_msgs::Marker>("/planning_vis/global_path", 20);
+  pubs_.push_back(global_path_pub_);
+
 }
 
 void PlanningVisualization::displaySphereList(const vector<Eigen::Vector3d>& list, double resolution,
@@ -48,8 +51,7 @@ void PlanningVisualization::displaySphereList(const vector<Eigen::Vector3d>& lis
   ros::Duration(0.001).sleep();
 }
 
-void PlanningVisualization::displayLineList(const vector<Eigen::Vector3d>& list1,
-                                            const vector<Eigen::Vector3d>& list2, double line_width,
+void PlanningVisualization::displayLineList(const vector<Eigen::Vector3d>& list1,double line_width,
                                             const Eigen::Vector4d& color, int id, int pub_id) {
   visualization_msgs::Marker mk;
   mk.header.frame_id = "map";
@@ -78,10 +80,10 @@ void PlanningVisualization::displayLineList(const vector<Eigen::Vector3d>& list1
     pt.z = list1[i](2);
     mk.points.push_back(pt);
 
-    pt.x = list2[i](0);
-    pt.y = list2[i](1);
-    pt.z = list2[i](2);
-    mk.points.push_back(pt);
+    //pt.x = list2[i](0);
+    //pt.y = list2[i](1);
+    //pt.z = list2[i](2);
+    //mk.points.push_back(pt);
   }
   pubs_[pub_id].publish(mk);
 
@@ -105,6 +107,21 @@ void PlanningVisualization::drawSubgoal(geometry_msgs::PoseStamped subgoal, doub
 
 }
 
+void PlanningVisualization::drawGlobalPath(nav_msgs::Path global_path,double resolution,const Eigen::Vector4d& color, int id) {
+  // draw new path
+  vector<Eigen::Vector3d> edge_pt;
+  for(int i=0;i<global_path.poses.size();i++){
+        Eigen::Vector3d wp_pose;
+        wp_pose(0)=global_path.poses[i].pose.position.x;
+        wp_pose(1)=global_path.poses[i].pose.position.y;
+        wp_pose(2)=0.0;
+        edge_pt.push_back(wp_pose);      
+  }
+  
+  //displayLineList(edge_pt, line_width, color, GLOBAL_PATH + id % 100);
+  displaySphereList(edge_pt, resolution, color, GLOBAL_PATH + id % 100);
+
+}
 
 
 Eigen::Vector4d PlanningVisualization::getColor(double h, double alpha) {

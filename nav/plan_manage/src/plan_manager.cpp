@@ -34,8 +34,6 @@ void PlanManager::init(ros::NodeHandle& nh) {
 
     /* test purpose*/
     
-    
-
 }
   
 void PlanManager::goalCallback(const geometry_msgs::PoseStampedPtr& msg) {
@@ -65,7 +63,7 @@ void PlanManager::goalCallback(const geometry_msgs::PoseStampedPtr& msg) {
     // set have_goal
     cout << "Goal set!" << endl;
     have_goal_ = true;
-    visualization_->drawGoal(end_state_->to_PoseStampted(), 0.3, Eigen::Vector4d(1, 0, 0, 1.0));
+    visualization_->drawGoal(end_state_->to_PoseStampted(), 0.3, Eigen::Vector4d(1, 1, 1, 1.0));
 
     // init start_time for this task
     start_time_=ros::Time::now();
@@ -126,7 +124,8 @@ void PlanManager::execFSMCallback(const ros::TimerEvent& e) {
       bool global_plan_success=planner_collector_->generate_global_plan(*start_state_,*end_state_);
       
       if(global_plan_success){
-        // success:go to REPLAN_MID state, going to do mid horizon replan(subgoal)  
+        // success:go to REPLAN_MID state, going to do mid horizon replan(subgoal) 
+        visualization_->drawGlobalPath(planner_collector_->global_path_,0.03, Eigen::Vector4d(0.5, 0.5, 0.5, 0.6));
         changeFSMExecState(REPLAN_MID, "FSM");
       }else{
         // failed: go to GEN_NEW_GLOBAL state, going to do global (re)plan 
@@ -201,9 +200,8 @@ void PlanManager::execFSMCallback(const ros::TimerEvent& e) {
     case REPLAN_MID: {
       if(mode_==TRAIN){
         subgoal_pub_.publish(end_state_->to_PoseStampted());
-        visualization_->drawSubgoal(end_state_->to_PoseStampted(), 0.3, Eigen::Vector4d(1, 1, 1, 1.0));
+        visualization_->drawSubgoal(end_state_->to_PoseStampted(), 0.3, Eigen::Vector4d(0, 0, 0, 1.0));
         cout<<"MID_REPLAN Success"<<endl;
-        cout<<"TRAIN"<<endl;
         changeFSMExecState(EXEC_LOCAL, "FSM");
         return;
       }
@@ -219,10 +217,9 @@ void PlanManager::execFSMCallback(const ros::TimerEvent& e) {
       if (get_subgoal_success) {
         // success: publish new subgoal & going to state EXEC_LOCAL
         subgoal_pub_.publish(planner_collector_->subgoal_);
-        visualization_->drawSubgoal(planner_collector_->subgoal_, 0.3, Eigen::Vector4d(1, 1, 1, 1.0));
+        visualization_->drawSubgoal(planner_collector_->subgoal_, 0.3, Eigen::Vector4d(0, 0, 0, 1.0));
         cout<<"MID_REPLAN Success"<<endl;
-        cout<<planner_collector_->subgoal_.pose.position<<endl;
-        cout<<"MID_REPLAN***************************************"<<endl;
+
         
         changeFSMExecState(EXEC_LOCAL, "FSM");
       } else {
