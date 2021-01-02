@@ -1,10 +1,11 @@
+import os
 from abc import ABC, abstractmethod
 from threading import Condition, Lock
 import rospy
-import os
 from nav_msgs.msg import OccupancyGrid
-from geometry_msgs.msg import Pose2D
 from nav_msgs.srv import GetMap
+from geometry_msgs.msg import Pose2D
+from rospy.exceptions import ROSException
 from .obstacles_manager import ObstaclesManager
 from .robot_manager import RobotManager
 
@@ -51,13 +52,14 @@ class RandomTask(ABSTask):
                     self.obstacles_manager.reset_pos_obstacles_random(
                         forbidden_zones=[
                             (start_pos.x,
-                                start_pos.x,
+                                start_pos.y,
                                 self.robot_manager.ROBOT_RADIUS),
                             (goal_pos.x,
                                 goal_pos.y,
                                 self.robot_manager.ROBOT_RADIUS)])
                     break
-                except Exception:
+                except rospy.ServiceException as e:
+                    rospy.logwarn(repr(e))
                     fail_times += 1
             if fail_times == max_fail_times:
                 raise Exception("reset error!")
@@ -105,21 +107,44 @@ class ManualTask(ABSTask):
 
 def get_predefined_task():
     import rospkg
-    # use rospkg to get the path where the model config yaml file stored
-    models_folder_path = rospkg.RosPack().get_path('simulator_setup')
 
+    # check is it on traininig mode or test mode. if it's on training mode
+    # flatland will provide an service called 'step_world' to change the simulation time
+    # otherwise it will be bounded to real time.
+    try:
+        rospy.wait_for_service('step_world', timeout=0.5)
+        TRAINING_MODE = True
+    except ROSException:
+        TRAINING_MODE = False
+
+    if TRAINING_MODE:
+        from flatland_msgs.srv import StepWorld, StepWorldRequest
+        # This is kind of hacky. the services provided by flatland may take a couple of step to complete
+        # the configuration including the map service.
+        steps = 400
+        step_word = rospy.ServiceProxy(
+            'step_world', StepWorld, persistent=True)
+        for _ in range(steps):
+            step_word()
+
+    # get the map
     service_client_get_map = rospy.ServiceProxy("static_map", GetMap)
     map_response = service_client_get_map()
 
+    # use rospkg to get the path where the model config yaml file stored
+    models_folder_path = rospkg.RosPack().get_path('simulator_setup')
     # robot's yaml file is needed to get its radius.
     robot_manager = RobotManager(map_response.map, os.path.join(
-        models_folder_path, 'robot', "myrobot.model.yaml"))
+        models_folder_path, 'robot', "myrobot.model.yaml"), TRAINING_MODE)
 
-    obstacles_manager = ObstaclesManager(map_response.map)
+    obstacles_manager = ObstaclesManager(map_response.map, TRAINING_MODE)
     # only generate 3 static obstaticles
-    obstacles_manager.register_obstacles(3,os.path.join(models_folder_path,"obstacles",'random.model.yaml'),'static')
+    # obstacles_manager.register_obstacles(3, os.path.join(
+        # models_folder_path, "obstacles", 'random.model.yaml'), 'static')
     # generate 5 static or dynamic obstaticles
-    # obstacles_manager.register_random_obstacles(5)
+    obstacles_manager.register_random_obstacles(5)
 
+    # TODO In the future more Task will be supported and the code unrelated to
+    # Tasks will be moved to other classes or functions.
     task = RandomTask(obstacles_manager, robot_manager)
     return task
