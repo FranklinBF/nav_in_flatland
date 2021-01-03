@@ -19,10 +19,10 @@ class ABSTask(ABC):
         self.obstacles_manager = obstacles_manager
         self.robot_manager = robot_manager
         self._service_client_get_map = rospy.ServiceProxy("static_map", GetMap)
-
+        self._map_lock = Lock()
         rospy.Subscriber("map", OccupancyGrid, self._update_map)
         # a mutex keep the map is not unchanged during reset task.
-        self._map_lock = Lock()
+        
 
     @abstractmethod
     def reset(self):
@@ -39,6 +39,8 @@ class ABSTask(ABC):
 class RandomTask(ABSTask):
     """ Evertime the start position and end position of the robot is reset.
     """
+    def __init__(self, obstacles_manager: ObstaclesManager, robot_manager: RobotManager):
+        super().__init__(obstacles_manager, robot_manager)
 
     def reset(self):
         """[summary]
