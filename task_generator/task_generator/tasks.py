@@ -122,10 +122,10 @@ def get_predefined_task():
         # This is kind of hacky. the services provided by flatland may take a couple of step to complete
         # the configuration including the map service.
         steps = 400
-        step_word = rospy.ServiceProxy(
+        step_world = rospy.ServiceProxy(
             'step_world', StepWorld, persistent=True)
         for _ in range(steps):
-            step_word()
+            step_world()
 
     # get the map
     service_client_get_map = rospy.ServiceProxy("static_map", GetMap)
@@ -143,7 +143,7 @@ def get_predefined_task():
         # models_folder_path, "obstacles", 'random.model.yaml'), 'static')
     # generate 5 static or dynamic obstaticles
     obstacles_manager.register_random_obstacles(5)
-
+    
     # TODO In the future more Task will be supported and the code unrelated to
     # Tasks will be moved to other classes or functions.
     task = RandomTask(obstacles_manager, robot_manager)
