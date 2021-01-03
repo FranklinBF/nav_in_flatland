@@ -54,7 +54,7 @@ class ObservationCollector():
         self._robot_pose_sub = message_filters.Subscriber('robot_pose', PoseWithCovarianceStamped)
         
         # message_filters.TimeSynchronizer: call callback only when all sensor info are ready
-        self.ts = message_filters.TimeSynchronizer([self._scan_sub, self._robot_pose_sub], 100)
+        self.ts = message_filters.ApproximateTimeSynchronizer([self._scan_sub, self._robot_pose_sub], 100,slop=0.05)
         self.ts.registerCallback(self.callback_observation_received)
         
         # topic subscriber: subgoal
@@ -76,8 +76,11 @@ class ObservationCollector():
         self._flag_all_received=False
         
         # sim a step forward until all sensor msg uptodate
+        #i=0
         while(self._flag_all_received==False):
             self.call_service_takeSimStep()
+            #i+=1
+        #print("**************i=",i)
         
         # collect observations    
         observations={}
@@ -181,10 +184,11 @@ if __name__ == '__main__':
     state_collector=ObservationCollector()
     i=0
     r=rospy.Rate(100)
-    while(i<=3):
+    while(i<=10):
         i=i+1
         obs=state_collector.get_observations()
-        time.sleep(5)
+        
+        time.sleep(1)
         
 
 
