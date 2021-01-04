@@ -23,9 +23,9 @@ void TaskTool::activate() {
 
   bool success=task_service_.call(empty);
   if(success){
-      ROS_INFO("**********************Task:Success");
+      ROS_INFO("Task Generator:Success");
   }else{
-      ROS_WARN("**********************Task:Failed");
+      ROS_WARN("Task Generator:Failed");
   }
   
 }
@@ -35,9 +35,6 @@ int TaskTool::processMouseEvent( ViewportMouseEvent& event ){
 }
 
 void TaskTool::deactivate() {
-    ROS_INFO("**********************Deactivate");
-    ROS_INFO("**********************Deactivate");
-    ROS_INFO("**********************Deactivate");
     
 }
 
