@@ -13,6 +13,8 @@ class RewardCalculator():
             goal_radius (float): The minimum distance to goal that goal position is considered to be reached. 
         """
         self.curr_reward = 0
+        # additional info will be stored here and be returned alonge with reward.
+        self.info = {}
         self.goal_radius = goal_radius
         self.last_goal_dist = None
         self.safe_dist = safe_dist
@@ -20,7 +22,15 @@ class RewardCalculator():
         self.cal_func = self._cal_funcs[rule]
 
     def reset(self):
+        """reset variables related to the episode
+        """
         self.last_goal_dist = None
+
+    def _reset(self):
+        """reset variables related to current step
+        """
+        self.curr_reward = 0
+        self.info = {}
     
     def get_reward(self, laser_scan:np.ndarray, goal_in_robot_frame: Tuple[float,float], *args, **kwargs):
         """
@@ -30,9 +40,9 @@ class RewardCalculator():
             goal_in_robot_frame (Tuple[float,float]: position (rho, theta) of the goal in robot frame (Polar coordinate)  
         """
 
-        self.curr_reward = 0
+        self._reset()
         self.cal_func(self,laser_scan,goal_in_robot_frame,*args,**kwargs)
-
+        return self.curr_reward, self.info
 
 
     def _cal_reward_rule_00(self, laser_scan: np.ndarray, goal_in_robot_frame: Tuple[float,float],*args,**kwargs):
@@ -46,10 +56,14 @@ class RewardCalculator():
 
         if goal_in_robot_frame[0] < self.goal_radius:
             self.curr_reward = reward
+            self.info['is_done'] = True
+        else:
+            self.info['is_done'] = False
 
     def _reward_goal_appoached(self, goal_in_robot_frame,reward = 1, punishment = 0.2):
         if self.last_goal_dist is not None:
-            if goal_in_robot_frame<self.last_goal_dist:
+            #goal_in_robot_frame : [rho, theta] 
+            if goal_in_robot_frame[0] < self.last_goal_dist:
                 self.curr_reward += reward
             else:
                 self.curr_reward -=punishment
