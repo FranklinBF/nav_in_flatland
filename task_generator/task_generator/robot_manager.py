@@ -77,7 +77,7 @@ class RobotManager:
                 if body['name'] == "base_footprint":
                     for footprint in body['footprints']:
                         if footprint['type'] == 'circle':
-                            self.ROBOT_RADIUS = footprint.setdefault('radius', 0.5)
+                            self.ROBOT_RADIUS = footprint.setdefault('radius', 0.2)
             # get laser_update_rate
             for plugin in robot_data['plugins']:
                 if plugin['type'] == 'Laser':
