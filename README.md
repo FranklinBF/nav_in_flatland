@@ -31,12 +31,30 @@ rosws update
 go to catkin_ws
 catkin_make
 ````
+### geometry2
+The official ros only support python2. In order to make the $tf$ work in python3, its necessary to compile it with python3. We provided a script to automately this this
+and do some additional configurations for the convenience . You can simply run it with 
+````bash
+./geometry2_install.sh
+After that you can try to import tf in python3 and no error is supposed to be shown up.
+````
+
 
 ### quick start simulation env and launch
 ````
 roslaunch flatland_bringup start_flatland.launch  train_mode:=false
 ````
-
+### quick test with the training 
+In one terminnal
+```bash
+roslaunch flatland_bringup start_flatland.launch  train_mode:=true
+```
+In another terminal
+```
+roscd plan_local_drl
+python scripts/training/training_example.py
+```
+Hint: During 2021-01-05 and 2021-01-10, plan_local_drl package is still under the development, which means the api of the class could be drastically changed. Sorry about the inconvinience!
 
 ###  start plan manager with FSM
 ````
