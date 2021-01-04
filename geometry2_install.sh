@@ -27,7 +27,7 @@ if [ $? -eq 0 ] ; then
     then
         echo -e "$rc_info" >> ~/.zshrc
         echo "PYTHONPATH has been updated in your zshrc file."
-    elif echo $SHELL | grep bash
+    elif echo $SHELL | grep bash > /dev/null
     then
         echo -e "$c_info" >> ~/.bashrc
         echo "PYTHONPATH has been updated in your bashrc file."
