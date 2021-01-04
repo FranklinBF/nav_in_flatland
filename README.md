@@ -82,9 +82,20 @@ Hint: During 2021-01-05 and 2021-01-10, flatland_local_planner_drl package is st
 2. flatland_navigation:
    1. fake_localization 
    2. global_planner
+      1. flatland_global_planner_Astar
+      2. flatland_global_planner_JPS(Jump point search)
+      3. flatland_global_planner_KinoAstar 
+      4. ...
    3. local_planner
+      1. flatland_local_planner_drl
+      2. flatland_local_planner_cardl
+      3. flatland_local_planner_TEB
+      4. flatland_local_planner_VFH*
    4. plan_manager
+      1. plan_manager_node
    5. plan_msgs
+      1. msg
+      2. srv
 3. simulator_setup
    1. maps
    2. obstacles
