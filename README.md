@@ -31,6 +31,14 @@ rosws update
 go to catkin_ws
 catkin_make
 ````
+### geometry2
+The official ros only support python2. In order to make the $tf$ work in python3, its necessary to compile it with python3. We provided a script to automately this this
+and do some additional configurations for the convenience . You can simply run it with 
+````bash
+./geometry2_install.sh
+After that you can try to import tf in python3 and no error is supposed to be shown up.
+````
+
 
 ### quick start simulation env and launch
 ````
