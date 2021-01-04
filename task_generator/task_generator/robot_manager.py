@@ -71,7 +71,7 @@ class RobotManager:
         """
         self.ROBOT_NAME = os.path.basename(robot_yaml_path).split('.')[0]
         with open(robot_yaml_path, 'r') as f:
-            robot_data = yaml.load(f)
+            robot_data = yaml.safe_load(f)
             # get robot radius
             for body in robot_data['bodies']:
                 if body['name'] == "base_footprint":
