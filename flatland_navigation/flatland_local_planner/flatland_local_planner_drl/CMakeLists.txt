@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.0.2)
-project(plan_local_drl)
+project(flatland_local_planner_drl)
 
 ## Compile as C++11, supported in ROS Kinetic and newer
 # add_compile_options(-std=c++11)
@@ -110,7 +110,7 @@ catkin_python_setup()
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
 #  INCLUDE_DIRS include
-#  LIBRARIES plan_local_drl
+#  LIBRARIES flatland_local_planner_drl
 #    CATKIN_DEPENDS geometry_msgs nav_msgs roscpp rospy sensor_msgs tf2 tf2_geometry_msgs tf2_ros
 #  DEPENDS system_lib
 )
@@ -129,7 +129,7 @@ include_directories(
 
 ## Declare a C++ library
 # add_library(${PROJECT_NAME}
-#   src/${PROJECT_NAME}/plan_local_drl.cpp
+#   src/${PROJECT_NAME}/flatland_local_planner_drl.cpp
 # )
 
 ## Add cmake target dependencies of the library
@@ -140,7 +140,7 @@ include_directories(
 ## Declare a C++ executable
 ## With catkin_make all packages are built within a single CMake context
 ## The recommended prefix ensures that target names across packages don't collide
-# add_executable(${PROJECT_NAME}_node src/plan_local_drl_node.cpp)
+# add_executable(${PROJECT_NAME}_node src/flatland_local_planner_drl_node.cpp)
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
@@ -204,7 +204,7 @@ catkin_install_python(PROGRAMS
 #############
 
 ## Add gtest based cpp test target and link libraries
-# catkin_add_gtest(${PROJECT_NAME}-test test/test_plan_local_drl.cpp)
+# catkin_add_gtest(${PROJECT_NAME}-test test/test_flatland_local_planner_drl.cpp)
 # if(TARGET ${PROJECT_NAME}-test)
 #   target_link_libraries(${PROJECT_NAME}-test ${PROJECT_NAME})
 # endif()

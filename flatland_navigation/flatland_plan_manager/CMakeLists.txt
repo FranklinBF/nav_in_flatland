@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.0.2)
-project(plan_manage)
+project(flatland_plan_manager)
 
 ## Compile as C++11, supported in ROS Kinetic and newer
 # add_compile_options(-std=c++11)
@@ -20,7 +20,8 @@ find_package(catkin REQUIRED COMPONENTS
   tf2_ros
 
   plan_visualization
-  plan_msgs
+  flatland_plan_msgs
+  flatland_fake_localization
 )
 
 ## System dependencies are found with CMake's conventions
@@ -114,8 +115,8 @@ find_package(catkin REQUIRED COMPONENTS
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
   INCLUDE_DIRS include
-  LIBRARIES plan_manage
-  CATKIN_DEPENDS geometry_msgs nav_msgs roscpp rospy sensor_msgs std_msgs plan_msgs plan_visualization
+  LIBRARIES flatland_plan_manager
+  CATKIN_DEPENDS geometry_msgs nav_msgs roscpp rospy sensor_msgs std_msgs flatland_plan_msgs plan_visualization
 #  DEPENDS system_lib
 )
 
@@ -127,7 +128,7 @@ catkin_package(
 ## Your package locations should be listed before other locations
 include_directories(
   include
-  include/${PROJECT_NAME}
+  #include/${PROJECT_NAME}
   ${catkin_INCLUDE_DIRS}
   SYSTEM
   ${EIGEN3_INCLUDE_DIR}
@@ -135,7 +136,7 @@ include_directories(
 
 ## Declare a C++ library
 # add_library(${PROJECT_NAME}
-#   src/${PROJECT_NAME}/plan_manage.cpp
+#   src/${PROJECT_NAME}/flatland_plan_manager.cpp
 # )
 
 ## Add cmake target dependencies of the library
@@ -147,9 +148,10 @@ include_directories(
 ## With catkin_make all packages are built within a single CMake context
 ## The recommended prefix ensures that target names across packages don't collide
 
-add_executable(plan_manager_node 
-    src/plan_collector.cpp
+add_executable(plan_manager_node
+    src/plan_manager_node.cpp 
     src/plan_manager.cpp 
+    src/plan_collector.cpp
   )
 
 

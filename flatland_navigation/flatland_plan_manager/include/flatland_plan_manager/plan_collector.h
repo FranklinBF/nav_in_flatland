@@ -11,7 +11,7 @@
 #include <geometry_msgs/PoseStamped.h>  // goal, subgoal needs time stamp
 
 
-#include <plan_manage/robot_state.h>
+#include <flatland_plan_manager/robot_state.h>
 
 class PlanCollector{
 
