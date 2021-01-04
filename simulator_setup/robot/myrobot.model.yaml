@@ -41,7 +41,7 @@ plugins:
     publish_tf_world: false
     # exclude: ["approx_footprint"]
 
-propoties:
+properties:
   discrete_actions:
     - name: move_forward
       linear: 0.8
