@@ -133,7 +133,7 @@ Hint: During 2021-01-05 and 2021-01-10, flatland_local_planner_drl package is st
 ### 5. Navigation framework
 
 <p align="center">
-  <img width="400" height="300" src="/plan_manager.pdf">
+  <img width="400" height="300" src="/plan_manager.png">
 </p>
 
 #### **flatland_navigation**
