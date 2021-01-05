@@ -67,7 +67,7 @@ After that you can try to import tf in python3 and no error is supposed to be sh
 
 ##### [Quick start] simulation env and launch
 ````
-roslaunch flatland_bringup start_flatland.launch  train_mode:=false
+roslaunch arena_bringup start_arena_flatland.launch  train_mode:=false
 ````
 start_flatland.launch will start several other sublaunch files and some neccesary ros packages:
    1. **start simulator node**: start flatland, load robot model
@@ -78,29 +78,38 @@ start_flatland.launch will start several other sublaunch files and some neccesar
    6. **/train_mode/**: 
    * if true, the simulator(flatland) will provide a *step_world service* and the simulator will update its simulation when he receives a *step_world service request*.
    * if true, the plan manager will generate subgoal topic always as goal(global goal) topic.
+   * if false, you can also use move_base action triggered by rviz_plugin button *2D Navigation Goal*. 
 
+   <p align="center">
+      <img width="400" height="300" src="/rviz_plugin_intro.png">
+   </p>
+
+   1. 2D Nav Goal: triggers move_base action
+   2. Spawn Model: load a new model.yaml and load it to flatland
+   3. Arena Nav Goal: set (global)goal for Arena navigation
+   4. Generate Task: change task, which changes the position of obstacles and set a new goal for arena navigation
 
 ##### [Quick start] test with DRL training 
 ###### In one terminnal
 ```bash
-roslaunch flatland_bringup start_flatland.launch  train_mode:=true
+roslaunch arena_bringup start_arena_flatland.launch  train_mode:=true
 ```
 ###### In another terminal
 
 ```
 workon arena_py3
-roscd flatland_local_planner_drl
+roscd arena_local_planner_drl
 python scripts/training/training_example.py
 ```
 first **activate your python3 env**, which contains libaraies stable_baseline3, geometry2
 then python run the script.
 
-Hint: During 2021-01-05 and 2021-01-10, flatland_local_planner_drl package is still under the development, which means the api of the class could be drastically changed. Sorry about the inconvinience!
+Hint: During 2021-01-05 and 2021-01-10, arena_local_planner_drl package is still under the development, which means the api of the class could be drastically changed. Sorry about the inconvinience!
 
 
 ### 4. Structure of the packges
 
-1. flatland_bringup: 
+1. arena_bringup: 
    1. config
       1. config_movebase
       2. config_plan_manager
@@ -111,9 +120,9 @@ Hint: During 2021-01-05 and 2021-01-10, flatland_local_planner_drl package is st
          3. plan_manager.launch
          4. move_base.launch
          5. task_generator.launch
-      2. start_flatland.launch
+      2. start_arena_flatland.launch
    3. rviz
-2. flatland_navigation:
+2. arena_navigation:
    1. fake_localization 
    2. mapping
    3. global_planner
@@ -136,7 +145,7 @@ Hint: During 2021-01-05 and 2021-01-10, flatland_local_planner_drl package is st
   <img width="400" height="300" src="/plan_manager.png">
 </p>
 
-#### **flatland_navigation**
+#### **arena_navigation**
    1. **fake_localization**(pkg) 
    2. **mapping**:
       1. costmap2D(pkg) 
@@ -145,17 +154,17 @@ Hint: During 2021-01-05 and 2021-01-10, flatland_local_planner_drl package is st
       4. Voxgraph(pkg) 
       5. ...
    3. **global_planner**
-      1. flatland_global_planner_Dijkstra(pkg) 
-      2. flatland_global_planner_Astar(pkg) 
-      3. flatland_global_planner_JPS(Jump point search)(pkg) 
-      4. flatland_global_planner_KinoAstar(pkg)  
-      5. flatland_global_planner_Informed_RRTstar(pkg) 
+      1. arena_global_planner_Dijkstra(pkg) 
+      2. arena_global_planner_Astar(pkg) 
+      3. arena_global_planner_JPS(Jump point search)(pkg) 
+      4. arena_global_planner_KinoAstar(pkg)  
+      5. arena_global_planner_Informed_RRTstar(pkg) 
       6. ...
    4. **local_planner**
-      1. flatland_local_planner_drl(pkg) 
-      2. flatland_local_planner_cardl(pkg) 
-      3. flatland_local_planner_TEB(pkg) 
-      4. flatland_local_planner_VFH*(pkg) 
+      1. arena_local_planner_drl(pkg) 
+      2. arena_local_planner_cardl(pkg) 
+      3. arena_local_planner_TEB(pkg) 
+      4. arena_local_planner_VFH*(pkg) 
       5. ...
    5. **plan_manager**(pkg) 
       1. plan_collector
