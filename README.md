@@ -120,14 +120,11 @@ Hint: During 2021-01-05 and 2021-01-10, flatland_local_planner_drl package is st
    4. local_planner
    5. plan_manager
    6. plan_msgs
-3. simulator_setup
+3. simulator_setup: (saves flatland model files)
    1. maps
    2. obstacles
    3. robot
-4. task_generator
-   1. task_generator
-   2. scripts
-      1. task_generator_node.py
+4. task_generator:
 5. utils
    1. rviz_plugin
    2. plan_visualization
@@ -188,6 +185,47 @@ In our project, we have modified and extended the original Flatland source repos
 A great introduction to flatland is listed in following website, please checi it out (most importantly in order to know how to create plugin in flatland):
 * How to use flatland: http://flatland-simulator.readthedocs.io
 
+Things need to know:
+* How flatland updates its simulation progress
+* How to write model .yaml files for flatland
+* How to create flatland plugins(e.g. laser, driver, motion behavior) which can be added to the model .yaml file
 
 
+##### How flatland updates its simulation progress
+````
+flatland_server/src/flatland_server_node.cpp
+flatland_server/src/simulation_manager.cpp         (modified by our project)
+flatland_server/src/world.cpp
+flatland_server/src/timekeeper.cpp
+flatland_plugins/src/laser.cpp                     (modified by our project)
+````
+check out these files, everything relative to simulation update is contained there.
+We made some modification in *simulation_manager.cpp*, where we create a */step_world* service server.
 
+##### How to write model .yaml files for flatland
+check out the section in http://flatland-simulator.readthedocs.io
+
+##### How to create flatland plugins
+check out the section in http://flatland-simulator.readthedocs.io
+
+````
+flatland_plugins/src/laser.cpp                     (modified by our project)
+flatland_plugins/src/diff_drive.cpp                (modified by our project)
+flatland_plugins/src/model_tf_publisher.cpp        (modified by our project)
+flatland_plugins/include/flatland_plugins/tween.h  (for dynamic obstacle motion behavior)
+flatland_plugins/include/flatland_plugins/update_timer.h
+````
+These plugins are currently we are using and some of them are modified.
+
+Modification are mostly done in these two functions, where we made the publication of topics done in *AfterPhysicsStep* otherthan in *BeforePhysicsStep*.
+
+````
+void BeforePhysicsStep(const Timekeeper& timekeeper);
+void AfterPhysicsStep(const Timekeeper &timekeeper) ;
+````
+
+### 7. Task Generator
+To be added...
+
+### 8. DRL Local planner(Training and Testing)
+To be added...
