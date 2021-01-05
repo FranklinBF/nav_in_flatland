@@ -108,8 +108,8 @@ Hint: During 2021-01-05 and 2021-01-10, arena_local_planner_drl package is still
    </p>
 
    1. 2D Nav Goal: triggers move_base action
-   2. Spawn Model: load a new model.yaml and load it to flatland
-   3. Arena Nav Goal: set (global)goal for Arena navigation
+   2. Spawn Model: load a new model.yaml to flatland simulator
+   3. Arena Nav Goal: set (global) goal for arena navigation
    4. Generate Task: change task, which changes the position of obstacles and set a new goal for arena navigation
    
 
@@ -221,10 +221,14 @@ check out these files, everything relative to simulation update is contained the
 We made some modification in *simulation_manager.cpp*, where we create a */step_world* service server.
 
 ##### How to write model .yaml files for flatland
-check out the section in http://flatland-simulator.readthedocs.io
+Robot, Obstacles and world can be described by .yaml files, which provide easy setting to users.
+
+check out the model section in http://flatland-simulator.readthedocs.io
 
 ##### How to create flatland plugins
-check out the section in http://flatland-simulator.readthedocs.io
+Sensors such as laser, actuator such ad diff_driver & other user defined motion behaviors can be coded as a flatland plugin and added to the model .yaml file.
+
+check out the plugin section in http://flatland-simulator.readthedocs.io
 
 ````
 flatland_plugins/src/laser.cpp                     (modified by our project)
@@ -233,9 +237,10 @@ flatland_plugins/src/model_tf_publisher.cpp        (modified by our project)
 flatland_plugins/include/flatland_plugins/tween.h  (for dynamic obstacle motion behavior)
 flatland_plugins/include/flatland_plugins/update_timer.h
 ````
-These plugins are currently we are using and some of them are modified.
+These are the plugins that currently we are using and some of them are modified.
 
-Modification are mostly done in these two functions, where we made the publication of topics done in *AfterPhysicsStep* otherthan in *BeforePhysicsStep*.
+Modification are mostly done in these two functions in each plugins.
+These change are made intended to make the publication of topics done in *AfterPhysicsStep* otherthan in *BeforePhysicsStep*.
 
 ````
 void BeforePhysicsStep(const Timekeeper& timekeeper);
@@ -247,3 +252,6 @@ To be added...
 
 ### 8. DRL Local planner(Training and Testing)
 To be added...
+
+### 9. Utils
+contains rviz_plugins & planning visulizations needed to be showed in rviz.
