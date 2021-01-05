@@ -1,6 +1,6 @@
 # nav_in_flatland
 
-### What is this repository for?
+### 1. What is this repository for?
 Train DRL agents on ROS compatible simulations for autonomous navigation in highly dynamic environments. Flatland-DRL integration is inspired by Ronja Gueldenring's work: [drl_local_planner_ros_stable_baselines](https://github.com/RGring/drl_local_planner_ros_stable_baselines.git). Following features are included:
 
 ##### Navigation framework in simulator Flatland
@@ -15,14 +15,14 @@ Train DRL agents on ROS compatible simulations for autonomous navigation in high
 * Setup to train a local planner with reinforcement learning approaches from [stable baselines3](https://github.com/DLR-RM/stable-baselines3.git)
 
 
-### References 
+### 2. References & Tutorial
 * How to use flatland: http://flatland-simulator.readthedocs.io
 
 * ros navigation stack: http://wiki.ros.org/navigation
 
-### How to use 
+### 3. How to use 
 
-#### create workspace & clone
+###### create workspace & clone
 
 ````
 mkdir -P catkin_ws/src
@@ -30,18 +30,18 @@ cd catkin_ws/src
 git clone https://github.com/FranklinBF/navigation_flatland.git
 ````
 
-#### install forks
+###### install forks
 ````
 cd nav_in_flatland
 rosws update
 ````
 
-#### catkin_make
+###### catkin_make
 ````
 go to catkin_ws
 catkin_make
 ````
-#### install geometry2 compiled with python3 
+###### install geometry2 compiled with python3 
 The official ros only support python2. In order to make the $tf$ work in python3, its necessary to compile it with python3. We provided a script to automately this this
 and do some additional configurations for the convenience . You can simply run it with 
 ````bash
@@ -50,17 +50,28 @@ After that you can try to import tf in python3 and no error is supposed to be sh
 ````
 
 
-### [Quick start] simulation env and launch
+##### [Quick start] simulation env and launch
 ````
 roslaunch flatland_bringup start_flatland.launch  train_mode:=false
 ````
+start_flatland.launch will start several other sublaunch files and some neccesary ros packages:
+   1. start simulator node: start flatland, load robot model
+   2. start map server node: load map, which will provide occupancy grid used for mapping functions later
+   3. start fake localization: which will provide static tf map_to_odom, in order to have localization of the robot.
+   4. start task generator node: which provide task generation service for rviz_plugin(Generate Task)
+   5. start plan manager node: provide manager for robot state estimation, mapping,  global planner and local planner,  which is the key for navigation framework.
 
-### [Quick start] test with DRL training 
+##### [Quick start] test with DRL training 
 In one terminnal
 ```bash
 roslaunch flatland_bringup start_flatland.launch  train_mode:=true
 ```
 In another terminal
+first activate your python3 env, which contains stable_baseline3, geometry2
+```
+workon arena_py3
+```
+then python run the script
 ```
 roscd flatland_local_planner_drl
 python scripts/training/training_example.py
@@ -69,9 +80,7 @@ python scripts/training/training_example.py
 Hint: During 2021-01-05 and 2021-01-10, flatland_local_planner_drl package is still under the development, which means the api of the class could be drastically changed. Sorry about the inconvinience!
 
 
-
-
-### Structure of the packges
+### 4. Structure of the packges
 
 1. flatland_bringup: 
    1. config
@@ -131,3 +140,7 @@ Hint: During 2021-01-05 and 2021-01-10, flatland_local_planner_drl package is st
 5. utils
    1. rviz_plugin
    2. plan_visualization
+
+
+### 5. Navigation framework
+

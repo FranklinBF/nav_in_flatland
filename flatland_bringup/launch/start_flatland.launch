@@ -42,6 +42,8 @@
     <arg name="odom_ground_truth" default="$(arg odom_ground_truth)"/>
   </include>
 
+  <!-- start task_generator node-->
+  <include file="$(find flatland_bringup)/launch/sublaunch/task_generator.launch"/>
 
   <!-- start plan manager-->
   <include file="$(find flatland_bringup)/launch/sublaunch/plan_manager.launch">
@@ -51,7 +53,6 @@
     <arg name="base_frame_id"     value="$(arg base_frame_id)"/>
   </include>
 
-  <!-- start task_generator node-->
-  <include file="$(find flatland_bringup)/launch/sublaunch/task_generator.launch"/>
+  
     
 </launch>
