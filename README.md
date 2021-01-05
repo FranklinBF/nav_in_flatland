@@ -74,7 +74,7 @@ start_flatland.launch will start several other sublaunch files and some neccesar
    2. **start map server node**: load map, which will provide occupancy grid used for mapping functions later
    3. **start fake localization**: which will provide static tf map_to_odom, in order to have localization of the robot.
    4. **start task generator node**: which provide task generation service for rviz_plugin(Generate Task)
-   5. **start plan manager node**: provide manager for robot state estimation, mapping,  global planner and local planner,  which is the key for navigation framework.
+   5. **start plan manager node**: provide manager for robot state estimation, mapping, global planner and local planner,  which is the key for navigation framework. The move_base is contained, because currently we need its global_planner and mapping functions, later they won't be needed.
    6. **/train_mode/**: 
    * if true, the simulator(flatland) will provide a *step_world service* and the simulator will update its simulation when he receives a *step_world service request*.
    * if true, the plan manager will generate subgoal topic always as goal(global goal) topic.
@@ -86,15 +86,14 @@ start_flatland.launch will start several other sublaunch files and some neccesar
 roslaunch flatland_bringup start_flatland.launch  train_mode:=true
 ```
 ###### In another terminal
-first **activate your python3 env**, which contains stable_baseline3, geometry2
+
 ```
 workon arena_py3
-```
-then python run the script
-```
 roscd flatland_local_planner_drl
 python scripts/training/training_example.py
 ```
+first **activate your python3 env**, which contains libaraies stable_baseline3, geometry2
+then python run the script.
 
 Hint: During 2021-01-05 and 2021-01-10, flatland_local_planner_drl package is still under the development, which means the api of the class could be drastically changed. Sorry about the inconvinience!
 
@@ -115,6 +114,28 @@ Hint: During 2021-01-05 and 2021-01-10, flatland_local_planner_drl package is st
       2. start_flatland.launch
    3. rviz
 2. flatland_navigation:
+   1. fake_localization 
+   2. mapping
+   3. global_planner
+   4. local_planner
+   5. plan_manager
+   6. plan_msgs
+3. simulator_setup
+   1. maps
+   2. obstacles
+   3. robot
+4. task_generator
+   1. task_generator
+   2. scripts
+      1. task_generator_node.py
+5. utils
+   1. rviz_plugin
+   2. plan_visualization
+
+
+### 5. Navigation framework
+
+flatland_navigation:
    1. fake_localization 
    2. mapping:
       1. costmap2D
@@ -144,22 +165,6 @@ Hint: During 2021-01-05 and 2021-01-10, flatland_local_planner_drl package is st
          1. RobotState.msg
       2. srv
          1. Subgoal.srv
-3. simulator_setup
-   1. maps
-   2. obstacles
-   3. robot
-4. task_generator
-   1. task_generator
-      1. obstacles_manager.py
-      2. robot_manager.py
-      3. tasks.py
-      4. utils.py
-   2. scripts
-      1. task_generator_node.py
-5. utils
-   1. rviz_plugin
-   2. plan_visualization
 
 
-### 5. Navigation framework
 
