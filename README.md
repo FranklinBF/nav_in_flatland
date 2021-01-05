@@ -1,6 +1,6 @@
 # nav_in_flatland
 
-### 1. What is this repository for?
+## 1. What is this repository for?
 Train DRL agents on ROS compatible simulations for autonomous navigation in highly dynamic environments. Flatland-DRL integration is inspired by Ronja Gueldenring's work: [drl_local_planner_ros_stable_baselines](https://github.com/RGring/drl_local_planner_ros_stable_baselines.git). Following features are included:
 
 ##### Navigation framework in simulator Flatland
@@ -15,12 +15,14 @@ Train DRL agents on ROS compatible simulations for autonomous navigation in high
 * Setup to train a local planner with reinforcement learning approaches from [stable baselines3](https://github.com/DLR-RM/stable-baselines3.git)
 
 
-### 2. References & Tutorial
+## 2. References & Tutorial
 * How to use flatland: http://flatland-simulator.readthedocs.io
 
 * ros navigation stack: http://wiki.ros.org/navigation
 
-### 3. How to use 
+## 3. How to use 
+
+### Installation
 
 ###### create workspace & clone
 
@@ -64,8 +66,8 @@ and do some additional configurations for the convenience . You can simply run i
 ./geometry2_install.sh
 After that you can try to import tf in python3 and no error is supposed to be shown up.
 ````
-
-##### [Quick start] simulation env and launch
+### Quick start
+###### start simulation env & plan manager
 ````
 roslaunch arena_bringup start_arena_flatland.launch  train_mode:=false
 ````
@@ -81,20 +83,23 @@ start_flatland.launch will start several other sublaunch files and some neccesar
    * if false, you can also use move_base action triggered by rviz_plugin button *2D Navigation Goal*. 
 
    <p align="center">
-      <img width="400" height="300" src="/rviz_plugin_intro.png">
+      <img width="600" height="480" src="/rviz_plugin_intro.png">
    </p>
 
+Rviz plugins:
    1. 2D Nav Goal: triggers move_base action
    2. Spawn Model: load a new model.yaml and load it to flatland
    3. Arena Nav Goal: set (global)goal for Arena navigation
    4. Generate Task: change task, which changes the position of obstacles and set a new goal for arena navigation
 
-##### [Quick start] test with DRL training 
-###### In one terminnal
+###### test DRL training
+
+* In one terminnal
+
 ```bash
 roslaunch arena_bringup start_arena_flatland.launch  train_mode:=true
 ```
-###### In another terminal
+* In another terminal
 
 ```
 workon arena_py3
