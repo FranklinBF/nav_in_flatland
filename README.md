@@ -82,16 +82,6 @@ start_flatland.launch will start several other sublaunch files and some neccesar
    * if true, the plan manager will generate subgoal topic always as goal(global goal) topic.
    * if false, you can also use move_base action triggered by rviz_plugin button *2D Navigation Goal*. 
 
-   <p align="center">
-      <img width="600" height="480" src="/rviz_plugin_intro.png">
-   </p>
-
-Rviz plugins:
-   1. 2D Nav Goal: triggers move_base action
-   2. Spawn Model: load a new model.yaml and load it to flatland
-   3. Arena Nav Goal: set (global)goal for Arena navigation
-   4. Generate Task: change task, which changes the position of obstacles and set a new goal for arena navigation
-
 ###### test DRL training
 
 * In one terminnal
@@ -112,12 +102,21 @@ then python run the script.
 Hint: During 2021-01-05 and 2021-01-10, arena_local_planner_drl package is still under the development, which means the api of the class could be drastically changed. Sorry about the inconvinience!
 
 
+###### Rviz plugins:
+   <p align="center">
+      <img width="600" height="480" src="/rviz_plugin_intro.png">
+   </p>
+
+   1. 2D Nav Goal: triggers move_base action
+   2. Spawn Model: load a new model.yaml and load it to flatland
+   3. Arena Nav Goal: set (global)goal for Arena navigation
+   4. Generate Task: change task, which changes the position of obstacles and set a new goal for arena navigation
+   
+
 ### 4. Structure of the packges
 
 1. arena_bringup: 
    1. config
-      1. config_movebase
-      2. config_plan_manager
    2. launch
       1. sublaunch:
          1. flatland_simulator.launch
