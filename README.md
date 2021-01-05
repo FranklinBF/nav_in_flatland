@@ -75,10 +75,9 @@ start_flatland.launch will start several other sublaunch files and some neccesar
    3. **start fake localization**: which will provide static tf map_to_odom, in order to have localization of the robot.
    4. **start task generator node**: which provide task generation service for rviz_plugin(Generate Task)
    5. **start plan manager node**: provide manager for robot state estimation, mapping,  global planner and local planner,  which is the key for navigation framework.
-   6. **train_mode**: 
-   if true, the simulator(flatland) will provide a *step_world service* and the simulator will update its simulation when he receives a *step_world service request*.
-   
-   if true, the plan manager will generate subgoal topic always as goal(global goal) topic.
+   6. **/train_mode/**: 
+   * if true, the simulator(flatland) will provide a *step_world service* and the simulator will update its simulation when he receives a *step_world service request*.
+   * if true, the plan manager will generate subgoal topic always as goal(global goal) topic.
 
 
 ##### [Quick start] test with DRL training 
