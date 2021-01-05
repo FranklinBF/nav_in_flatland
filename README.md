@@ -134,37 +134,38 @@ Hint: During 2021-01-05 and 2021-01-10, flatland_local_planner_drl package is st
 
 
 ### 5. Navigation framework
-
 flatland_navigation:
-   1. fake_localization 
+   1. fake_localization(pkg) 
    2. mapping:
-      1. costmap2D
-      2. Euclean Signed Distancefield Map
-      3. Topology Graph
-      4. Voxgraph
+      1. costmap2D(pkg) 
+      2. Euclean Signed Distancefield Map(pkg) 
+      3. Topology Graph(pkg) 
+      4. Voxgraph(pkg) 
       5. ...
    3. global_planner
-      1. flatland_global_planner_Dijkstra
-      2. flatland_global_planner_Astar
-      3. flatland_global_planner_JPS(Jump point search)
-      4. flatland_global_planner_KinoAstar 
-      5. flatland_global_planner_Informed_RRTstar
+      1. flatland_global_planner_Dijkstra(pkg) 
+      2. flatland_global_planner_Astar(pkg) 
+      3. flatland_global_planner_JPS(Jump point search)(pkg) 
+      4. flatland_global_planner_KinoAstar(pkg)  
+      5. flatland_global_planner_Informed_RRTstar(pkg) 
       6. ...
    4. local_planner
-      1. flatland_local_planner_drl
-      2. flatland_local_planner_cardl
-      3. flatland_local_planner_TEB
-      4. flatland_local_planner_VFH*
+      1. flatland_local_planner_drl(pkg) 
+      2. flatland_local_planner_cardl(pkg) 
+      3. flatland_local_planner_TEB(pkg) 
+      4. flatland_local_planner_VFH*(pkg) 
       5. ...
-   5. plan_manager
+   5. plan_manager(pkg) 
       1. plan_collector
       2. plan_manager
       3. plan_manager_node
-   6. plan_msgs
+   6. plan_msgs(pkg) 
       1. msg
          1. RobotState.msg
       2. srv
          1. Subgoal.srv
 
-
+<p align="center">
+  <img width="300" height="300" src="/plan_manager.png">
+</p>
 
