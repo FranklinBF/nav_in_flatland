@@ -259,6 +259,27 @@ To be added...
   <img width="400" height="300" src="/local_planner.png">
   <img width="400" height="300" src="/synchronization.png">
 </p>
+
+##### Communication:
+DRL local planner get the needed observation info by using ROS communication. This may slows down the training, but for current version we just keep it.
+
+DRL local planner get observation info from:
+   * flatland server: laser scan
+   * plan manager: robot state, subgoal
+
+DRL local planner send action command to flatland server
+   * flatland server: diff_drive
+
+##### Observation synchronization
+DRL local planner contains observation collector and we designed a synchronization mechanism for following important reasons & aspects:
+   1. In real world, each sensor has its own publishing rate and are different from each other
+   2. The action calculation should based on the observations that are synchronized, otherwise is useless.
+   3. The calculated action is only valid for a specified time horizon(control horizon),e.g. 0.2s. For different control horizon, the action space should be different. 
+      1. example 1: action is calculated every 0.01s, time horizon=0.01s, suppose calculated action=1m/s, in this time horizon the robot will actually move 0.01m.
+      2. example 2: action is calculated every 0.5s, time horizon=0.5s, suppose calculated action=1m/s, in this time horizon the robot will actually move 0.5m.
+      * From 1 & 2, one can see for a same action space, a different time horizon will result in different actual result.
+
+
 To be added...
 
 ### 9. Utils
