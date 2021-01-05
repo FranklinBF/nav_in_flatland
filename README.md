@@ -1,16 +1,23 @@
 # nav_in_flatland
 
 ### What is this repository for?
-Train DRL agents on ROS compatible simulations for autonomous navigation in highly dynamic environments. Flatland-DRL integration is inspired by Ronja Gueldenring's work: drl_local_planner_ros_stable_baselines. Following features are included:
+Train DRL agents on ROS compatible simulations for autonomous navigation in highly dynamic environments. Flatland-DRL integration is inspired by Ronja Gueldenring's work: [drl_local_planner_ros_stable_baselines](https://github.com/RGring/drl_local_planner_ros_stable_baselines.git). Following features are included:
 
-* Setup to train a local planner with reinforcement learning approaches from [stable baselines3](https://github.com/DLR-RM/stable-baselines3.git)
+##### Navigation framework in simulator Flatland
+* Designed a framework for autonomous navigation for lang range dynamic enviornment. The key framework is under a finite state machine of plan_manager, which contains 5 state: INIT, WAIT_GOAL, GEN_NEW_GLOBAL, REPLAN_MID, EXEC_LOCAL
+*  Desined a task generator function, which provides easy service to set different tasks of enviornment for both training and testing
 
+* Integration of ros navigation move base and flatland simulator
+
+##### DRL training under the navigation framework in simulator Flatland
 * Training in a simulator fusion of [Flatland](https://github.com/avidbots/flatland) 
+  
+* Setup to train a local planner with reinforcement learning approaches from [stable baselines3](https://github.com/DLR-RM/stable-baselines3.git)
 
 
 ### References 
 * How to use flatland: http://flatland-simulator.readthedocs.io
-* drl_local_planner_ros_stable_baselines: https://github.com/RGring/drl_local_planner_ros_stable_baselines.git
+
 * ros navigation stack: http://wiki.ros.org/navigation
 
 ### How to use 
@@ -43,12 +50,12 @@ After that you can try to import tf in python3 and no error is supposed to be sh
 ````
 
 
-### Quick start simulation env and launch
+### [Quick start] simulation env and launch
 ````
 roslaunch flatland_bringup start_flatland.launch  train_mode:=false
 ````
 
-### Quick test with DRL training 
+### [Quick start] test with DRL training 
 In one terminnal
 ```bash
 roslaunch flatland_bringup start_flatland.launch  train_mode:=true
@@ -81,21 +88,34 @@ Hint: During 2021-01-05 and 2021-01-10, flatland_local_planner_drl package is st
    3. rviz
 2. flatland_navigation:
    1. fake_localization 
-   2. global_planner
-      1. flatland_global_planner_Astar
-      2. flatland_global_planner_JPS(Jump point search)
-      3. flatland_global_planner_KinoAstar 
-      4. ...
-   3. local_planner
+   2. mapping:
+      1. costmap2D
+      2. Euclean Signed Distancefield Map
+      3. Topology Graph
+      4. Voxgraph
+      5. ...
+   3. global_planner
+      1. flatland_global_planner_Dijkstra
+      2. flatland_global_planner_Astar
+      3. flatland_global_planner_JPS(Jump point search)
+      4. flatland_global_planner_KinoAstar 
+      5. flatland_global_planner_Informed_RRTstar
+      6. ...
+   4. local_planner
       1. flatland_local_planner_drl
       2. flatland_local_planner_cardl
       3. flatland_local_planner_TEB
       4. flatland_local_planner_VFH*
-   4. plan_manager
-      1. plan_manager_node
-   5. plan_msgs
+      5. ...
+   5. plan_manager
+      1. plan_collector
+      2. plan_manager
+      3. plan_manager_node
+   6. plan_msgs
       1. msg
+         1. RobotState.msg
       2. srv
+         1. Subgoal.srv
 3. simulator_setup
    1. maps
    2. obstacles
