@@ -139,7 +139,7 @@ Hint: During 2021-01-05 and 2021-01-10, flatland_local_planner_drl package is st
   <img width="320" height="200" src="/plan_manager.png">
 </p>
 
-##### flatland_navigation 
+#### **flatland_navigation**
    1. **fake_localization**(pkg) 
    2. **mapping**:
       1. costmap2D(pkg) 
@@ -179,4 +179,15 @@ Plan collector
 * plan_collector has no ros communication tasks, plan_collecor only responsible for algorithms
 * plan_collector calls libraries from other pkgs(e.g. pkgs in mapping, local planner, global planner) to achieve its functions
 * plan_collector also responsible for subgoal generation, which is the job of intermediate planner.
+
+### 6. Simulator: Flatland
+[Flatland](https://github.com/avidbots/flatland) is a 2D physical simulator based on box2D, which is made to be integratable with ROS and easy to extend functions with its plugin mechanism.
+
+In our project, we have modified and extended the original Flatland source repositary in order to make it better suitable to our DRL planning purpose. The parts that have been modified will be cleared somehow in following sections.
+
+A great introduction to flatland is listed in following website, please checi it out (most importantly in order to know how to create plugin in flatland):
+* How to use flatland: http://flatland-simulator.readthedocs.io
+
+
+
 
