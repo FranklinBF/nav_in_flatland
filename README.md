@@ -134,38 +134,49 @@ Hint: During 2021-01-05 and 2021-01-10, flatland_local_planner_drl package is st
 
 
 ### 5. Navigation framework
-flatland_navigation:
-   1. fake_localization(pkg) 
-   2. mapping:
+
+<p align="center">
+  <img width="320" height="200" src="/plan_manager.png">
+</p>
+
+##### flatland_navigation 
+   1. **fake_localization**(pkg) 
+   2. **mapping**:
       1. costmap2D(pkg) 
       2. Euclean Signed Distancefield Map(pkg) 
       3. Topology Graph(pkg) 
       4. Voxgraph(pkg) 
       5. ...
-   3. global_planner
+   3. **global_planner**
       1. flatland_global_planner_Dijkstra(pkg) 
       2. flatland_global_planner_Astar(pkg) 
       3. flatland_global_planner_JPS(Jump point search)(pkg) 
       4. flatland_global_planner_KinoAstar(pkg)  
       5. flatland_global_planner_Informed_RRTstar(pkg) 
       6. ...
-   4. local_planner
+   4. **local_planner**
       1. flatland_local_planner_drl(pkg) 
       2. flatland_local_planner_cardl(pkg) 
       3. flatland_local_planner_TEB(pkg) 
       4. flatland_local_planner_VFH*(pkg) 
       5. ...
-   5. plan_manager(pkg) 
+   5. **plan_manager**(pkg) 
       1. plan_collector
       2. plan_manager
       3. plan_manager_node
-   6. plan_msgs(pkg) 
+   6. **plan_msgs**(pkg) 
       1. msg
          1. RobotState.msg
       2. srv
          1. Subgoal.srv
 
-<p align="center">
-  <img width="320" height="200" src="/plan_manager.png">
-</p>
+Plan manager
+* plan_manager_node will init a ros node for plan_manager
+* plan_manager is implemented as a Finite State Machine
+* plan_manager is responsible for state transfer, ros communication and call plan functions from plan_collecor
+
+Plan collector
+* plan_collector has no ros communication tasks, plan_collecor only responsible for algorithms
+* plan_collector calls libraries from other pkgs(e.g. pkgs in mapping, local planner, global planner) to achieve its functions
+* plan_collector also responsible for subgoal generation, which is the job of intermediate planner.
 
