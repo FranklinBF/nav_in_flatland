@@ -166,6 +166,6 @@ flatland_navigation:
          1. Subgoal.srv
 
 <p align="center">
-  <img width="640" height="480" src="/plan_manager.png">
+  <img width="320" height="200" src="/plan_manager.png">
 </p>
 
