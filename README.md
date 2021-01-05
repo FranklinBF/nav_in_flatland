@@ -148,7 +148,7 @@ Hint: During 2021-01-05 and 2021-01-10, arena_local_planner_drl package is still
 ### 5. Navigation framework
 
 <p align="center">
-  <img width="400" height="300" src="/plan_manager.png">
+  <img width="500" height="300" src="/plan_manager.png">
 </p>
 
 #### **arena_navigation**
