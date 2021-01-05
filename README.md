@@ -251,6 +251,10 @@ void AfterPhysicsStep(const Timekeeper &timekeeper) ;
 To be added...
 
 ### 8. DRL Local planner(Training and Testing)
+<p align="center">
+  <img width="400" height="300" src="/local_planner.png">
+  <img width="400" height="300" src="/synchronization.png">
+</p>
 To be added...
 
 ### 9. Utils
