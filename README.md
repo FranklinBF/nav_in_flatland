@@ -115,6 +115,7 @@ Hint: During 2021-01-05 and 2021-01-10, arena_local_planner_drl package is still
 
 ### 4. Structure of the packges
 
+0. ./forks/flatland:(simulator)
 1. arena_bringup: 
    1. config
    2. launch
@@ -144,6 +145,8 @@ Hint: During 2021-01-05 and 2021-01-10, arena_local_planner_drl package is still
    1. rviz_plugin
    2. plan_visualization
 
+
+   
 
 ### 5. Navigation framework
 
