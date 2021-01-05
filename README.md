@@ -131,6 +131,8 @@ Hint: During 2021-01-05 and 2021-01-10, arena_local_planner_drl package is still
    2. mapping
    3. global_planner
    4. local_planner
+      1. learning_based
+      2. model_based
    5. plan_manager
    6. plan_msgs
 3. simulator_setup: (saves flatland model files)
@@ -165,11 +167,14 @@ Hint: During 2021-01-05 and 2021-01-10, arena_local_planner_drl package is still
       5. arena_global_planner_Informed_RRTstar(pkg) 
       6. ...
    4. **local_planner**
-      1. arena_local_planner_drl(pkg) 
-      2. arena_local_planner_cardl(pkg) 
-      3. arena_local_planner_TEB(pkg) 
-      4. arena_local_planner_VFH*(pkg) 
-      5. ...
+      1. learning_based
+         1. arena_local_planner_drl(pkg) 
+         2. arena_local_planner_cardl(pkg)
+         3. ... 
+      2. model_based
+         1. arena_local_planner_TEB(pkg) 
+         2. arena_local_planner_VFH*(pkg) 
+         3. ...
    5. **plan_manager**(pkg) 
       1. plan_collector
       2. plan_manager
