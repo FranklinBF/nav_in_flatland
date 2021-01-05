@@ -195,6 +195,10 @@ Plan collector
 * plan_collector calls libraries from other pkgs(e.g. pkgs in mapping, local planner, global planner) to achieve its functions
 * plan_collector also responsible for subgoal generation, which is the job of intermediate planner.
 
+Plan msgs
+* saves user-defined msg or srv for arena navigation
+
+
 ### 6. Simulator: Flatland
 [Flatland](https://github.com/avidbots/flatland) is a 2D physical simulator based on box2D, which is made to be integratable with ROS and easy to extend functions with its plugin mechanism.
 
