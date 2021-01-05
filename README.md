@@ -55,19 +55,19 @@ After that you can try to import tf in python3 and no error is supposed to be sh
 roslaunch flatland_bringup start_flatland.launch  train_mode:=false
 ````
 start_flatland.launch will start several other sublaunch files and some neccesary ros packages:
-   1. start simulator node: start flatland, load robot model
-   2. start map server node: load map, which will provide occupancy grid used for mapping functions later
-   3. start fake localization: which will provide static tf map_to_odom, in order to have localization of the robot.
-   4. start task generator node: which provide task generation service for rviz_plugin(Generate Task)
-   5. start plan manager node: provide manager for robot state estimation, mapping,  global planner and local planner,  which is the key for navigation framework.
+   1. **start simulator node**: start flatland, load robot model
+   2. **start map server node**: load map, which will provide occupancy grid used for mapping functions later
+   3. **start fake localization**: which will provide static tf map_to_odom, in order to have localization of the robot.
+   4. **start task generator node**: which provide task generation service for rviz_plugin(Generate Task)
+   5. **start plan manager node**: provide manager for robot state estimation, mapping,  global planner and local planner,  which is the key for navigation framework.
 
 ##### [Quick start] test with DRL training 
-In one terminnal
+###### In one terminnal
 ```bash
 roslaunch flatland_bringup start_flatland.launch  train_mode:=true
 ```
-In another terminal
-first activate your python3 env, which contains stable_baseline3, geometry2
+###### In another terminal
+first **activate your python3 env**, which contains stable_baseline3, geometry2
 ```
 workon arena_py3
 ```
