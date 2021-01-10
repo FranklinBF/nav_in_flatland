@@ -1,137 +1,73 @@
-# arena-rosnav
+# nav_in_flatland
 
-<p align="center">
-  <img width="300" height="300" src="/img/dynamic1.gif">
-	<img width="300" height="300" src="/img/1training.gif">
-</p>
+## 1. What is this repository for?
+Train DRL agents on ROS compatible simulations for autonomous navigation in highly dynamic environments. Flatland-DRL integration is inspired by Ronja Gueldenring's work: [drl_local_planner_ros_stable_baselines](https://github.com/RGring/drl_local_planner_ros_stable_baselines.git). Following features are included:
 
+##### Navigation framework in simulator Flatland
+* Designed a framework for autonomous navigation for lang range dynamic enviornment. The key framework is under a finite state machine of plan_manager, which contains 5 state: INIT, WAIT_GOAL, GEN_NEW_GLOBAL, REPLAN_MID, EXEC_LOCAL
+*  Desined a task generator function, which provides easy service to set different tasks of enviornment for both training and testing
 
-## 0. What is this repository for?
-Train DRL agents on ROS compatible simulations for autonomous navigation in highly dynamic environments. Flatland-DRL integration is inspired by Ronja Gueldenring's work: [drl_local_planner_ros_stable_baselines](https://github.com/RGring/drl_local_planner_ros_stable_baselines.git). Test state of the art local and global planners in ROS environments both in simulation and on real hardware. Following features are included:
+* Integration of ros navigation move base and flatland simulator
 
+##### DRL training under the navigation framework in simulator Flatland
+* Training in a simulator fusion of [Flatland](https://github.com/avidbots/flatland) 
+  
 * Setup to train a local planner with reinforcement learning approaches from [stable baselines3](https://github.com/DLR-RM/stable-baselines3.git)
 
-* Training in simulator [Flatland](https://github.com/avidbots/flatland) in train mode
 
-* Local planner has been trained on static and dynamic obstacles with highly dynamic tasks
-
-* Implementation of intermediate planner classes to combine local DRL planner with global map-based planning of ROS Navigation stack
-
-* Integration of other obstacle avoidance approaches in ROS 
-
-* Testing a variety of planners (learning based and model based) within specific scenarios in test mode
-
-* Modular structure for extension of new functionalities and approaches
-
-### Documentation & References
+## 2. References & Tutorial
 * How to use flatland: http://flatland-simulator.readthedocs.io
+
 * ros navigation stack: http://wiki.ros.org/navigation
-* Full documentation and system design is released this week
 
-## 1. Installation
-#### 1.1. Standard ROS setup
-(Code has been tested with ROS-melodic on Ubuntu 18.04 and Python 3.6)
+## 3. How to use 
 
-* Install ROS Melodic following the steps from ros wiki:
-```
-http://wiki.ros.org/melodic/Installation/Ubuntu
-```
+### Installation
 
-* Install additional pkgs 
-```
-sudo apt-get update && sudo apt-get install -y \
-libqt4-dev \
-libopencv-dev \
-liblua5.2-dev \
-screen \
-python3.6 \
-python3.6-dev \
-libpython3.6-dev \
-python3-catkin-pkg-modules \
-python3-rospkg-modules \
-python3-empy \
-python3-setuptools
-ros-melodic-navigation 
+###### create workspace & clone
 
-```
+````
+mkdir -P catkin_ws/src
+cd catkin_ws/src
+git clone https://github.com/FranklinBF/navigation_flatland.git
+````
 
-#### 1.2. Prepare virtual environment & install python packages
-To be able to use python3 with ROS, you need an virtual environment. We recommend using virtualenv & virtualenvwrapper. 
+###### install forks
+````
+cd nav_in_flatland
+rosws update
+````
 
-* Install virtual environment and wrapper (as root or admin! with sudo) on your local pc (without conda activated. Deactivate conda env, if you have one active)
-```
-sudo pip3 install --upgrade pip
-sudo pip3 install virtualenv
-sudo pip3 install virtualenvwrapper
-which virtualenv   # should output /usr/local/bin/virtualenv  
-```
+###### catkin_make
+````
+go to catkin_ws
+catkin_make
+````
 
-* Create venv folder inside your home directory
-```
-cd $HOME
-mkdir python_env   # create a venv folder in your home directory 
-```
 
-* Add exports into your .zshrc (if you use bash change the last line to bashrc instead of zshrc):
-```
-echo "export WORKON_HOME=/home/linh/python_env   #path to your venv folder
-export VIRTUALENVWRAPPER_PYTHON=/usr/bin/python3   #path to your python3 
-export VIRTUALENVWRAPPER_VIRTUALENV=/usr/local/bin/virtualenv
-source /usr/local/bin/virtualenvwrapper.sh" >> ~/.zshrc
-```
+###### prepare your python virtual env(assumed you have installed virtualenv & virtualenvwrapper)
+````
+mkvirtualenv --python=python3.6 arena_py3
+workon arena_py3
+````
+If you have not virtualenv & virtualenvwrapper, please install and setup them first.
 
-* Create a new venv
-```
-mkvirtualenv --python=python3.6 rosnav
-workon rosnav
-```
-
-* Install packages inside your venv (venv always activated!):
-```
-pip install --extra-index-url https://rospypi.github.io/simple/ rospy rosbag tf tf2_ros --ignore-installed
-pip install pyyaml catkin_pkg netifaces
-```     
-
-* Install stable_baselines3 for training DRL into your venv (venv always activated!)
-```
+###### install stable_baseline3 
+````
 pip install stable-baselines3
-```
-
-
-#### 1.3. Install arena-rosnav repo
-* Create a catkin_ws and clone this repo into your catkin_ws 
 ````
-cd $HOME
-mkdir -p catkin_ws/src && cd catkin_ws/src
-git clone https://github.com/ignc-research/arena-rosnav
+This will be used for DRL local planner, please install it in your virtual env eg. arena_py3
 
-cd arena-rosnav && rosws update
 
-source $HOME/.zshrc
-cd ../.. 
-catkin_make -DPYTHON_EXECUTABLE=/usr/bin/python3
-source devel/setup.zsh
-````
-
-* Install ros geometry2 from source(compiled with python3) 
-
-The official ros only support tf2 with python2. In order to make the *tf* work in python3, its necessary to compile it with python3. We provided a script to automately install this
+###### install geometry2 compiled with python3 
+The official ros only support tf2 with python2. In order to make the $tf$ work in python3, its necessary to compile it with python3. We provided a script to automately this this
 and do some additional configurations for the convenience . You can simply run it with 
-```bash
+````bash
 ./geometry2_install.sh
-```
 After that you can try to import tf in python3 and no error is supposed to be shown up.
-
-
-## 2. Usage
-Before you test out the packages, always source your setup.zsh /setup.bash inside your catkin workspace also source your $HOME/.zshrc:
-```
-cd $HOME/catkin_ws
-source devel/setup.zsh
-source $HOME/.zshrc
-```
-
-#### 2.1. [Quick start] start simulation env & plan manager
+````
+### Quick start
+###### start simulation env & plan manager
 ````
 roslaunch arena_bringup start_arena_flatland.launch  train_mode:=false
 ````
@@ -146,7 +82,7 @@ start_flatland.launch will start several other sublaunch files and some neccesar
    * if true, the plan manager will generate subgoal topic always as goal(global goal) topic.
    * if false, you can also use move_base action triggered by rviz_plugin button *2D Navigation Goal*. 
 
-#### 2.2. [Quick start] test DRL training
+###### test DRL training
 
 * In one terminnal
 
@@ -156,7 +92,7 @@ roslaunch arena_bringup start_arena_flatland.launch  train_mode:=true
 * In another terminal
 
 ```
-workon rosnav
+workon arena_py3
 roscd arena_local_planner_drl
 python scripts/training/training_example.py
 ```
@@ -166,20 +102,19 @@ then python run the script.
 Hint: During 2021-01-05 and 2021-01-10, arena_local_planner_drl package is still under the development, which means the api of the class could be drastically changed. Sorry about the inconvinience!
 
 
-#### 2.3. Rviz plugins:
+###### Rviz plugins:
    <p align="center">
-      <img width="600" height="480" src="img/rviz_plugin_intro.png">
+      <img width="600" height="480" src="/rviz_plugin_intro.png">
    </p>
 
    1. 2D Nav Goal: triggers move_base action
    2. Spawn Model: load a new model.yaml to flatland simulator
    3. Arena Nav Goal: set (global) goal for arena navigation
    4. Generate Task: change task, which changes the position of obstacles and set a new goal for arena navigation
+   
 
+### 4. Structure of the packges
 
-
-## 3.Design
-#### 3.1. Structure of the packges
 0. ./forks/flatland:(simulator)
 1. arena_bringup: 
    1. config
@@ -212,13 +147,11 @@ Hint: During 2021-01-05 and 2021-01-10, arena_local_planner_drl package is still
 
 
    
-   
-   
-   
-#### 3.2. Navigation framework
+
+### 5. Navigation framework
 
 <p align="center">
-  <img width="500" height="300" src="img/plan_manager.png">
+  <img width="500" height="300" src="/plan_manager.png">
 </p>
 
 #### **arena_navigation**
@@ -269,7 +202,7 @@ Plan msgs
 * saves user-defined msg or srv for arena navigation
 
 
-#### 3.3. Simulator: Flatland
+### 6. Simulator: Flatland
 [Flatland](https://github.com/avidbots/flatland) is a 2D physical simulator based on box2D, which is made to be integratable with ROS and easy to extend functions with its plugin mechanism.
 
 In our project, we have modified and extended the original Flatland source repositary in order to make it better suitable to our DRL planning purpose. The parts that have been modified will be cleared somehow in following sections.
@@ -321,13 +254,13 @@ void BeforePhysicsStep(const Timekeeper& timekeeper);
 void AfterPhysicsStep(const Timekeeper &timekeeper) ;
 ````
 
-#### 3.4. Task Generator
+### 7. Task Generator
 To be added...
 
 ### 8. DRL Local planner(Training and Testing)
 <p align="center">
-  <img width="400" height="300" src="img/local_planner.png">
-  <img width="400" height="300" src="img/synchronization.png">
+  <img width="400" height="300" src="/local_planner.png">
+  <img width="400" height="300" src="/synchronization.png">
 </p>
 
 ##### Communication:
@@ -352,6 +285,5 @@ DRL local planner contains observation collector and we designed a synchronizati
 
 To be added...
 
-#### 3.5. Utils
+### 9. Utils
 contains rviz_plugins & planning visulizations needed to be showed in rviz.
-
