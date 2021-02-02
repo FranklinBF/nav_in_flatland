@@ -1,0 +1,30 @@
+<launch>    
+    <!-- arena_plan_manager -->
+    <node pkg="arena_global_planner" name="global_planner" type="arena_global_planner" output="screen">
+        <!-- <param name="train_mode" value="$(arg train_mode)"/> -->
+        
+        <!-- map size -->
+        <param name="sdf_map/frame_id"              value="map"/>
+        <param name="sdf_map/resolution"            value="0.05" />   <!-- provide by map_server: static_map -->
+        
+        <param name="sdf_map/local_update_range_x"  value="10.0" />    <!-- update range -->
+        <param name="sdf_map/local_update_range_y"  value="10.0" />    <!-- update range -->
+        <param name="sdf_map/local_map_margin"       value="50.0"/>     <!-- Keep in history range -->
+
+        <param name="sdf_map/obstacles_inflation"    value="0.1" /> 
+        <param name="sdf_map/local_bound_inflate"    value="0.0"/>
+        
+        <!-- local fusion -->
+        <param name="sdf_map/p_hit"  value="0.55"/>     <!-- 0.65 -->
+        <param name="sdf_map/p_miss" value="0.2"/>     <!-- 0.35 -->
+        <param name="sdf_map/p_min"  value="0.12"/>     <!-- 0.12 -->
+        <param name="sdf_map/p_max"  value="0.80"/>     <!-- 0.90 -->
+        <param name="sdf_map/p_occ"  value="0.70"/>     <!-- 0.80 -->
+        <param name="sdf_map/min_ray_length" value="0.5"/>
+        <param name="sdf_map/max_ray_length" value="10.0"/>
+
+        <param name="sdf_map/show_occ_time"  value="false"/>
+        <param name="sdf_map/show_esdf_time" value="false"/>
+        
+    </node>
+</launch>
