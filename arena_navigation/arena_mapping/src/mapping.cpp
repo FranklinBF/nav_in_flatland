@@ -11,8 +11,8 @@ void SDFMap::initMap(ros::NodeHandle& nh){
     if (!is_static_map_avail){ROS_ERROR("No static map available, please check map_server.");}
     
     // local map size
-    node_.param("sdf_map/local_update_range_x", mp_.local_update_range_(0), 10.5);
-    node_.param("sdf_map/local_update_range_y", mp_.local_update_range_(1), 10.5);
+    node_.param("sdf_map/local_update_range_x", mp_.local_update_range_(0), 5.5);
+    node_.param("sdf_map/local_update_range_y", mp_.local_update_range_(1), 5.5);
 
     // occupancy map
     node_.param("sdf_map/p_hit", mp_.p_hit_, 0.70);
@@ -114,7 +114,7 @@ void SDFMap::initMap(ros::NodeHandle& nh){
     md_.occ_need_update_ = false;
     md_.local_updated_ = false;
     md_.esdf_need_update_ = false;
-    md_.has_first_depth_ = false;
+    //md_.has_first_depth_ = false;
     md_.has_odom_ = false;
     md_.has_cloud_ = false;
     md_.depth_cloud_cnt_ = 0;
@@ -274,30 +274,30 @@ void SDFMap::scanOdomCallback(const sensor_msgs::LaserScanConstPtr& scan, const 
   md_.laser_pos_(1) = odom->pose.pose.position.y;
   md_.laser_q_ = Eigen::Quaterniond(odom->pose.pose.orientation.w, odom->pose.pose.orientation.x,
                                      odom->pose.pose.orientation.y, odom->pose.pose.orientation.z);
+  
   /* preprocess laser scan */
   sensor_msgs::LaserScan laser_scan=*scan;
-
+  //change range=nan to range=range_max, otherwise projection will negelect directions with range=nan
   for(unsigned int j=0;j< laser_scan.ranges.size();j++){
       if(std::isnan(laser_scan.ranges[j])){
           laser_scan.ranges[j]=laser_scan.range_max;
       }
   } 
   
-  
   /* get depth pointCloud */
   sensor_msgs::PointCloud2 cloud;
   // wait for transform from robot_base to laser scan
-    if(!tfListener_.waitForTransform(
+  if(!tfListener_.waitForTransform(
         laser_scan.header.frame_id,
         "/map",
         laser_scan.header.stamp + ros::Duration().fromSec(laser_scan.ranges.size()*laser_scan.time_increment),
-        ros::Duration(1.0))){
-     return;
-    } //"/base_footprint",
-    // High fidelity projection: suitable for laser that is moving
-    projector_.transformLaserScanToPointCloud("map", laser_scan, cloud, tfListener_);
+        ros::Duration(1.0))){return;}
+     //"/base_footprint",
 
-  //projector_.projectLaser(*scan, cloud);
+  // High fidelity projection: suitable for laser that is moving
+  projector_.transformLaserScanToPointCloud("map", laser_scan, cloud, tfListener_);  //projector_.projectLaser(laser_scan, cloud);
+
+  // ros_cloud to pcl_cloud
   pcl::fromROSMsg(cloud, md_.depth_cloud);//pcl::PointCloud<pcl::PointXYZ> rawCloud;
   
   /* 
@@ -319,52 +319,53 @@ void SDFMap::scanOdomCallback(const sensor_msgs::LaserScanConstPtr& scan, const 
     md_.has_cloud_=true;
   }
   */
+  
   // occ flag
-  md_.occ_need_update_ = true; 
-  //std::cout<<"scanOdomCallback:end"<<std::endl;
+  md_.occ_need_update_ = true;  // occ only update when both odom(or tf) & point cloud is ready
 }
 
 void SDFMap::odomCallback(const nav_msgs::OdometryConstPtr& odom) {
-  if (md_.has_first_depth_) return;
 
   md_.laser_pos_(0)=odom->pose.pose.position.x;
   md_.laser_pos_(1) = odom->pose.pose.position.y;
-
-
+  md_.laser_q_ = Eigen::Quaterniond(odom->pose.pose.orientation.w, odom->pose.pose.orientation.x,
+                                     odom->pose.pose.orientation.y, odom->pose.pose.orientation.z);
   md_.has_odom_ = true;
-  
 }
 
 void SDFMap::scanCallback(const sensor_msgs::LaserScanConstPtr& scan) {
   
+  /* scan to pcl cloud -----------------------------------*/
   // read scan to pcl cloud
   pcl::PointCloud<pcl::PointXYZ> latest_cloud;
   sensor_msgs::PointCloud2 scan_cloud;
 
+  /* preprocess laser scan */
+  sensor_msgs::LaserScan laser_scan=*scan;
+  //change range=nan to range=range_max, otherwise projection will negelect directions with range=nan
+  for(unsigned int j=0;j< laser_scan.ranges.size();j++){
+      if(std::isnan(laser_scan.ranges[j])){
+          laser_scan.ranges[j]=laser_scan.range_max;
+      }
+  } 
+
   // wait for transform from robot_base to laser scan
-    if(!tfListener_.waitForTransform(
-        scan->header.frame_id,
+  if(!tfListener_.waitForTransform(
+        laser_scan.header.frame_id,
         "/map",
-        scan->header.stamp + ros::Duration().fromSec(scan->ranges.size()*scan->time_increment),
-        ros::Duration(1.0))){
-     return;
-    }
-    // High fidelity projection: suitable for laser that is moving
-    projector_.transformLaserScanToPointCloud("map", *scan, scan_cloud, tfListener_);
+        laser_scan.header.stamp + ros::Duration().fromSec(laser_scan.ranges.size()*laser_scan.time_increment),
+        ros::Duration(1.0))){return;}
+
+
+  // High fidelity projection: suitable for laser that is moving
+  projector_.transformLaserScanToPointCloud("map", laser_scan, scan_cloud, tfListener_);
 
   
-
   //projector_.projectLaser(*scan, scan_cloud);
   pcl::fromROSMsg(scan_cloud, latest_cloud);
   md_.has_cloud_ = true;
   
-  if (!md_.has_first_depth_){
-    
-    
-      md_.has_first_depth_ = true;
-  }
-
-
+  /* reset buffer -----------------------------------*/
   // check odom available
   if (!md_.has_odom_) {
     // std::cout << "no odom!" << std::endl;
@@ -373,9 +374,7 @@ void SDFMap::scanCallback(const sensor_msgs::LaserScanConstPtr& scan) {
 
   if (latest_cloud.points.size() == 0) return;
 
-
-
-  if (isnan(md_.laser_pos_(0)) || isnan(md_.laser_pos_(1)) || isnan(md_.laser_pos_(2))) return;
+  if (isnan(md_.laser_pos_(0)) || isnan(md_.laser_pos_(1))) return;
 
   // reset the occupancy buffer
   this->resetBuffer(md_.laser_pos_ - mp_.local_update_range_,
@@ -429,6 +428,7 @@ void SDFMap::scanCallback(const sensor_msgs::LaserScanConstPtr& scan) {
             int idx_inf = toAddress(inf_pt);
 
             md_.occupancy_buffer_inflate_[idx_inf] = 1;
+            
           }
     }
   }
@@ -493,7 +493,7 @@ void SDFMap::updateOccupancyCallback(const ros::TimerEvent& /*event*/) {
 
   projectDepthCloud();
   raycastProcess();
-  //std::cout<<"ray cast finish:"<<md_.depth_cloud_cnt_<<std::endl;
+  
 
   if (md_.local_updated_) clearAndInflateLocalMap();
 
