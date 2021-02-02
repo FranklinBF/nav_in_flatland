@@ -272,9 +272,6 @@ void SDFMap::scanOdomCallback(const sensor_msgs::LaserScanConstPtr& scan, const 
   /* get pose */
   md_.laser_pos_(0)=odom->pose.pose.position.x;
   md_.laser_pos_(1) = odom->pose.pose.position.y;
-  md_.laser_pos3d_(0)=odom->pose.pose.position.x;
-  md_.laser_pos3d_(1) = odom->pose.pose.position.y;
-  md_.laser_pos3d_(2) = odom->pose.pose.position.z;
   md_.laser_q_ = Eigen::Quaterniond(odom->pose.pose.orientation.w, odom->pose.pose.orientation.x,
                                      odom->pose.pose.orientation.y, odom->pose.pose.orientation.z);
   /* preprocess laser scan */
@@ -332,9 +329,7 @@ void SDFMap::odomCallback(const nav_msgs::OdometryConstPtr& odom) {
 
   md_.laser_pos_(0)=odom->pose.pose.position.x;
   md_.laser_pos_(1) = odom->pose.pose.position.y;
-  md_.laser_pos3d_(0)=odom->pose.pose.position.x;
-  md_.laser_pos3d_(1) = odom->pose.pose.position.y;
-  md_.laser_pos3d_(2) = odom->pose.pose.position.z;
+
 
   md_.has_odom_ = true;
   
@@ -526,14 +521,8 @@ void SDFMap::projectDepthCloud() {
 
 
   for(int i=0;i<num_pts;i++){
-    //Eigen::Vector3d proj_pt3d;
-    //proj_pt3d(0)=md_.depth_cloud.points[i].x;
-    //proj_pt3d(1)=md_.depth_cloud.points[i].y;
-    //proj_pt3d(2)=0.0;
-    //proj_pt3d = laser_r * proj_pt3d + md_.laser_pos3d_;
+
     Eigen::Vector2d proj_pt;
-    //proj_pt(0)=proj_pt3d(0);
-    //proj_pt(1)=proj_pt3d(1);
     proj_pt(0)=md_.depth_cloud.points[i].x;
     proj_pt(1)=md_.depth_cloud.points[i].y;
 
@@ -542,7 +531,6 @@ void SDFMap::projectDepthCloud() {
   
   /* maintain laser pose for consistency check */
   md_.last_laser_pos_ = md_.laser_pos_;
-  md_.last_laser_pos3d_ = md_.laser_pos3d_;
   md_.last_laser_q_ = md_.laser_q_;
   md_.last_depth_cloud = md_.depth_cloud;
 }

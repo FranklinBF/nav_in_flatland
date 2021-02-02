@@ -123,8 +123,6 @@ struct MappingData {
   std::vector<double> tmp_buffer2_;
 
   // laser  position and pose data
-
-  Eigen::Vector3d laser_pos3d_, last_laser_pos3d_;
   Eigen::Vector2d laser_pos_, last_laser_pos_;
   Eigen::Quaterniond laser_q_, last_laser_q_;
 
