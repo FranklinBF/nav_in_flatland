@@ -68,7 +68,6 @@ int Astar::search(Eigen::Vector2d start_pt, Eigen::Vector2d end_pt, bool dynamic
   cur_node->g_score = 0.0;
 
   Eigen::Vector2i end_index;
-  double time_to_goal;
 
   end_index = posToIndex(end_pt);
   cur_node->f_score = lambda_heu_ * getEuclHeu(cur_node->position, end_pt);
@@ -77,16 +76,9 @@ int Astar::search(Eigen::Vector2d start_pt, Eigen::Vector2d end_pt, bool dynamic
   open_set_.push(cur_node);
   use_node_num_ += 1;
 
-  if (dynamic) {
-    time_origin_ = time_start;
-    cur_node->time = time_start;
-    cur_node->time_idx = timeToIndex(time_start);
-    expanded_nodes_.insert(cur_node->index, cur_node->time_idx, cur_node);
-    // std::cout << "time start: " << time_start << std::endl;
-  } else{
-    expanded_nodes_.insert(cur_node->index, cur_node); // insert to hashtable expanded_nodes_
-  }
-  NodePtr neighbor = NULL;
+  expanded_nodes_.insert(cur_node->index, cur_node); // insert to hashtable expanded_nodes_
+  
+  //NodePtr neighbor = NULL;
   NodePtr terminate_node = NULL;
 
   /* ---------- search loop ---------- */
@@ -126,7 +118,6 @@ int Astar::search(Eigen::Vector2d start_pt, Eigen::Vector2d end_pt, bool dynamic
 
     Eigen::Vector2d cur_pos = cur_node->position;
     Eigen::Vector2d pro_pos;
-    double pro_t; // for time dimension
 
     Eigen::Vector2d d_pos;
 
@@ -152,12 +143,9 @@ int Astar::search(Eigen::Vector2d start_pt, Eigen::Vector2d end_pt, bool dynamic
           /* not in close set */
           Eigen::Vector2i pro_id = posToIndex(pro_pos);
           NodePtr pro_node=NULL;
-          if (dynamic) {
-            int pro_t_id = timeToIndex(pro_t);
-            pro_node =expanded_nodes_.find(pro_id, pro_t_id);
-          }else{
-            pro_node =expanded_nodes_.find(pro_id);
-          }
+
+          pro_node =expanded_nodes_.find(pro_id);
+          
           
           // if pro_node is expended and is in closeset
           if (pro_node != NULL && pro_node->node_state == IN_CLOSE_SET) {
@@ -172,16 +160,22 @@ int Astar::search(Eigen::Vector2d start_pt, Eigen::Vector2d end_pt, bool dynamic
           //                         -1.0);
 
           // check if pro_ps is in collision
-          double dist = edt_environment_->evaluateCoarseEDT(pro_pos);
-          if (dist <= margin_) {
+          int occu = edt_environment_->getOccupancy(pro_pos);
+          if (occu==1){
             std::cout << "in collision" << std::endl;
             continue;
           }
+          
+          // double dist = edt_environment_->evaluateCoarseEDT(pro_pos);
+          // if (dist <= margin_) {
+          //   std::cout << "in collision" << std::endl;
+          //   continue;
+          // }
 
           /* ---------- compute cost ---------- */
-          double time_to_goal, tmp_g_score, tmp_f_score;
+          double tmp_g_score, tmp_f_score;
           tmp_g_score = d_pos.squaredNorm() + cur_node->g_score;
-          tmp_f_score = tmp_g_score + lambda_heu_ * getEuclHeu(pro_pos, end_pt);
+          tmp_f_score = tmp_g_score + lambda_heu_ * getDiagHeu(pro_pos, end_pt); //getEuclHeu
 
           if (pro_node == NULL) { // pro_node has not been expanded, was not in openset
             pro_node = path_node_pool_[use_node_num_];
@@ -191,16 +185,10 @@ int Astar::search(Eigen::Vector2d start_pt, Eigen::Vector2d end_pt, bool dynamic
             pro_node->g_score = tmp_g_score;
             pro_node->parent = cur_node;
             pro_node->node_state = IN_OPEN_SET;
-            if (dynamic) {
-              pro_node->time = cur_node->time + 1.0;
-              pro_node->time_idx = timeToIndex(pro_node->time);
-            }
+            
             open_set_.push(pro_node);
 
-            if (dynamic)
-              expanded_nodes_.insert(pro_id, pro_node->time, pro_node);
-            else
-              expanded_nodes_.insert(pro_id, pro_node);
+            expanded_nodes_.insert(pro_id, pro_node);
 
             use_node_num_ += 1;
             if (use_node_num_ == allocate_num_) {
@@ -214,7 +202,6 @@ int Astar::search(Eigen::Vector2d start_pt, Eigen::Vector2d end_pt, bool dynamic
               pro_node->f_score = tmp_f_score;
               pro_node->g_score = tmp_g_score;
               pro_node->parent = cur_node;
-              if (dynamic) pro_node->time = cur_node->time + 1.0;
             }
           } else {
             std::cout << "error type in searching: " << pro_node->node_state << std::endl;
@@ -276,11 +263,12 @@ Eigen::Vector2i Astar::posToIndex(Eigen::Vector2d pt) {
 
 int Astar::timeToIndex(double time) {
   int idx = floor((time - time_origin_) * inv_time_resolution_);
+  return idx;
 }
 
 std::vector<Eigen::Vector2d> Astar::getPath() {
   std::vector<Eigen::Vector2d> path;
-  for (int i = 0; i < path_nodes_.size(); ++i) {
+  for (unsigned int i = 0; i < path_nodes_.size(); ++i) {
     path.push_back(path_nodes_[i]->position);
   }
   return path;
