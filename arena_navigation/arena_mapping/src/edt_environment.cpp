@@ -10,6 +10,10 @@ void EDTEnvironment::setMap(SDFMap::Ptr  map) {
   resolution_inv_ = 1 / sdf_map_->getResolution();
 }
 
+int EDTEnvironment::getOccupancy(Eigen::Vector2d pos){
+  return sdf_map_->getFusedInflateOccupancy(pos);
+}
+
 /* Get distance*/
 double EDTEnvironment::evaluateCoarseEDT(Eigen::Vector2d& pos) {
   double d1 = sdf_map_->getDistance(pos);

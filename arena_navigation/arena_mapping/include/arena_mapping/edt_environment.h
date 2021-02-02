@@ -36,6 +36,9 @@ public:
 
     void getMapRegion(Eigen::Vector2d& ori, Eigen::Vector2d& size) {sdf_map_->getRegion(ori, size);}
 
+    /* Get occupancy */
+    int getOccupancy(Eigen::Vector2d pos);
+
     /* Get distance*/
     double evaluateCoarseEDT(Eigen::Vector2d& pos);
 

@@ -134,6 +134,7 @@ struct MappingData {
   bool occ_need_update_, local_updated_, esdf_need_update_;
   bool has_first_depth_;
   bool has_odom_, has_cloud_;
+  bool has_static_map_;
 
   // laser scan projected point cloud
   std::vector<Eigen::Vector2d> proj_points_;
@@ -192,6 +193,7 @@ class SDFMap{
         inline int getOccupancy(Eigen::Vector2d pos);
         inline int getOccupancy(Eigen::Vector2i id);
         inline int getInflateOccupancy(Eigen::Vector2d pos);
+        inline int getFusedInflateOccupancy(Eigen::Vector2d pos);
 
         // utils: bound index, known, unknown, free, occupied
         inline void boundIndex(Eigen::Vector2i& id);
@@ -283,6 +285,9 @@ class SDFMap{
         Eigen::Vector2d closetPointInMap(const Eigen::Vector2d& pt, const Eigen::Vector2d& laser_pos);
         int setCacheOccupancy(Eigen::Vector2d pos, int occ);
 
+        void fuseOccupancyBuffer();
+
+
         /* ESDF map update */
         void updateESDF2d();
 
@@ -356,12 +361,13 @@ inline void SDFMap::setOccupancy(Eigen::Vector2d pos, double occ) {
 
   md_.occupancy_buffer_[toAddress(id)] = occ;
 }
+
 inline int SDFMap::getOccupancy(Eigen::Vector2d pos) {
   if (!isInMap(pos)) return -1;
 
   Eigen::Vector2i id;
   posToIndex(pos, id);
-
+  
   return md_.occupancy_buffer_[toAddress(id)] > mp_.min_occupancy_log_ ? 1 : 0;
 }
 inline int SDFMap::getOccupancy(Eigen::Vector2i id) {
@@ -370,13 +376,27 @@ inline int SDFMap::getOccupancy(Eigen::Vector2i id) {
 
   return md_.occupancy_buffer_[toAddress(id)] > mp_.min_occupancy_log_ ? 1 : 0;
 }
+
 inline int SDFMap::getInflateOccupancy(Eigen::Vector2d pos) {
   if (!isInMap(pos)) return -1;
 
   Eigen::Vector2i id;
   posToIndex(pos, id);
+  return int(md_.occupancy_buffer_inflate_[toAddress(id)]);
+}
+
+inline int SDFMap::getFusedInflateOccupancy(Eigen::Vector2d pos){
+  if (!isInMap(pos)) return -1;
+
+  Eigen::Vector2i id;
+  posToIndex(pos, id);
+
+  if(md_.has_static_map_ && md_.occupancy_static_buffer_inflate_[toAddress(id)]==1){
+    return 1;
+  }
 
   return int(md_.occupancy_buffer_inflate_[toAddress(id)]);
+
 }
 
 inline void SDFMap::boundIndex(Eigen::Vector2i& id) {
@@ -415,7 +435,6 @@ inline bool SDFMap::isKnownOccupied(const Eigen::Vector2i& id) {
 
   return md_.occupancy_buffer_inflate_[adr] == 1;
 }
-
 
 inline void SDFMap::inflatePoint(const Eigen::Vector2i& pt, int step, std::vector<Eigen::Vector2i>& pts) {
   int num = 0;

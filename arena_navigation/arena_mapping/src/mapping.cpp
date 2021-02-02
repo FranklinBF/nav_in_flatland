@@ -79,6 +79,22 @@ void SDFMap::initMap(ros::NodeHandle& nh){
     mp_.min_occupancy_log_ = logit(mp_.p_occ_);           // log of occupancy determined prob
     mp_.unknown_flag_ = 0.01;
 
+    /* map data param */
+    md_.occ_need_update_ = false;           // scan_odom_callback
+    md_.local_updated_ = false;             // raycast process
+    md_.esdf_need_update_ = false;          // scan callback, occupancy updated 
+    //md_.has_first_depth_ = false;
+    md_.has_odom_ = false;                  // odom callback [not much use]
+    md_.has_cloud_ = false;                 // scan callback [no use]
+    md_.depth_cloud_cnt_ = 0;               // no use
+    md_.has_static_map_=false;
+    
+    md_.esdf_time_ = 0.0;
+    md_.fuse_time_ = 0.0;
+    md_.update_num_ = 0;
+    md_.max_esdf_time_ = 0.0;
+    md_.max_fuse_time_ = 0.0;
+
     /* initialize data buffers*/
     // global map buffer size
     int buffer_size = mp_.map_pixel_num_(0) * mp_.map_pixel_num_(1) ;           // buffer size
@@ -106,25 +122,11 @@ void SDFMap::initMap(ros::NodeHandle& nh){
     md_.tmp_buffer1_ = std::vector<double>(buffer_size, 0);
     
     /* some counter */
-    md_.raycast_num_ = 0;
-    md_.proj_points_cnt = 0;
+    md_.raycast_num_ = 0;                   // just count how many raycast is done [not much use]
+    md_.proj_points_cnt = 0;                // raycast is triggered only proj_points_cnt>0
 
 
-    /* map data param */
-    md_.occ_need_update_ = false;
-    md_.local_updated_ = false;
-    md_.esdf_need_update_ = false;
-    //md_.has_first_depth_ = false;
-    md_.has_odom_ = false;
-    md_.has_cloud_ = false;
-    md_.depth_cloud_cnt_ = 0;
-
-    md_.esdf_time_ = 0.0;
-    md_.fuse_time_ = 0.0;
-    md_.update_num_ = 0;
-    md_.max_esdf_time_ = 0.0;
-    md_.max_fuse_time_ = 0.0;
-
+    
     /* show map param */
     std::cout << "x_size_pix: " << mp_.map_pixel_num_(0) << std::endl;
     std::cout << "y_size_pix: " << mp_.map_pixel_num_(1) << std::endl;
@@ -156,7 +158,7 @@ void SDFMap::initMap(ros::NodeHandle& nh){
     indep_odom_sub_ =node_.subscribe<nav_msgs::Odometry>("/odom", 10, &SDFMap::odomCallback, this);
 
     // timer callbacks
-    occ_timer_ = node_.createTimer(ros::Duration(0.05),   &SDFMap::updateOccupancyCallback, this);
+    occ_timer_ = node_.createTimer(ros::Duration(0.05),   &SDFMap::updateOccupancyCallback, this); // raycasting & setCacheOccupancy is the key
     esdf_timer_ = node_.createTimer(ros::Duration(0.05), &SDFMap::updateESDFCallback, this);
     vis_timer_ = node_.createTimer(ros::Duration(0.05), &SDFMap::visCallback, this);
     
@@ -200,6 +202,7 @@ void SDFMap::get_static_buffer(std::vector<char> & static_buffer_inflate){
   int data;
   double value;
 
+  md_.has_static_map_=true;    
   /* inflate the point */
   int inf_step = ceil(mp_.obstacles_inflation_ / mp_.resolution_);
   
@@ -263,7 +266,9 @@ void SDFMap::get_static_buffer(std::vector<char> & static_buffer_inflate){
             }
         }
       
-      }       
+      }   
+
+     
 }
 
 
@@ -365,7 +370,7 @@ void SDFMap::scanCallback(const sensor_msgs::LaserScanConstPtr& scan) {
   pcl::fromROSMsg(scan_cloud, latest_cloud);
   md_.has_cloud_ = true;
   
-  /* reset buffer -----------------------------------*/
+  /* reset buffer: occupancy_buffer_inflate_, distance_buffer_ -----------------------------------*/
   // check odom available
   if (!md_.has_odom_) {
     // std::cout << "no odom!" << std::endl;
@@ -427,8 +432,8 @@ void SDFMap::scanCallback(const sensor_msgs::LaserScanConstPtr& scan) {
 
             int idx_inf = toAddress(inf_pt);
 
+            // add point_inf into occupancy_buffer_inflate_
             md_.occupancy_buffer_inflate_[idx_inf] = 1;
-            
           }
     }
   }
@@ -479,6 +484,7 @@ void SDFMap::resetBuffer(Eigen::Vector2d min_pos, Eigen::Vector2d max_pos) {
 }
 
 
+
 /*Time event callback: occupancy update*/
 void SDFMap::updateOccupancyCallback(const ros::TimerEvent& /*event*/) {
 
@@ -494,9 +500,9 @@ void SDFMap::updateOccupancyCallback(const ros::TimerEvent& /*event*/) {
   projectDepthCloud();
   raycastProcess();
   
-
+  // raycast is done, local_updated_ will be setted true
   if (md_.local_updated_) clearAndInflateLocalMap();
-
+  
   t2 = ros::WallTime::now();
 
   md_.fuse_time_ += (t2 - t1).toSec();
@@ -564,7 +570,7 @@ void SDFMap::raycastProcess() {
     
 
     // set flag for projected point
-    if (!isInMap(pt_w)) {
+    if (!isInMap(pt_w)) {// if not in map, select the nearest point in map & set occ=0
       pt_w = closetPointInMap(pt_w, md_.laser_pos_);
 
       length = (pt_w - md_.laser_pos_).norm();
@@ -573,13 +579,13 @@ void SDFMap::raycastProcess() {
       }
       pix_idx = setCacheOccupancy(pt_w, 0);
 
-    } else {
+    } else {// if in map
       length = (pt_w - md_.laser_pos_).norm();
 
-      if (length > mp_.max_ray_length_) {
+      if (length > mp_.max_ray_length_) {// if in map, but exceed max_ray_length, set occ=0
         pt_w = (pt_w - md_.laser_pos_) / length * mp_.max_ray_length_ + md_.laser_pos_;
         pix_idx = setCacheOccupancy(pt_w, 0);
-      } else {
+      } else {                            // if in map, and inside max_ray_length, set occ=1
         pix_idx = setCacheOccupancy(pt_w, 1);
       }
     }
@@ -603,10 +609,8 @@ void SDFMap::raycastProcess() {
 
     raycaster.setInput(pt_w / mp_.resolution_, md_.laser_pos_ / mp_.resolution_);
 
-    int cnt=0;
+
     while (raycaster.step(ray_pt)) {
-      cnt++;
-      //std::cout<<"ray:"<<cnt<<std::endl;
       Eigen::Vector2d tmp = (ray_pt + half) * mp_.resolution_;
       length = (tmp - md_.laser_pos_).norm();
 
@@ -655,10 +659,8 @@ void SDFMap::raycastProcess() {
   boundIndex(max_id);
 
   // std::cout << "cache all: " << md_.cache_voxel_.size() << std::endl;
-  int cnt_cache=0;
+  /*update cells in md_.cache_pixel's probability in occupancy_buffer */
   while (!md_.cache_pixel_.empty()) {
-    cnt_cache++;
-    //std::cout<<"cnt_cache:"<<cnt_cache<<std::endl;
     Eigen::Vector2i idx = md_.cache_pixel_.front();
     int idx_ctns = toAddress(idx);
     md_.cache_pixel_.pop();
@@ -724,9 +726,9 @@ int SDFMap::setCacheOccupancy(Eigen::Vector2d pos, int occ) {
   }
   
 
-  if (md_.count_hit_and_miss_[idx_ctns] ==2) {// ==1
+  if (md_.count_hit_and_miss_[idx_ctns] ==2) {// 1, // occ probability update for hit less often 
     md_.cache_pixel_.push(id);
-  }else if(occ==0){
+  }else if(occ==0){                           // occ probability update for every miss
     md_.cache_pixel_.push(id);
   }
 
@@ -757,7 +759,7 @@ void SDFMap::clearAndInflateLocalMap() {
   boundIndex(max_cut_m);
 
 
-  // clear data outside the local range
+  /* clear data outside the local range */
   for (int x = min_cut_m(0); x <= max_cut_m(0); ++x) {
     for (int y = min_cut_m(1); y < min_cut(1); ++y) {
       int idx = toAddress(x, y);
@@ -772,7 +774,7 @@ void SDFMap::clearAndInflateLocalMap() {
     }
   }
 
-
+  /* inflated occupied pixels inside the local range */
   // inflate occupied voxels to compensate robot size
   int inf_step = ceil(mp_.obstacles_inflation_ / mp_.resolution_);
   // int inf_step_z = 1;
@@ -804,6 +806,48 @@ void SDFMap::clearAndInflateLocalMap() {
         }
     }
 
+}
+
+void SDFMap::fuseOccupancyBuffer(){
+  if(!md_.has_static_map_) return;
+
+  Eigen::Vector2i min_cut = md_.local_bound_min_;
+  Eigen::Vector2i max_cut = md_.local_bound_max_;
+
+  int lmm = mp_.local_map_margin_ / 2;
+  min_cut -= Eigen::Vector2i(lmm, lmm);
+  max_cut += Eigen::Vector2i(lmm, lmm);
+
+  boundIndex(min_cut);
+  boundIndex(max_cut);
+
+  for (int x = min_cut(0); x <= max_cut(0); ++x)
+    for (int y = min_cut(1); y <= max_cut(1); ++y){
+      if(md_.occupancy_static_buffer_inflate_[toAddress(x, y)]==1){
+        md_.occupancy_buffer_inflate_[toAddress(x, y)] = 1;
+      }
+    }
+
+  // Eigen::Vector2d p2d;
+  // Eigen::Vector2i pt_idx;
+
+  // Eigen::Vector2d min_local =md_.laser_pos_ - mp_.local_update_range_;
+  // Eigen::Vector2d max_local = md_.laser_pos_ + mp_.local_update_range_;
+
+  // for (int x = min_local(0); x <= max_local(0); ++x)
+  //   for (int y = min_local(1); y <= max_local(1); ++y){ 
+  //       p2d(0)=x;p2d(1)=y;
+  //       posToIndex(p2d, pt_idx);
+
+  //       if (!isInMap(pt_idx)) continue;
+
+  //       int pt_addr = toAddress(pt_idx);
+
+  //       // add point_inf into occupancy_buffer_inflate_
+  //       if(md_.occupancy_static_buffer_inflate_[pt_addr]==1){
+  //         md_.occupancy_buffer_inflate_[pt_addr] = 1;
+  //       }
+  //   }
 }
 
 /*Time event callback: ESDF update*/
