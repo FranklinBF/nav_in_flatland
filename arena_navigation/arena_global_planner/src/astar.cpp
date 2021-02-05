@@ -28,11 +28,14 @@ void Astar::reset() {
 void Astar::setParam(ros::NodeHandle& nh) {
   nh.param("astar/resolution_astar", resolution_, 0.05);
   nh.param("astar/time_resolution", time_resolution_, 0.8);
-  nh.param("astar/lambda_heu", lambda_heu_, 1.0);
-  nh.param("astar/margin", margin_, 0.2);
+  nh.param("astar/lambda_heu", lambda_heu_, 0.0001);
   nh.param("astar/allocate_num", allocate_num_, 100000);
+
+  nh.param("astar/margin", margin_, 0.2);
+
   tie_breaker_ = 1.0 + 1.0 / 10000;
   std::cout << "margin:" << margin_ << std::endl;
+  std::cout << "lambda_heu_:" << lambda_heu_ << std::endl;
 }
 
 void Astar::setEnvironment(const EDTEnvironment::Ptr& env) {
@@ -162,7 +165,7 @@ int Astar::search(Eigen::Vector2d start_pt, Eigen::Vector2d end_pt, bool dynamic
           // check if pro_ps is in collision
           int occu = edt_environment_->getOccupancy(pro_pos);
           if (occu==1){
-            std::cout << "in collision" << std::endl;
+            //std::cout << "in collision" << std::endl;
             continue;
           }
           
@@ -175,7 +178,7 @@ int Astar::search(Eigen::Vector2d start_pt, Eigen::Vector2d end_pt, bool dynamic
           /* ---------- compute cost ---------- */
           double tmp_g_score, tmp_f_score;
           tmp_g_score = d_pos.squaredNorm() + cur_node->g_score;
-          tmp_f_score = tmp_g_score + lambda_heu_ * getDiagHeu(pro_pos, end_pt); //getEuclHeu
+          tmp_f_score = tmp_g_score + lambda_heu_ * getEuclHeu(pro_pos, end_pt); //getEuclHeu
 
           if (pro_node == NULL) { // pro_node has not been expanded, was not in openset
             pro_node = path_node_pool_[use_node_num_];
@@ -290,95 +293,4 @@ Eigen::Vector2d goalCallback(const geometry_msgs::PoseStampedPtr& msg){
 }
 
 
-void GlobalPlanner:: init(ros::NodeHandle & nh){
-  node_=nh;
-  visualization_.reset(new PlanningVisualization(nh));
-  //map
-  sdf_map_.reset(new SDFMap);
-  sdf_map_->initMap(nh);
 
-  edt_environment_.reset(new EDTEnvironment);
-  edt_environment_->setMap(sdf_map_);
-
-  // path finder
-  global_planner_.reset(new Astar);
-  global_planner_->setParam(nh);
-  global_planner_->setEnvironment(edt_environment_);
-  global_planner_->init();
-
-  global_planner_->reset();
-
-  // odom
-  have_odom_=false;
-
-  // subscriber
-  goal_sub_ =nh.subscribe("/goal", 1, &GlobalPlanner::goalCallback,this);
-  odom_sub_ = nh.subscribe("/odometry/ground_truth", 1, &GlobalPlanner::odomCallback, this);
-
-  // publisher
-}
-
-void GlobalPlanner::goalCallback(const geometry_msgs::PoseStampedPtr& msg){
-  if(have_odom_==false) return;
-  end_pt_<< msg->pose.position.x,msg->pose.position.y;
-  std::cout << "Goal set!" << std::endl;
-  geometry_msgs::PoseStamped p;
-  p.header=msg->header;
-  p.pose=msg->pose;
-  visualization_->drawGoal(p, 0.5, Eigen::Vector4d(1, 1, 1, 1.0));
-  std::cout << "Goal vis!" << std::endl;
-  start_pt_=current_pt_;
-  findPath(start_pt_,end_pt_);
-
-}
-
-void GlobalPlanner::odomCallback(const nav_msgs::OdometryConstPtr& msg){
-  current_pt_<<msg->pose.pose.position.x, msg->pose.pose.position.y;
-  have_odom_=true;
-}
-void GlobalPlanner::findPath(Eigen::Vector2d start_pt,Eigen::Vector2d end_pt){
-  global_planner_->reset();
-  int status = global_planner_->search( start_pt, end_pt, false,-1.0);
-  if(status==global_planner_->NO_PATH){
-    std::cout << "[Astar replan]: Can't find path." <<std:: endl;
-  }else{
-    global_path_=global_planner_->getPath();
-    std::cout << "[Astar replan]: Astar search success."<< std::endl;
-
-    //create a path message
-    nav_msgs::Path gui_path;
-    gui_path.poses.resize(global_path_.size());
-    gui_path.header.frame_id = "/map";
-    gui_path.header.stamp = ros::Time::now();
-
-    // Extract the plan in world co-ordinates, we assume the path is all in the same frame
-    for(unsigned int i=0; i < global_path_.size(); i++){
-      gui_path.poses[i].header = gui_path.header;
-      gui_path.poses[i].pose.position.x=global_path_[i](0);
-      gui_path.poses[i].pose.position.y=global_path_[i](1);
-      gui_path.poses[i].pose.position.z=0.0;
-      //std::cout<< "b="<<gui_path.poses[i].pose.position<<std::endl;
-    }
-
-    visualization_->drawGlobalPath(gui_path,0.2, Eigen::Vector4d(0.5, 0.5, 0.5, 0.6));
-
-    
-  }
-  
-}
-
-
-int main(int argc, char **argv){
-    
-    ros::init(argc, argv, "sdf_map");
-    std::cout<<"start"<<std::endl;
-    ros::NodeHandle nh("~");
-
-    GlobalPlanner::Ptr gp;
-    gp.reset(new GlobalPlanner);
-    gp->init(nh);
-    
-
-    ros::spin();
-    return 0;
-}

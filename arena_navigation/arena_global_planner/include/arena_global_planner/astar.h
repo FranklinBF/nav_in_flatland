@@ -14,15 +14,8 @@
 #include <queue>
 #include <memory>
 
-#include <geometry_msgs/PoseStamped.h>
-#include <nav_msgs/Odometry.h>
-#include <nav_msgs/Path.h>
-
 #include "arena_mapping/mapping.h"
 #include "arena_mapping/edt_environment.h"
-#include <plan_visualization/planning_visualization.h>
-
-
 
 #define IN_CLOSE_SET 'a'
 #define IN_OPEN_SET 'b'
@@ -150,52 +143,22 @@ public:
 
     /* main API */
     void setParam(ros::NodeHandle& nh);
+
     void init();
+
     void reset();
+
     int search(Eigen::Vector2d start_pt, Eigen::Vector2d end_pt, bool dynamic = false,
              double time_start = -1.0);
 
     void setEnvironment(const EDTEnvironment::Ptr& env);
+
     std::vector<Eigen::Vector2d> getPath();
+
     std::vector<NodePtr> getVisitedNodes();
 
     typedef std::shared_ptr<Astar> Ptr;
-
-
 };
-
-class GlobalPlanner{
-private:
-  ros::NodeHandle node_;
-  ros::Subscriber goal_sub_, odom_sub_;
-  ros::Publisher global_path_pub_;
-
-  Eigen::Vector2d start_pt_;
-  Eigen::Vector2d end_pt_;
-  Eigen::Vector2d current_pt_;
-  std::vector<Eigen::Vector2d> global_path_;
-
-  SDFMap::Ptr sdf_map_;
-  EDTEnvironment::Ptr edt_environment_;
-  Astar::Ptr global_planner_;
-
-  bool have_odom_;
-
-
-  PlanningVisualization::Ptr visualization_;
-
-public:
-  GlobalPlanner(){};
-  ~GlobalPlanner(){};
-  void init(ros::NodeHandle & nh);
-  void goalCallback(const geometry_msgs::PoseStampedPtr& msg);
-  void odomCallback(const nav_msgs::OdometryConstPtr& msg);
-  void findPath(Eigen::Vector2d start_pt,Eigen::Vector2d end_pt);
-
-  typedef std::shared_ptr<GlobalPlanner> Ptr;
-
-};
-
 
 
 
