@@ -1,0 +1,84 @@
+
+#ifndef _GLOBAL_PLANNER_COLLECTOR_H
+#define _GLOBAL_PLANNER_COLLECTOR_H
+
+#include <iostream>
+#include <ros/console.h>
+#include <ros/ros.h>
+#include <string.h>
+
+#include <geometry_msgs/PoseStamped.h>
+#include <nav_msgs/Odometry.h>
+#include <nav_msgs/Path.h>
+
+#include "arena_mapping/mapping.h"
+#include "arena_mapping/edt_environment.h"
+#include <plan_visualization/planning_visualization.h>
+
+#include "arena_global_planner/astar.h"
+#include "arena_global_planner/kinodynamic_astar.h"
+
+class GlobalPlanner{
+private:
+  // ros node
+  ros::NodeHandle node_;
+
+  // subscriber
+  ros::Subscriber goal_sub_, odom_sub_;
+
+  // publisher
+  ros::Publisher global_path_pub_;
+  ros::Publisher astar_path_pub_;
+  ros::Publisher kino_astar_path_pub_;
+  ros::Publisher sample_path_pub_;
+
+  // planner variables
+  Eigen::Vector2d current_pt_;                                    // current pt
+  Eigen::Quaterniond odom_orient_;                                // orient
+
+  Eigen::Vector2d odom_pos_, odom_vel_;                           // odometry state
+  Eigen::Vector2d start_pt_, start_vel_, start_acc_, start_yaw_;  // start state
+  Eigen::Vector2d end_pt_, end_vel_;                              // target state
+
+  std::vector<Eigen::Vector2d> global_path_;
+
+  // map & enviornment
+  SDFMap::Ptr sdf_map_;
+  EDTEnvironment::Ptr edt_environment_;
+  
+  // planner objects
+  bool use_astar_, use_kino_astar_;
+  Astar::Ptr global_planner_astar_;
+  KinodynamicAstar::Ptr global_planner_kino_astar_;
+
+  // traj param
+  double ctrl_pt_dist_;
+  double max_vel_;
+
+  // flags
+  bool have_odom_;
+
+  PlanningVisualization::Ptr visualization_;
+  
+public:
+  GlobalPlanner(){};
+  ~GlobalPlanner(){};
+
+  enum { REACH_HORIZON = 1, REACH_END = 2, NO_PATH = 3, NEAR_END = 4 };
+
+  void init(ros::NodeHandle & nh);
+
+  void goalCallback(const geometry_msgs::PoseStampedPtr& msg);
+
+  void odomCallback(const nav_msgs::OdometryConstPtr& msg);
+
+  void findPath(Eigen::Vector2d start_pt, Eigen::Vector2d start_vel, Eigen::Vector2d start_acc, Eigen::Vector2d end_pt, Eigen::Vector2d end_vel);
+
+  void visualize_path(std::vector<Eigen::Vector2d> path, const ros::Publisher & pub);
+  typedef std::shared_ptr<GlobalPlanner> Ptr;
+
+};
+
+
+
+#endif

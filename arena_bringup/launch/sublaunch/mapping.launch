@@ -2,29 +2,51 @@
     <!-- arena_plan_manager -->
     <node pkg="arena_global_planner" name="global_planner" type="arena_global_planner" output="screen">
         <!-- <param name="train_mode" value="$(arg train_mode)"/> -->
-        
-        <!-- map size -->
-        <param name="sdf_map/frame_id"              value="map"/>
-        <param name="sdf_map/resolution"            value="0.05" />   <!-- provide by map_server: static_map -->
-        
-        <param name="sdf_map/local_update_range_x"  value="10.0" />    <!-- update range -->
-        <param name="sdf_map/local_update_range_y"  value="10.0" />    <!-- update range -->
-        <param name="sdf_map/local_map_margin"       value="50.0"/>     <!-- Keep in history range -->
+        <param name="global_planner/use_astar"              value="true"/>
+        <param name="global_planner/use_kino_astar"         value="true" />
 
-        <param name="sdf_map/obstacles_inflation"    value="0.1" /> 
-        <param name="sdf_map/local_bound_inflate"    value="0.0"/>
+        <!-- astar -->
+        <param name="astar/resolution_astar"                value="0.05"/>
+        <param name="astar/time_resolution"                 value="0.8" />
+        <param name="astar/lambda_heu"                      value="0.05"/>
+        <param name="astar/allocate_num"                    value="100000" />
+
+        <!-- kino astar -->
+        <param name="kino_astar/max_tau"                    value="0.6"/>
+        <param name="kino_astar/init_max_tau"               value="0.8"/>
+        <param name="kino_astar/max_vel"                    value="3"/>
+        <param name="kino_astar/max_acc"                    value="1.0"/>
+        <param name="kino_astar/w_time"                     value="10.0"/>
+        
+        <param name="kino_astar/horizon"                    value="20" />
+        <param name="kino_astar/resolution_astar"           value="0.05"/>
+        <param name="kino_astar/time_resolution"            value="0.8" />
+        <param name="kino_astar/allocate_num"               value="100000"/>
+        <param name="kino_astar/check_num"                  value="5"/>         
+        
+
+        <!-- map size -->
+        <param name="sdf_map/frame_id"                      value="map"/>
+        <param name="sdf_map/resolution"                    value="0.05" />   <!-- provide by map_server: static_map -->
+        
+        <param name="sdf_map/local_update_range_x"          value="10.0" />    <!-- update range -->
+        <param name="sdf_map/local_update_range_y"          value="10.0" />    <!-- update range -->
+        <param name="sdf_map/local_map_margin"              value="50.0"/>     <!-- Keep in history range -->
+
+        <param name="sdf_map/obstacles_inflation"           value="0.8" /> 
+        <param name="sdf_map/local_bound_inflate"           value="0.0"/>
         
         <!-- local fusion -->
-        <param name="sdf_map/p_hit"  value="0.55"/>     <!-- 0.65 -->
-        <param name="sdf_map/p_miss" value="0.2"/>     <!-- 0.35 -->
-        <param name="sdf_map/p_min"  value="0.12"/>     <!-- 0.12 -->
-        <param name="sdf_map/p_max"  value="0.80"/>     <!-- 0.90 -->
-        <param name="sdf_map/p_occ"  value="0.70"/>     <!-- 0.80 -->
-        <param name="sdf_map/min_ray_length" value="0.5"/>
-        <param name="sdf_map/max_ray_length" value="10.0"/>
+        <param name="sdf_map/p_hit"                         value="0.55"/>     <!-- 0.65   0.55    -->
+        <param name="sdf_map/p_miss"                        value="0.2"/>      <!-- 0.35   0.20    -->
+        <param name="sdf_map/p_min"                         value="0.12"/>     <!-- 0.12   0.12    -->
+        <param name="sdf_map/p_max"                         value="0.80"/>     <!-- 0.90   0.80    -->
+        <param name="sdf_map/p_occ"                         value="0.70"/>     <!-- 0.80   0.70    -->
+        <param name="sdf_map/min_ray_length"                value="0.5"/>
+        <param name="sdf_map/max_ray_length"                value="10.0"/>
 
-        <param name="sdf_map/show_occ_time"  value="false"/>
-        <param name="sdf_map/show_esdf_time" value="false"/>
+        <param name="sdf_map/show_occ_time"                 value="false"/>
+        <param name="sdf_map/show_esdf_time"                value="false"/>
         
     </node>
 </launch>
