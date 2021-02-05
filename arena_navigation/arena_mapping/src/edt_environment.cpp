@@ -58,25 +58,7 @@ std::pair<double, Eigen::Vector2d> EDTEnvironment::interpolateBilinear(double va
   // calculate gradient
   grad[1]= (v1-v0) * resolution_inv_;
   grad[0]= ((1 - diff[1]) * (v10 - v00) + diff[1] * (v11 - v01)) * resolution_inv_;
-  /*
-  // trilinear interpolation
-  double v00 = (1 - diff(0)) * values[0][0][0] + diff(0) * values[1][0][0];
-  double v01 = (1 - diff(0)) * values[0][0][1] + diff(0) * values[1][0][1];
-  double v10 = (1 - diff(0)) * values[0][1][0] + diff(0) * values[1][1][0];
-  double v11 = (1 - diff(0)) * values[0][1][1] + diff(0) * values[1][1][1];
-  double v0 = (1 - diff(1)) * v00 + diff(1) * v10;
-  double v1 = (1 - diff(1)) * v01 + diff(1) * v11;
 
-  value = (1 - diff(2)) * v0 + diff(2) * v1;
-
-  grad[2] = (v1 - v0) * resolution_inv_;
-  grad[1] = ((1 - diff[2]) * (v10 - v00) + diff[2] * (v11 - v01)) * resolution_inv_;
-  grad[0] = (1 - diff[2]) * (1 - diff[1]) * (values[1][0][0] - values[0][0][0]);
-  grad[0] += (1 - diff[2]) * diff[1] * (values[1][1][0] - values[0][1][0]);
-  grad[0] += diff[2] * (1 - diff[1]) * (values[1][0][1] - values[0][0][1]);
-  grad[0] += diff[2] * diff[1] * (values[1][1][1] - values[0][1][1]);
-  grad[0] *= resolution_inv_;
-  */
 }
 
 
@@ -96,6 +78,7 @@ std::pair<double, Eigen::Vector3d> EDTEnvironment::evaluateEDTWithGrad(  const E
 
     // do interpolate to get distance gradient
     interpolateBilinear(dists, diff, dist, grad);
+    
 }
 
 
