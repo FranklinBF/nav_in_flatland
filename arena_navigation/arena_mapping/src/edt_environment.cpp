@@ -18,15 +18,6 @@ int EDTEnvironment::getOccupancy(Eigen::Vector2d pos){
 double EDTEnvironment::evaluateCoarseEDT(Eigen::Vector2d& pos) {
   double d1 = sdf_map_->getDistance(pos);
   return d1;
-
-  /*
-  if (time < 0.0) {
-    return d1;
-  } else {
-    double d2 = minDistToAllBox(pos, time);
-    return min(d1, d2);
-  }
-  */
 }
 
 

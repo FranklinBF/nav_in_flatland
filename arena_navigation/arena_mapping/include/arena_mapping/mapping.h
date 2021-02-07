@@ -9,6 +9,7 @@
 #include <queue>
 #include <vector>
 #include <unordered_map>
+
 //#include <memory>
 #include <pcl/kdtree/kdtree_flann.h>
 #include <algorithm>
@@ -18,11 +19,13 @@
 #include <tf/transform_listener.h>
 
 #include <pcl_conversions/pcl_conversions.h>
+
 // Laser
 #include <sensor_msgs/PointCloud.h>
 #include <sensor_msgs/PointCloud2.h>
 #include <sensor_msgs/LaserScan.h>
 #include <laser_geometry/laser_geometry.h>
+
 // Odom
 #include <geometry_msgs/PoseStamped.h>
 #include <nav_msgs/Odometry.h>
@@ -45,9 +48,6 @@
 
 // raycaster
 #include <arena_mapping/raycast.h>
-
-
-
 
 #define logit(x) (log((x) / (1 - (x))))  
 #define logitxy(x,y) (log((x) / (y)))
@@ -110,18 +110,16 @@ struct MappingParameters {
 
 struct MappingData {
   // main map data, occupancy of each voxel and Euclidean distance
-
   std::vector<double> occupancy_buffer_;
-  std::vector<char> occupancy_buffer_neg;
-  std::vector<char> occupancy_buffer_inflate_;
-  std::vector<char> occupancy_static_buffer_inflate_;
-  std::vector<char> occupancy_full_buffer_inflate_;
+  std::vector<char>   occupancy_buffer_inflate_;
+  std::vector<char>   occupancy_buffer_neg;             // for esdf
+  std::vector<char>   occupancy_static_buffer_inflate_;
+  
   std::vector<double> distance_buffer_;
   std::vector<double> distance_buffer_neg_;
   std::vector<double> distance_buffer_all_;
-  std::vector<double> tmp_buffer1_;
-  std::vector<double> tmp_buffer2_;
-
+  std::vector<double> tmp_buffer1_;                     // for esdf
+  
   // laser  position and pose data
   Eigen::Vector2d laser_pos_, last_laser_pos_;
   Eigen::Quaterniond laser_q_, last_laser_q_;
@@ -135,6 +133,11 @@ struct MappingData {
   bool has_first_depth_;
   bool has_odom_, has_cloud_;
   bool has_static_map_;
+
+  //[new] odom_depth_timeout_
+  ros::Time last_occ_update_time_;
+  bool flag_depth_odom_timeout_;
+  bool flag_use_depth_fusion;
 
   // laser scan projected point cloud
   std::vector<Eigen::Vector2d> proj_points_;
@@ -162,27 +165,26 @@ class SDFMap{
         ~SDFMap() {}
         typedef std::shared_ptr<SDFMap> Ptr;
 
-
-        enum { POSE_STAMPED = 1, ODOMETRY = 2, INVALID_IDX = -10000 };
+        enum { INVALID_IDX = -10000 };
 
         void initMap(ros::NodeHandle& nh);
 
-        /* my old*/
-        // subscribe Laser Scan, publish PointCloud2, transform to pcl::PointCloud
-        //void scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan);
-        //void odometryCallback(const nav_msgs::OdometryConstPtr& odom);
-        
-
         /* occupancy map management */
+        // static map 
+        void get_static_buffer(std::vector<char> & static_buffer_inflate); 
+
         // reset buffer be used in scan_callback: occupancy_buffer_inflate_, distance_buffer_
         void resetBuffer();
         void resetBuffer(Eigen::Vector2d min, Eigen::Vector2d max);
+        
         // pos[meter] to index [pixel cell]
         inline void posToIndex(const Eigen::Vector2d& pos, Eigen::Vector2i& id);
         inline void indexToPos(const Eigen::Vector2i& id, Eigen::Vector2d& pos);
+        
         // index [pixel cell] to buffer array id [num]
         inline int toAddress(const Eigen::Vector2i& id);
         inline int toAddress(int& x, int& y);
+        
         // is in map
         inline bool isInMap(const Eigen::Vector2d& pos);
         inline bool isInMap(const Eigen::Vector2i& idx);
@@ -193,7 +195,7 @@ class SDFMap{
         inline int getOccupancy(Eigen::Vector2d pos);
         inline int getOccupancy(Eigen::Vector2i id);
         inline int getInflateOccupancy(Eigen::Vector2d pos);
-        inline int getFusedInflateOccupancy(Eigen::Vector2d pos);
+        inline int getFusedInflateOccupancy(Eigen::Vector2d pos);  // fuse local and static map 
 
         // utils: bound index, known, unknown, free, occupied
         inline void boundIndex(Eigen::Vector2i& id);
@@ -202,18 +204,16 @@ class SDFMap{
         inline bool isKnownFree(const Eigen::Vector2i& id);
         inline bool isKnownOccupied(const Eigen::Vector2i& id);
 
-
-        // distance field management
+        /* distance field management */
         inline double getDistance(const Eigen::Vector2d& pos);
         inline double getDistance(const Eigen::Vector2i& id);
         void getSurroundPts(const Eigen::Vector2d& pos, Eigen::Vector2d pts[2][2], Eigen::Vector2d& diff);
         
-        // utils map
+        /* utils map */
         void getRegion(Eigen::Vector2d& ori, Eigen::Vector2d& size);
         double getResolution();
-        void get_static_buffer(std::vector<char> & static_buffer_inflate); 
-
-        // visualization publish 
+        
+        /* visualization publish */
         void publishMap();
         void publishStaticMap();
         void publishESDF();
@@ -222,12 +222,7 @@ class SDFMap{
         void publishUnknown();
 
     private:
-        template <typename F_get_val, typename F_set_val>
-        void fillESDF(F_get_val f_get_val, F_set_val f_set_val, int start, int end, int dim);
-
-
         ros::NodeHandle node_;
-
         MappingParameters mp_;
         MappingData md_;
 
@@ -257,15 +252,12 @@ class SDFMap{
         ros::Publisher update_range_pub_;
         ros::Publisher unknown_pub_;
 
-        //ros::Publisher map_pub_, esdf_pub_, map_inf_pub_, update_range_pub_;
-        //ros::Publisher unknown_pub_, depth_pub_;
-
         // timer
         ros::Timer occ_timer_;
-        int cnt_occ_;
         ros::Timer esdf_timer_;
         ros::Timer vis_timer_;
 
+        
         /* Sensor Callbacks */
         void scanOdomCallback(const sensor_msgs::LaserScanConstPtr& scan, const nav_msgs::OdometryConstPtr& odom);
         void scanCallback(const sensor_msgs::LaserScanConstPtr& scan);
@@ -281,24 +273,22 @@ class SDFMap{
         void projectDepthCloud();
         void raycastProcess();
         void clearAndInflateLocalMap();
+
         inline void inflatePoint(const Eigen::Vector2i& pt, int step, std::vector<Eigen::Vector2i>& pts);
-        Eigen::Vector2d closetPointInMap(const Eigen::Vector2d& pt, const Eigen::Vector2d& laser_pos);
         int setCacheOccupancy(Eigen::Vector2d pos, int occ);
-
-        void fuseOccupancyBuffer();
-
+        Eigen::Vector2d closetPointInMap(const Eigen::Vector2d& pt, const Eigen::Vector2d& laser_pos);
+        //void fuseOccupancyBuffer();
 
         /* ESDF map update */
         void updateESDF2d();
+        
+        template <typename F_get_val, typename F_set_val>
+        void fillESDF(F_get_val f_get_val, F_set_val f_set_val, int start, int end, int dim);
 
-        // service callback
+
+        /* service static callback */
         bool get_static_map();
-           
-
 };
-
-
-
 
 inline void SDFMap::posToIndex(const Eigen::Vector2d& pos, Eigen::Vector2i& id) {
   for (int i = 0; i < 2; ++i) id(i) = floor((pos(i) - mp_.map_origin_(i)) * mp_.resolution_inv_);
@@ -315,7 +305,6 @@ inline int SDFMap::toAddress(const Eigen::Vector2i& id) {
 inline int SDFMap::toAddress(int& x, int& y) {
   return x * mp_.map_pixel_num_(1)  + y;
 }
-
 
 inline bool SDFMap::isInMap(const Eigen::Vector2d& pos) {
   if (pos(0) < mp_.map_min_boundary_(0) + 1e-4 || pos(1) < mp_.map_min_boundary_(1) + 1e-4 ) {
@@ -370,6 +359,7 @@ inline int SDFMap::getOccupancy(Eigen::Vector2d pos) {
   
   return md_.occupancy_buffer_[toAddress(id)] > mp_.min_occupancy_log_ ? 1 : 0;
 }
+
 inline int SDFMap::getOccupancy(Eigen::Vector2i id) {
   if (id(0) < 0 || id(0) >= mp_.map_pixel_num_(0) || id(1) < 0 || id(1) >= mp_.map_pixel_num_(1))
     return -1;
@@ -464,7 +454,6 @@ inline void SDFMap::inflatePoint(const Eigen::Vector2i& pt, int step, std::vecto
     }
 }
 
-
 /* DISTANCE FIELD*/
 inline double SDFMap::getDistance(const Eigen::Vector2d& pos) {
   Eigen::Vector2i id;
@@ -479,15 +468,6 @@ inline double SDFMap::getDistance(const Eigen::Vector2i& id) {
   boundIndex(id1);
   return md_.distance_buffer_all_[toAddress(id1)];
 }
-
-
-
-
-
-
-
-
-
 
 
 

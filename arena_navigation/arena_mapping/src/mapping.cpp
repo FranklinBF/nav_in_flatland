@@ -104,7 +104,6 @@ void SDFMap::initMap(ros::NodeHandle& nh){
     md_.occupancy_buffer_neg = std::vector<char>(buffer_size, 0);
     md_.occupancy_buffer_inflate_ = std::vector<char>(buffer_size, 0);                                // save is_occ {0,1}, 0 free, 1 occ 
     md_.occupancy_static_buffer_inflate_=std::vector<char>(buffer_size, 0);                           // static map buffer
-    md_.occupancy_full_buffer_inflate_=std::vector<char>(buffer_size, 0);                             // fused map buffer
     get_static_buffer(md_.occupancy_static_buffer_inflate_);
 
     // global distance map buffer
@@ -162,18 +161,18 @@ void SDFMap::initMap(ros::NodeHandle& nh){
     esdf_timer_ = node_.createTimer(ros::Duration(0.05), &SDFMap::updateESDFCallback, this);
     vis_timer_ = node_.createTimer(ros::Duration(0.05), &SDFMap::visCallback, this);
     
-
     // publishers 
     map_pub_ = node_.advertise<sensor_msgs::PointCloud2>("/sdf_map/occupancy", 10);
     static_map_pub_= node_.advertise<sensor_msgs::PointCloud2>("/sdf_map/occupancy_static", 10);
+    
     //map_inf_pub_ = node_.advertise<sensor_msgs::PointCloud2>("/sdf_map/occupancy_inflate", 10);
+    
     esdf_pub_ = node_.advertise<sensor_msgs::PointCloud2>("/sdf_map/esdf", 10);
     update_range_pub_ = node_.advertise<visualization_msgs::Marker>("/sdf_map/update_range", 10);
     unknown_pub_ = node_.advertise<sensor_msgs::PointCloud2>("/sdf_map/unknown", 10);
     depth_pub_ = node_.advertise<sensor_msgs::PointCloud2>("/sdf_map/depth_cloud", 10);
 
 }
-
 
 /* static map */
 bool SDFMap::get_static_map(){
@@ -271,8 +270,7 @@ void SDFMap::get_static_buffer(std::vector<char> & static_buffer_inflate){
      
 }
 
-
-/*Sensor callback*/
+/* sensor callback */
 void SDFMap::scanOdomCallback(const sensor_msgs::LaserScanConstPtr& scan, const nav_msgs::OdometryConstPtr& odom) {
   /* get pose */
   md_.laser_pos_(0)=odom->pose.pose.position.x;
@@ -482,8 +480,6 @@ void SDFMap::resetBuffer(Eigen::Vector2d min_pos, Eigen::Vector2d max_pos) {
         md_.distance_buffer_[toAddress(x, y)] = 10000;
       }
 }
-
-
 
 /*Time event callback: occupancy update*/
 void SDFMap::updateOccupancyCallback(const ros::TimerEvent& /*event*/) {
@@ -808,6 +804,7 @@ void SDFMap::clearAndInflateLocalMap() {
 
 }
 
+/* Fuse Occuancy buffer
 void SDFMap::fuseOccupancyBuffer(){
   if(!md_.has_static_map_) return;
 
@@ -849,6 +846,7 @@ void SDFMap::fuseOccupancyBuffer(){
   //       }
   //   }
 }
+*/
 
 /*Time event callback: ESDF update*/
 void SDFMap::updateESDFCallback(const ros::TimerEvent& /*event*/) {
@@ -982,9 +980,7 @@ void SDFMap::updateESDF2d() {
     }
 }
 
-
 /* DISTANCE FIELD MANAGEMENT*/
-
 void SDFMap::getSurroundPts(const Eigen::Vector2d& pos, Eigen::Vector2d pts[2][2],
                             Eigen::Vector2d& diff) {
   if (!isInMap(pos)) {
@@ -1009,7 +1005,6 @@ void SDFMap::getSurroundPts(const Eigen::Vector2d& pos, Eigen::Vector2d pts[2][2
     }
   }
 }
-
 
 /* utils */
 void SDFMap::getRegion(Eigen::Vector2d& ori, Eigen::Vector2d& size) {
@@ -1239,80 +1234,6 @@ void SDFMap::visCallback(const ros::TimerEvent& /*event*/) {
   //std::cout<<"VisualCallback:"<<std::endl;
 }
 
-
-
-
-
-
-
-
-
-
-
-// SDFMap::SDFMap(){
-    
-
-//     //
-//     scan_sub_ = node_.subscribe<sensor_msgs::LaserScan> ("/scan", 100, &SDFMap::scanCallback, this);
-//     odom_sub_ = node_.subscribe<nav_msgs::Odometry> ("/odom", 100, &SDFMap::odometryCallback, this);
-
-//     point_cloud_publisher_ = node_.advertise<sensor_msgs::PointCloud2> ("/cloud2", 100, false);
-
-// }
-
-// void SDFMap::odometryCallback(const nav_msgs::OdometryConstPtr& odom){
-//     Eigen::Vector3d pos;
-//     Eigen::Quaterniond q;
-//     pos = Eigen::Vector3d(  odom->pose.pose.position.x,
-//                             odom->pose.pose.position.y,
-//                             odom->pose.pose.position.z);
-
-//     q = Eigen::Quaterniond( odom->pose.pose.orientation.w,
-//                             odom->pose.pose.orientation.x,
-//                             odom->pose.pose.orientation.y,
-//                             odom->pose.pose.orientation.z);
-
-//     std::cout<<"odom pose:"<<pos<<std::endl;
-//     //std::cout<<"odom q:"<<q<<std::endl;
-
-// }
-
-// void SDFMap::scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan){
-//     sensor_msgs::PointCloud2 cloud;
-
-   
-    // // Simple projection: suitable for laser is fiexed, and share same frame as robot base frame
-    // projector_.projectLaser(*scan, cloud);
-    
-    
-    // // wait for transform from robot_base to laser scan
-    // if(!tfListener_.waitForTransform(
-    //     scan->header.frame_id,
-    //     "/base_footprint",
-    //     scan->header.stamp + ros::Duration().fromSec(scan->ranges.size()*scan->time_increment),
-    //     ros::Duration(1.0))){
-    //  return;
-    // }
-    // // High fidelity projection: suitable for laser that is moving
-    // projector_.transformLaserScanToPointCloud("base_footprint", *scan, cloud, tfListener_); 
-    
-    // // pub PointCloud2
-    // point_cloud_publisher_.publish(cloud);
-
-//     /*将 sensor_msgs::PointCloud2 转换为　pcl::PointCloud<T> */
-//     //注意要用fromROSMsg函数需要引入pcl_versions（见头文件定义）
-//     pcl::PointCloud<pcl::PointXYZ> rawCloud;
-//     pcl::fromROSMsg(cloud, rawCloud);
-
-//     for(size_t i = 0; i < rawCloud.points.size(); i++){
-//         std::cout<<rawCloud.points[i].x<<"\t"<<rawCloud.points[i].y<<"\t"<<rawCloud.points[i].z<<std::endl;
-//     }
-// }
-
-
-
-
-
 int main(int argc, char **argv){
     
     ros::init(argc, argv, "sdf_map");
@@ -1326,3 +1247,31 @@ int main(int argc, char **argv){
     ros::spin();
     return 0;
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
