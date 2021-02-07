@@ -16,6 +16,8 @@ find_package(catkin REQUIRED COMPONENTS
   geometry_msgs
   visualization_msgs
   plan_visualization
+
+  nlopt
 )
 
 find_package(Eigen3 REQUIRED)
@@ -148,7 +150,9 @@ set(CMAKE_CXX_FLAGS "-std=c++11 ${CMAKE_CXX_FLAGS} -O3 -Wall")
 add_executable(arena_global_planner 
                   src/astar.cpp
                   src/kinodynamic_astar.cpp
-                  src/global_planner_collector.cpp)
+                  src/global_planner_collector.cpp
+                  src/non_uniform_bspline.cpp
+                  src/bspline_optimizer.cpp)
 
 
 
