@@ -14,9 +14,13 @@ void GlobalPlanner::init(ros::NodeHandle & nh){
   
   nh.param("global_planner/use_astar", use_astar_, false);
   nh.param("global_planner/use_kino_astar", use_kino_astar_, false);
+  nh.param("global_planner/use_optimization", use_optimization_, false);
 
-  nh.param("manager/control_points_distance", ctrl_pt_dist_, 0.5);
-  nh.param("search/max_vel", max_vel_, 0.5);
+  nh.param("b_spline/control_points_distance", ctrl_pt_dist_, 0.5);
+  nh.param("b_spline/max_vel", max_vel_, 3.0);
+  nh.param("b_spline/max_acc", max_acc_, 2.0);
+
+
 
   // use_astar, use_kino_astar
   if(use_astar_){
@@ -38,6 +42,12 @@ void GlobalPlanner::init(ros::NodeHandle & nh){
     global_planner_kino_astar_->reset();
   }
   
+  if (use_optimization_) {
+      bspline_optimizer_.reset(new BsplineOptimizer);
+      bspline_optimizer_->setParam(nh);
+      bspline_optimizer_->setEnvironment(edt_environment_);
+  }
+
   // odom
   have_odom_=false;
 
@@ -49,6 +59,7 @@ void GlobalPlanner::init(ros::NodeHandle & nh){
   astar_path_pub_ =node_.advertise<nav_msgs::Path>("astar_plan", 1);
   kino_astar_path_pub_ =node_.advertise<nav_msgs::Path>("kino_astar_plan", 1);
   sample_path_pub_ =node_.advertise<nav_msgs::Path>("sample_plan", 1);
+  traj_pub_ =node_.advertise<nav_msgs::Path>("traj_plan", 1);
   
   visualization_.reset(new PlanningVisualization(nh));
   
@@ -144,14 +155,101 @@ void GlobalPlanner::findPath( Eigen::Vector2d start_pt, Eigen::Vector2d start_ve
         std::cout << "[kino replan]: kinodynamic search success." << std::endl;
     }
 
+    // global path
     global_path_ = global_planner_kino_astar_->getKinoTraj(0.01);
+    
+    // sample from global path
     double      ts = ctrl_pt_dist_ / max_vel_;
     std::vector<Eigen::Vector2d> point_set, start_end_derivatives;
     global_planner_kino_astar_->getSamples(ts, point_set, start_end_derivatives);
     
+    /* b-spline */
+    Eigen::MatrixXd ctrl_pts;
+    NonUniformBspline::parameterizeToBspline(ts, point_set, start_end_derivatives, ctrl_pts);
+    //NonUniformBspline init(ctrl_pts, 3, ts);
+
+
+    // bspline trajectory optimization
+    ros::Time t1, t2;
+    double t_search = 0.0, t_opt = 0.0, t_adjust = 0.0;
+
+    t1 = ros::Time::now();
+
+    int cost_function = BsplineOptimizer::NORMAL_PHASE;//NORMAL_PHASE;
+
+    if (status != KinodynamicAstar::REACH_END) {
+      cost_function |= BsplineOptimizer::ENDPOINT;
+    }
+
+    ctrl_pts = bspline_optimizer_->BsplineOptimizeTraj(ctrl_pts, ts, cost_function, 1, 1);
+
+    t_opt = (ros::Time::now() - t1).toSec();
+
+
+
+
+
+    // iterative time adjustment
+
+    t1                    = ros::Time::now();
+    NonUniformBspline pos = NonUniformBspline(ctrl_pts, 3, ts);
+
+    double to = pos.getTimeSum();
+    pos.setPhysicalLimits(max_vel_, max_acc_);
+    bool feasible = pos.checkFeasibility(false);
+
+    int iter_num = 0;
+    while (!feasible && ros::ok()) {
+      feasible = pos.reallocateTime();
+      if (++iter_num >= 3) break;
+    }
+
+    double tn = pos.getTimeSum();
+
+    std::cout << "[kino replan]: Reallocate ratio: " << tn / to << std::endl;
+    if (tn / to > 3.0) ROS_ERROR("reallocate error.");
+
+    t_adjust = (ros::Time::now() - t1).toSec();
+
+    // save planned results
+    position_traj_ = pos;
+
+    // save traj pos
+    std::vector<Eigen::Vector2d> traj_pts;
+    double  tm, tmp;
+    position_traj_.getTimeSpan(tm, tmp);
+    for (double t = tm; t <= tmp; t += 0.01) {
+      Eigen::Vector2d pt = position_traj_.evaluateDeBoor(t);
+      traj_pts.push_back(pt);
+    }
+
+    // save traj ctl pts
+    // draw the control point
+
+    Eigen::MatrixXd         ctrl_pts_draw = position_traj_.getControlPoint();
+    std::vector<Eigen::Vector2d> ctp;
+    nav_msgs::Path ctrl_points_path;
+    ctrl_points_path.poses.resize(int(ctrl_pts_draw.rows()));
+    
+
+    for (int i = 0; i < int(ctrl_pts_draw.rows()); ++i) {
+      Eigen::Vector2d pt = ctrl_pts_draw.row(i).transpose();
+      ctp.push_back(pt);
+      ctrl_points_path.poses[i].pose.position.x=pt(0);
+      ctrl_points_path.poses[i].pose.position.y=pt(1);
+    }
+
+    
+//     gui_path.poses.resize(path.size());
+    visualization_->drawGlobalPath(ctrl_points_path,0.2, Eigen::Vector4d(0.5, 0.5, 0.5, 0.6));
+
+
+
     // get & visualize path
-    visualize_path(point_set,sample_path_pub_);
     visualize_path(global_path_,kino_astar_path_pub_);
+    visualize_path(point_set,sample_path_pub_);
+    visualize_path(traj_pts,traj_pub_);
+    
 
   }
   
@@ -199,7 +297,52 @@ void GlobalPlanner::visualize_path(std::vector<Eigen::Vector2d> path, const ros:
   pub.publish(gui_path);
 }
 
+// void GlobalPlanner::visualize_bspline(){
+//   auto info = &planner_manager_->local_data_;
 
+//     /* publish traj */
+//     plan_manage::Bspline bspline;
+//     bspline.order      = 3;
+//     bspline.start_time = info->start_time_;
+//     bspline.traj_id    = info->traj_id_;
+
+//     Eigen::MatrixXd pos_pts = info->position_traj_.getControlPoint();
+
+//     for (int i = 0; i < pos_pts.rows(); ++i) {
+//       geometry_msgs::Point pt;
+//       pt.x = pos_pts(i, 0);
+//       pt.y = pos_pts(i, 1);
+//       pt.z = pos_pts(i, 2);
+//       bspline.pos_pts.push_back(pt);
+//     }
+
+//     Eigen::VectorXd knots = info->position_traj_.getKnot();
+//     for (int i = 0; i < knots.rows(); ++i) {
+//       bspline.knots.push_back(knots(i));
+//     }
+
+//     Eigen::MatrixXd yaw_pts = info->yaw_traj_.getControlPoint();
+//     for (int i = 0; i < yaw_pts.rows(); ++i) {
+//       double yaw = yaw_pts(i, 0);
+//       bspline.yaw_pts.push_back(yaw);
+//     }
+//     bspline.yaw_dt = info->yaw_traj_.getInterval();
+
+//     bspline_pub_.publish(bspline);
+
+//     /* visulization */
+//     auto plan_data = &planner_manager_->plan_data_;
+//     visualization_->drawGeometricPath(plan_data->kino_path_, 0.075, Eigen::Vector4d(1, 1, 0, 0.4));
+//     visualization_->drawBspline(info->position_traj_, 0.1, Eigen::Vector4d(1.0, 0, 0.0, 1), true, 0.2,
+//                                 Eigen::Vector4d(1, 0, 0, 1));
+
+//     return true;
+
+//   } else {
+//     cout << "generate new traj fail." << endl;
+//     return false;
+//   }
+// }
 
 
 // //clear the plan, just in case

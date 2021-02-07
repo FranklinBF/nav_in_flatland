@@ -18,6 +18,13 @@
 #include "arena_global_planner/astar.h"
 #include "arena_global_planner/kinodynamic_astar.h"
 
+// b-spline
+#include <arena_global_planner/non_uniform_bspline.h>
+#include "arena_global_planner/bspline_optimizer.h"
+
+//
+#include "arena_global_planner/plan_container.hpp"
+
 class GlobalPlanner{
 private:
   // ros node
@@ -31,6 +38,7 @@ private:
   ros::Publisher astar_path_pub_;
   ros::Publisher kino_astar_path_pub_;
   ros::Publisher sample_path_pub_;
+  ros::Publisher traj_pub_;
 
   // planner variables
   Eigen::Vector2d current_pt_;                                    // current pt
@@ -47,13 +55,17 @@ private:
   EDTEnvironment::Ptr edt_environment_;
   
   // planner objects
-  bool use_astar_, use_kino_astar_;
+  bool use_astar_, use_kino_astar_,use_optimization_;
   Astar::Ptr global_planner_astar_;
   KinodynamicAstar::Ptr global_planner_kino_astar_;
 
   // traj param
   double ctrl_pt_dist_;
   double max_vel_;
+  double max_acc_;
+
+  NonUniformBspline position_traj_;
+  BsplineOptimizer::Ptr bspline_optimizer_;
 
   // flags
   bool have_odom_;
