@@ -21,7 +21,7 @@ plugins:
     body: base_footprint
     odom_frame_id: odom
     odom_pub: odom  # topic odom is published on
-    pub_rate: 10
+    pub_rate: 100
   
   - type: Laser
     name: static_laser
@@ -30,10 +30,10 @@ plugins:
     body: base_footprint
     broadcast_tf: true
     origin: [0.0, 0.0, 0.0]
-    range: 3
+    range: 10
     angle: {min: -3.12413936, max: 3.14159265359, increment: 0.01745}
     noise_std_dev: 0.015
-    update_rate: 10
+    update_rate: 50
 
 
   - type: ModelTfPublisher

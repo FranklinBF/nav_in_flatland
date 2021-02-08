@@ -34,7 +34,7 @@ void GridMap::initMap(ros::NodeHandle& nh){
 
     // local map
     node_.param("sdf_map/frame_id", mp_.frame_id_, std::string("map"));
-    node_.param("sdf_map/obstacles_inflation", mp_.obstacles_inflation_, 0.3);
+    node_.param("sdf_map/obstacles_inflation", mp_.obstacles_inflation_, 0.01);
     node_.param("sdf_map/local_bound_inflate", mp_.local_bound_inflate_, 0.0);
     node_.param("sdf_map/local_map_margin", mp_.local_map_margin_, 50);
 

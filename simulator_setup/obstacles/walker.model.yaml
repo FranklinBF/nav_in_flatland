@@ -15,7 +15,7 @@ plugins:
     name: Tween 
     body: waker
     delta: [5, 3, 3.141592]
-    duration: 30.0
+    duration: 40.0
     mode: yoyo
     easing: quadraticInOut
   
