@@ -4,11 +4,8 @@ void GlobalPlanner::init(ros::NodeHandle & nh){
   node_=nh;
 
   // map
-  sdf_map_.reset(new SDFMap);
-  sdf_map_->initMap(nh);
-
-  edt_environment_.reset(new EDTEnvironment);
-  edt_environment_->setMap(sdf_map_);
+  grid_map_.reset(new GridMap);
+  grid_map_->initMap(nh);
 
   // global planner
   
@@ -27,7 +24,7 @@ void GlobalPlanner::init(ros::NodeHandle & nh){
     //global_planner_type_="astar";
     global_planner_astar_.reset(new Astar);
     global_planner_astar_->setParam(nh);
-    global_planner_astar_->setEnvironment(edt_environment_);
+    global_planner_astar_->setEnvironment(grid_map_);
     global_planner_astar_->init();
     global_planner_astar_->reset();
 
@@ -37,7 +34,7 @@ void GlobalPlanner::init(ros::NodeHandle & nh){
     //global_planner_type_="kino_astar";
     global_planner_kino_astar_.reset(new KinodynamicAstar);
     global_planner_kino_astar_->setParam(nh);
-    global_planner_kino_astar_->setEnvironment(edt_environment_);
+    global_planner_kino_astar_->setEnvironment(grid_map_);
     global_planner_kino_astar_->init();
     global_planner_kino_astar_->reset();
   }
@@ -45,7 +42,7 @@ void GlobalPlanner::init(ros::NodeHandle & nh){
   if (use_optimization_) {
       bspline_optimizer_.reset(new BsplineOptimizer);
       bspline_optimizer_->setParam(nh);
-      bspline_optimizer_->setEnvironment(edt_environment_);
+      bspline_optimizer_->setEnvironment(grid_map_);
   }
 
   // odom

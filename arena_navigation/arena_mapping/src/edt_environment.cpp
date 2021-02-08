@@ -5,7 +5,7 @@
 void EDTEnvironment::init() {
 }
 
-void EDTEnvironment::setMap(SDFMap::Ptr  map) {
+void EDTEnvironment::setMap(GridMap::Ptr  map) {
   this->sdf_map_ = map;
   resolution_inv_ = 1 / sdf_map_->getResolution();
 }

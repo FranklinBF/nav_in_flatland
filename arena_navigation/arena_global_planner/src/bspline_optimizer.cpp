@@ -44,8 +44,8 @@ void BsplineOptimizer::setParam(ros::NodeHandle& nh) {
     nh.param("optimization/order", order_, -1);
 }
 
-void BsplineOptimizer::setEnvironment(const EDTEnvironment::Ptr& env) {
-    this->edt_environment_ = env;
+void BsplineOptimizer::setEnvironment(const GridMap::Ptr& env) {
+    this->grid_map_ = env;
 }
 
 Eigen::MatrixXd BsplineOptimizer::BsplineOptimizeTraj(const Eigen::MatrixXd& points, const double& ts,
@@ -211,7 +211,7 @@ void BsplineOptimizer::calcDistanceCost(const std::vector<Eigen::Vector2d>& q, d
   int end_idx = (cost_function_ & ENDPOINT) ? q.size() : q.size() - order_;
 
   for (int i = order_; i < end_idx; i++) {
-    edt_environment_->evaluateEDTWithGrad(q[i], dist, dist_grad);
+    grid_map_->evaluateEDTWithGrad(q[i], dist, dist_grad);
     if (dist_grad.norm() > 1e-4) dist_grad.normalize();
 
     if (dist < dist0_) {

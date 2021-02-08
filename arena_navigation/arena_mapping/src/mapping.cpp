@@ -1,7 +1,7 @@
 #include "arena_mapping/mapping.h"
 
 /*init*/
-void SDFMap::initMap(ros::NodeHandle& nh){
+void GridMap::initMap(ros::NodeHandle& nh){
     node_ = nh;
 
     /* get parameters*/
@@ -153,18 +153,18 @@ void SDFMap::initMap(ros::NodeHandle& nh){
     scan_sub_.reset(new message_filters::Subscriber<sensor_msgs::LaserScan>(node_, "/scan", 50));
     odom_sub_.reset(new message_filters::Subscriber<nav_msgs::Odometry>(node_, "/odom", 100));
     sync_scan_odom_.reset(new message_filters::Synchronizer<SyncPolicyScanOdom>(SyncPolicyScanOdom(100), *scan_sub_, *odom_sub_));
-    sync_scan_odom_->registerCallback(boost::bind(&SDFMap::scanOdomCallback, this, _1, _2));
+    sync_scan_odom_->registerCallback(boost::bind(&GridMap::scanOdomCallback, this, _1, _2));
 
     // sensor sub
-    indep_scan_sub_ =node_.subscribe<sensor_msgs::LaserScan>("/scan", 10, &SDFMap::scanCallback, this);
-    indep_odom_sub_ =node_.subscribe<nav_msgs::Odometry>("/odom", 10, &SDFMap::odomCallback, this);
+    indep_scan_sub_ =node_.subscribe<sensor_msgs::LaserScan>("/scan", 10, &GridMap::scanCallback, this);
+    indep_odom_sub_ =node_.subscribe<nav_msgs::Odometry>("/odom", 10, &GridMap::odomCallback, this);
 
     // timer callbacks
-    occ_timer_ = node_.createTimer(ros::Duration(0.05),   &SDFMap::updateOccupancyCallback, this); // raycasting & setCacheOccupancy is the key
+    occ_timer_ = node_.createTimer(ros::Duration(0.05),   &GridMap::updateOccupancyCallback, this); // raycasting & setCacheOccupancy is the key
     if (mp_.use_occ_esdf_){
-      esdf_timer_ = node_.createTimer(ros::Duration(0.05), &SDFMap::updateESDFCallback, this);
+      esdf_timer_ = node_.createTimer(ros::Duration(0.05), &GridMap::updateESDFCallback, this);
     }
-    vis_timer_ = node_.createTimer(ros::Duration(0.05), &SDFMap::visCallback, this);
+    vis_timer_ = node_.createTimer(ros::Duration(0.05), &GridMap::visCallback, this);
     
     // publishers 
     map_pub_ = node_.advertise<sensor_msgs::PointCloud2>("/sdf_map/occupancy", 10);
@@ -180,7 +180,7 @@ void SDFMap::initMap(ros::NodeHandle& nh){
 }
 
 /* static map */
-bool SDFMap::get_static_map(){
+bool GridMap::get_static_map(){
     nav_msgs::GetMap srv;
     srv.request={}; //std_srvs::Empty::Request& request
     
@@ -200,7 +200,7 @@ bool SDFMap::get_static_map(){
     }
 }
 
-void SDFMap::get_static_buffer(std::vector<char> & static_buffer_inflate){
+void GridMap::get_static_buffer(std::vector<char> & static_buffer_inflate){
  
   int idx_nav_occ;
   int data;
@@ -276,7 +276,7 @@ void SDFMap::get_static_buffer(std::vector<char> & static_buffer_inflate){
 }
 
 /* sensor callback */
-void SDFMap::scanOdomCallback(const sensor_msgs::LaserScanConstPtr& scan, const nav_msgs::OdometryConstPtr& odom) {
+void GridMap::scanOdomCallback(const sensor_msgs::LaserScanConstPtr& scan, const nav_msgs::OdometryConstPtr& odom) {
   /* get pose */
   md_.laser_pos_(0)=odom->pose.pose.position.x;
   md_.laser_pos_(1) = odom->pose.pose.position.y;
@@ -332,7 +332,7 @@ void SDFMap::scanOdomCallback(const sensor_msgs::LaserScanConstPtr& scan, const 
   md_.occ_need_update_ = true;  // occ only update when both odom(or tf) & point cloud is ready
 }
 
-void SDFMap::odomCallback(const nav_msgs::OdometryConstPtr& odom) {
+void GridMap::odomCallback(const nav_msgs::OdometryConstPtr& odom) {
 
   md_.laser_pos_(0)=odom->pose.pose.position.x;
   md_.laser_pos_(1) = odom->pose.pose.position.y;
@@ -341,7 +341,7 @@ void SDFMap::odomCallback(const nav_msgs::OdometryConstPtr& odom) {
   md_.has_odom_ = true;
 }
 
-void SDFMap::scanCallback(const sensor_msgs::LaserScanConstPtr& scan) {
+void GridMap::scanCallback(const sensor_msgs::LaserScanConstPtr& scan) {
   
   /* scan to pcl cloud -----------------------------------*/
   // read scan to pcl cloud
@@ -459,7 +459,7 @@ void SDFMap::scanCallback(const sensor_msgs::LaserScanConstPtr& scan) {
   
 }
 
-void SDFMap::resetBuffer() {
+void GridMap::resetBuffer() {
   Eigen::Vector2d min_pos = mp_.map_min_boundary_;
   Eigen::Vector2d max_pos = mp_.map_max_boundary_;
 
@@ -469,7 +469,7 @@ void SDFMap::resetBuffer() {
   md_.local_bound_max_ = mp_.map_pixel_num_ - Eigen::Vector2i::Ones();
 }
 
-void SDFMap::resetBuffer(Eigen::Vector2d min_pos, Eigen::Vector2d max_pos) {
+void GridMap::resetBuffer(Eigen::Vector2d min_pos, Eigen::Vector2d max_pos) {
 
   Eigen::Vector2i min_id, max_id;
   posToIndex(min_pos, min_id);
@@ -487,7 +487,7 @@ void SDFMap::resetBuffer(Eigen::Vector2d min_pos, Eigen::Vector2d max_pos) {
 }
 
 /*Time event callback: occupancy update*/
-void SDFMap::updateOccupancyCallback(const ros::TimerEvent& /*event*/) {
+void GridMap::updateOccupancyCallback(const ros::TimerEvent& /*event*/) {
 
   if (!md_.occ_need_update_) {
     //std::cout<<"return"<<std::endl; 
@@ -519,7 +519,7 @@ void SDFMap::updateOccupancyCallback(const ros::TimerEvent& /*event*/) {
 
 }
 
-void SDFMap::projectDepthCloud() {
+void GridMap::projectDepthCloud() {
   md_.proj_points_cnt = 0;
   int num_pts=md_.depth_cloud.points.size();
   md_.proj_points_=std::vector<Eigen::Vector2d>(num_pts);
@@ -542,7 +542,7 @@ void SDFMap::projectDepthCloud() {
   md_.last_depth_cloud = md_.depth_cloud;
 }
 
-void SDFMap::raycastProcess() {
+void GridMap::raycastProcess() {
   // if (md_.proj_points_.size() == 0)
   if (md_.proj_points_cnt == 0) return;
 
@@ -692,7 +692,7 @@ void SDFMap::raycastProcess() {
   }
 }
 
-Eigen::Vector2d SDFMap::closetPointInMap(const Eigen::Vector2d& pt, const Eigen::Vector2d& laser_pos) {
+Eigen::Vector2d GridMap::closetPointInMap(const Eigen::Vector2d& pt, const Eigen::Vector2d& laser_pos) {
   Eigen::Vector2d diff = pt - laser_pos;
   Eigen::Vector2d max_tc = mp_.map_max_boundary_ - laser_pos;
   Eigen::Vector2d min_tc = mp_.map_min_boundary_ - laser_pos;
@@ -713,7 +713,7 @@ Eigen::Vector2d SDFMap::closetPointInMap(const Eigen::Vector2d& pt, const Eigen:
   return laser_pos + (min_t - 1e-3) * diff;
 }
 
-int SDFMap::setCacheOccupancy(Eigen::Vector2d pos, int occ) {
+int GridMap::setCacheOccupancy(Eigen::Vector2d pos, int occ) {
   if (occ != 1 && occ != 0) return INVALID_IDX;
 
   Eigen::Vector2i id;
@@ -742,7 +742,7 @@ int SDFMap::setCacheOccupancy(Eigen::Vector2d pos, int occ) {
   return idx_ctns;
 }
 
-void SDFMap::clearAndInflateLocalMap() {
+void GridMap::clearAndInflateLocalMap() {
   /*clear outside local*/
   const int vec_margin = 5;
   // Eigen::Vector3i min_vec_margin = min_vec - Eigen::Vector3i(vec_margin,
@@ -810,7 +810,7 @@ void SDFMap::clearAndInflateLocalMap() {
 }
 
 /* Fuse Occuancy buffer
-void SDFMap::fuseOccupancyBuffer(){
+void GridMap::fuseOccupancyBuffer(){
   if(!md_.has_static_map_) return;
 
   Eigen::Vector2i min_cut = md_.local_bound_min_;
@@ -854,7 +854,7 @@ void SDFMap::fuseOccupancyBuffer(){
 */
 
 /*Time event callback: ESDF update*/
-void SDFMap::updateESDFCallback(const ros::TimerEvent& /*event*/) {
+void GridMap::updateESDFCallback(const ros::TimerEvent& /*event*/) {
   if (!md_.esdf_need_update_) return;
 
   /* esdf */
@@ -883,7 +883,7 @@ void SDFMap::updateESDFCallback(const ros::TimerEvent& /*event*/) {
 }
 
 template <typename F_get_val, typename F_set_val>
-void SDFMap::fillESDF(F_get_val f_get_val, F_set_val f_set_val, int start, int end, int dim) {
+void GridMap::fillESDF(F_get_val f_get_val, F_set_val f_set_val, int start, int end, int dim) {
   int v[mp_.map_pixel_num_(dim)];
   double z[mp_.map_pixel_num_(dim) + 1];
 
@@ -917,7 +917,7 @@ void SDFMap::fillESDF(F_get_val f_get_val, F_set_val f_set_val, int start, int e
   }
 }
 
-void SDFMap::updateESDF2d() {
+void GridMap::updateESDF2d() {
   Eigen::Vector2i min_esdf = md_.local_bound_min_;
   Eigen::Vector2i max_esdf = md_.local_bound_max_;
 
@@ -986,12 +986,12 @@ void SDFMap::updateESDF2d() {
 }
 
 /* DISTANCE FIELD MANAGEMENT*/
-double SDFMap::evaluateCoarseEDT(Eigen::Vector2d& pos) {
+double GridMap::evaluateCoarseEDT(Eigen::Vector2d& pos) {
   double d1 = getDistance(pos);
   return d1;
 }
 
-void SDFMap::getSurroundPts(const Eigen::Vector2d& pos, Eigen::Vector2d pts[2][2],
+void GridMap::getSurroundPts(const Eigen::Vector2d& pos, Eigen::Vector2d pts[2][2],
                             Eigen::Vector2d& diff) {
   if (!isInMap(pos)) {
     // cout << "pos invalid for interpolation." << endl;
@@ -1016,7 +1016,7 @@ void SDFMap::getSurroundPts(const Eigen::Vector2d& pos, Eigen::Vector2d pts[2][2
   }
 }
 
-void SDFMap::getSurroundDistance(Eigen::Vector2d pts[2][2], double dists[2][2]) {
+void GridMap::getSurroundDistance(Eigen::Vector2d pts[2][2], double dists[2][2]) {
   for (int x = 0; x < 2; x++) {
     for (int y = 0; y < 2; y++) {
         dists[x][y] = getDistance(pts[x][y]);
@@ -1024,7 +1024,7 @@ void SDFMap::getSurroundDistance(Eigen::Vector2d pts[2][2], double dists[2][2]) 
   }
 }
 
-void SDFMap::interpolateBilinear(double values[2][2],const Eigen::Vector2d& diff,double& value,Eigen::Vector2d& grad) {
+void GridMap::interpolateBilinear(double values[2][2],const Eigen::Vector2d& diff,double& value,Eigen::Vector2d& grad) {
   
   // bilinear interpolation
   double v00=values[0][0];  //f(x0,y0)
@@ -1042,7 +1042,7 @@ void SDFMap::interpolateBilinear(double values[2][2],const Eigen::Vector2d& diff
 
 }
 
-void SDFMap::evaluateEDTWithGrad(  const Eigen::Vector2d& pos,double& dist,Eigen::Vector2d& grad) {
+void GridMap::evaluateEDTWithGrad(  const Eigen::Vector2d& pos,double& dist,Eigen::Vector2d& grad) {
     // get diff & surround pts
     Eigen::Vector2d diff;
     Eigen::Vector2d sur_pts[2][2];
@@ -1061,17 +1061,17 @@ void SDFMap::evaluateEDTWithGrad(  const Eigen::Vector2d& pos,double& dist,Eigen
 
 
 /* Map utils */
-void SDFMap::getRegion(Eigen::Vector2d& ori, Eigen::Vector2d& size) {
+void GridMap::getRegion(Eigen::Vector2d& ori, Eigen::Vector2d& size) {
   ori = mp_.map_origin_, size = mp_.map_size_;
 }
 
-double SDFMap::getResolution() { return mp_.resolution_; }
+double GridMap::getResolution() { return mp_.resolution_; }
 
 
 
 
 /* Visualization Publishers*/
-void SDFMap::publishMap() {
+void GridMap::publishMap() {
   pcl::PointXYZ pt;
   pcl::PointCloud<pcl::PointXYZ> cloud;
 
@@ -1111,7 +1111,7 @@ void SDFMap::publishMap() {
   
 }
 
-void SDFMap::publishStaticMap(){
+void GridMap::publishStaticMap(){
     pcl::PointXYZ pt;
     pcl::PointCloud<pcl::PointXYZ> cloud;
 
@@ -1141,7 +1141,7 @@ void SDFMap::publishStaticMap(){
   static_map_pub_.publish(cloud_msg);
 }
 
-void SDFMap::publishESDF() {
+void GridMap::publishESDF() {
   double dist;
   pcl::PointCloud<pcl::PointXYZI> cloud;
   pcl::PointXYZI pt;
@@ -1184,7 +1184,7 @@ void SDFMap::publishESDF() {
   // ROS_INFO("pub esdf");
 }
 
-void SDFMap::publishDepth() {
+void GridMap::publishDepth() {
   pcl::PointXYZ pt;
   pcl::PointCloud<pcl::PointXYZ> cloud;
 
@@ -1207,7 +1207,7 @@ void SDFMap::publishDepth() {
   
 }
 
-void SDFMap::publishUpdateRange() {
+void GridMap::publishUpdateRange() {
   Eigen::Vector2d esdf_min_pos, esdf_max_pos, cube_pos, cube_scale;
   visualization_msgs::Marker mk;
   indexToPos(md_.local_bound_min_, esdf_min_pos);
@@ -1242,7 +1242,7 @@ void SDFMap::publishUpdateRange() {
   update_range_pub_.publish(mk);
 }
 
-void SDFMap::publishUnknown() {
+void GridMap::publishUnknown() {
   pcl::PointXYZ pt;
   pcl::PointCloud<pcl::PointXYZ> cloud;
 
@@ -1278,7 +1278,7 @@ void SDFMap::publishUnknown() {
   unknown_pub_.publish(cloud_msg);
 }
 
-void SDFMap::visCallback(const ros::TimerEvent& /*event*/) {
+void GridMap::visCallback(const ros::TimerEvent& /*event*/) {
   publishMap();
   publishStaticMap();
   //publishMapInflate(false);
@@ -1296,11 +1296,11 @@ int main(int argc, char **argv){
     ros::init(argc, argv, "sdf_map");
     std::cout<<"start"<<std::endl;
     ros::NodeHandle nh("~");
-    //SDFMap filter();
+    //GridMap filter();
 
-    SDFMap::Ptr sdf_map_;
-    sdf_map_.reset(new SDFMap);
-    sdf_map_->initMap(nh);
+    GridMap::Ptr grid_map_;
+    grid_map_.reset(new GridMap);
+    grid_map_->initMap(nh);
     ros::spin();
     return 0;
 }

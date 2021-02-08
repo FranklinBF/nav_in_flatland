@@ -12,11 +12,10 @@
 #include <nav_msgs/Path.h>
 
 #include "arena_mapping/mapping.h"
-#include "arena_mapping/edt_environment.h"
 #include <plan_visualization/planning_visualization.h>
 
-#include "arena_global_planner/astar.h"
-#include "arena_global_planner/kinodynamic_astar.h"
+#include "arena_path_search/astar.h"
+#include "arena_path_search/kinodynamic_astar.h"
 
 // b-spline
 #include <arena_global_planner/non_uniform_bspline.h>
@@ -51,8 +50,8 @@ private:
   std::vector<Eigen::Vector2d> global_path_;
 
   // map & enviornment
-  SDFMap::Ptr sdf_map_;
-  EDTEnvironment::Ptr edt_environment_;
+  GridMap::Ptr grid_map_;     //EDTEnvironment::Ptr edt_environment_;
+  
   
   // planner objects
   bool use_astar_, use_kino_astar_,use_optimization_;

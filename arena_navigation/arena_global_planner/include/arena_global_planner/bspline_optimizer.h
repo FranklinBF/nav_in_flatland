@@ -4,7 +4,7 @@
 
 
 #include <Eigen/Eigen>
-#include <arena_mapping/edt_environment.h>
+#include <arena_mapping/mapping.h>
 #include <ros/ros.h>
 class BsplineOptimizer {
 
@@ -23,7 +23,7 @@ public:
     ~BsplineOptimizer() {}
 
     /* main API */
-    void            setEnvironment(const EDTEnvironment::Ptr& env);
+    void            setEnvironment(const GridMap::Ptr& env);
     void            setParam(ros::NodeHandle& nh);
     Eigen::MatrixXd BsplineOptimizeTraj(const Eigen::MatrixXd& points, const double& ts,
                                       const int& cost_function, int max_num_id, int max_time_id);
@@ -48,7 +48,7 @@ public:
 
 
 private:
-    EDTEnvironment::Ptr edt_environment_;
+    GridMap::Ptr grid_map_;
     // main input
     Eigen::MatrixXd control_points_;     // B-spline control points, N x dim
     double          bspline_interval_;   // B-spline knot span

@@ -15,7 +15,6 @@
 #include <memory>
 
 #include "arena_mapping/mapping.h"
-#include "arena_mapping/edt_environment.h"
 
 #define IN_CLOSE_SET 'a'
 #define IN_OPEN_SET 'b'
@@ -110,7 +109,7 @@ private:
 public:
 
     /* ---------- record data ---------- */
-    EDTEnvironment::Ptr edt_environment_;
+    GridMap::Ptr grid_map_;
     bool has_path_ = false;
 
     /* ---------- parameter ---------- */
@@ -142,16 +141,19 @@ public:
     enum { REACH_END = 1, NO_PATH = 2 };
 
     /* main API */
-    void setParam(ros::NodeHandle& nh);
+    void setParam(ros::NodeHandle& private_nh);
+
+    void setEnvironment(const GridMap::Ptr& env);
 
     void init();
+    void init(ros::NodeHandle& private_nh,const GridMap::Ptr& env);
 
     void reset();
 
     int search(Eigen::Vector2d start_pt, Eigen::Vector2d end_pt, bool dynamic = false,
              double time_start = -1.0);
 
-    void setEnvironment(const EDTEnvironment::Ptr& env);
+    
 
     std::vector<Eigen::Vector2d> getPath();
 

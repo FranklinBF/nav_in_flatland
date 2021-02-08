@@ -1,4 +1,4 @@
-#include "arena_global_planner/astar.h"
+#include "arena_path_search/astar.h"
 
 
 
@@ -25,28 +25,29 @@ void Astar::reset() {
   iter_num_ = 0;
 }
 
-void Astar::setParam(ros::NodeHandle& nh) {
-  nh.param("astar/resolution_astar", resolution_, 0.05);
-  nh.param("astar/time_resolution", time_resolution_, 0.8);
-  nh.param("astar/lambda_heu", lambda_heu_, 0.0001);
-  nh.param("astar/allocate_num", allocate_num_, 100000);
+void Astar::setParam(ros::NodeHandle& private_nh) {
 
-  nh.param("astar/margin", margin_, 0.2);
+  private_nh.param("astar/resolution_astar", resolution_, 0.05);
+  private_nh.param("astar/time_resolution", time_resolution_, 0.8);
+  private_nh.param("astar/lambda_heu", lambda_heu_, 0.0001);
+  private_nh.param("astar/allocate_num", allocate_num_, 100000);
+
+  private_nh.param("astar/margin", margin_, 0.2);
 
   tie_breaker_ = 1.0 + 1.0 / 10000;
   std::cout << "margin:" << margin_ << std::endl;
   std::cout << "lambda_heu_:" << lambda_heu_ << std::endl;
 }
 
-void Astar::setEnvironment(const EDTEnvironment::Ptr& env) {
-  this->edt_environment_ = env;
+void Astar::setEnvironment(const GridMap::Ptr& env) {
+  this->grid_map_ = env;
 }
 
-void Astar::init() {
+void Astar::init(){
   /* ---------- map params ---------- */
   this->inv_resolution_ = 1.0 / resolution_;
   inv_time_resolution_ = 1.0 / time_resolution_;
-  edt_environment_->getMapRegion(origin_, map_size_2d_);
+  grid_map_->getRegion(origin_, map_size_2d_);
 
   std::cout << "origin_: " << origin_.transpose() << std::endl;
   std::cout << "map size: " << map_size_2d_.transpose() << std::endl;
@@ -61,6 +62,32 @@ void Astar::init() {
   iter_num_ = 0;
 }
 
+void Astar::init(ros::NodeHandle& private_nh,const GridMap::Ptr& env) {
+  
+  /* ---------- get ros params & set env---------- */
+  setParam(private_nh);
+  setEnvironment(env);
+
+  /* ---------- map params ---------- */
+  this->inv_resolution_ = 1.0 / resolution_;
+  inv_time_resolution_ = 1.0 / time_resolution_;
+  grid_map_->getRegion(origin_, map_size_2d_);
+
+  std::cout << "origin_: " << origin_.transpose() << std::endl;
+  std::cout << "map size: " << map_size_2d_.transpose() << std::endl;
+
+  /* ---------- pre-allocated node ---------- */
+  path_node_pool_.resize(allocate_num_);
+  for (int i = 0; i < allocate_num_; i++) {
+    path_node_pool_[i] = new Node;
+  }
+
+  use_node_num_ = 0;
+  iter_num_ = 0;
+
+  /* reset */
+  reset();
+}
 
 int Astar::search(Eigen::Vector2d start_pt, Eigen::Vector2d end_pt, bool dynamic, double time_start) {
   /* ---------- initialize ---------- */
@@ -163,7 +190,7 @@ int Astar::search(Eigen::Vector2d start_pt, Eigen::Vector2d end_pt, bool dynamic
           //                         -1.0);
 
           // check if pro_ps is in collision
-          int occu = edt_environment_->getOccupancy(pro_pos);
+          int occu = grid_map_->getFusedInflateOccupancy(pro_pos);
           if (occu==1){
             //std::cout << "in collision" << std::endl;
             continue;

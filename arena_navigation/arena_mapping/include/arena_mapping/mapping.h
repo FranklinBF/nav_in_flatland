@@ -132,11 +132,11 @@ struct MappingData {
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 };
 
-class SDFMap{
+class GridMap{
     public:
-        SDFMap() {}
-        ~SDFMap() {}
-        typedef std::shared_ptr<SDFMap> Ptr;
+        GridMap() {}
+        ~GridMap() {}
+        typedef std::shared_ptr<GridMap> Ptr;
 
         enum { INVALID_IDX = -10000 };
 
@@ -276,23 +276,23 @@ class SDFMap{
 
 
 
-inline void SDFMap::posToIndex(const Eigen::Vector2d& pos, Eigen::Vector2i& id) {
+inline void GridMap::posToIndex(const Eigen::Vector2d& pos, Eigen::Vector2i& id) {
   for (int i = 0; i < 2; ++i) id(i) = floor((pos(i) - mp_.map_origin_(i)) * mp_.resolution_inv_);
 }
 
-inline void SDFMap::indexToPos(const Eigen::Vector2i& id, Eigen::Vector2d& pos) {
+inline void GridMap::indexToPos(const Eigen::Vector2i& id, Eigen::Vector2d& pos) {
   for (int i = 0; i < 2; ++i) pos(i) = (id(i) + 0.5) * mp_.resolution_ + mp_.map_origin_(i);
 }
 
-inline int SDFMap::toAddress(const Eigen::Vector2i& id) {
+inline int GridMap::toAddress(const Eigen::Vector2i& id) {
   return id(0) * mp_.map_pixel_num_(1) + id(1);
 }
 
-inline int SDFMap::toAddress(int& x, int& y) {
+inline int GridMap::toAddress(int& x, int& y) {
   return x * mp_.map_pixel_num_(1)  + y;
 }
 
-inline bool SDFMap::isInMap(const Eigen::Vector2d& pos) {
+inline bool GridMap::isInMap(const Eigen::Vector2d& pos) {
   if (pos(0) < mp_.map_min_boundary_(0) + 1e-4 || pos(1) < mp_.map_min_boundary_(1) + 1e-4 ) {
     // cout << "less than min range!" << endl;
     return false;
@@ -304,7 +304,7 @@ inline bool SDFMap::isInMap(const Eigen::Vector2d& pos) {
   return true;
 }
 
-inline bool SDFMap::isInMap(const Eigen::Vector2i& idx) {
+inline bool GridMap::isInMap(const Eigen::Vector2i& idx) {
   if (idx(0) < 0 || idx(1) < 0) {
     return false;
   }
@@ -314,7 +314,7 @@ inline bool SDFMap::isInMap(const Eigen::Vector2i& idx) {
   return true;
 }
 
-inline void SDFMap::setOccupied(Eigen::Vector2d pos) {
+inline void GridMap::setOccupied(Eigen::Vector2d pos) {
   if (!isInMap(pos)) return;
 
   Eigen::Vector2i id;
@@ -323,7 +323,7 @@ inline void SDFMap::setOccupied(Eigen::Vector2d pos) {
   md_.occupancy_buffer_inflate_[id(0) * mp_.map_pixel_num_(1) + id(1) ] = 1;
 }
 
-inline void SDFMap::setOccupancy(Eigen::Vector2d pos, double occ) {
+inline void GridMap::setOccupancy(Eigen::Vector2d pos, double occ) {
   if (occ != 1 && occ != 0) {
     std::cout << "occ value error!" << std::endl;
     return;
@@ -337,7 +337,7 @@ inline void SDFMap::setOccupancy(Eigen::Vector2d pos, double occ) {
   md_.occupancy_buffer_[toAddress(id)] = occ;
 }
 
-inline int SDFMap::getOccupancy(Eigen::Vector2d pos) {
+inline int GridMap::getOccupancy(Eigen::Vector2d pos) {
   if (!isInMap(pos)) return -1;
 
   Eigen::Vector2i id;
@@ -346,14 +346,14 @@ inline int SDFMap::getOccupancy(Eigen::Vector2d pos) {
   return md_.occupancy_buffer_[toAddress(id)] > mp_.min_occupancy_log_ ? 1 : 0;
 }
 
-inline int SDFMap::getOccupancy(Eigen::Vector2i id) {
+inline int GridMap::getOccupancy(Eigen::Vector2i id) {
   if (id(0) < 0 || id(0) >= mp_.map_pixel_num_(0) || id(1) < 0 || id(1) >= mp_.map_pixel_num_(1))
     return -1;
 
   return md_.occupancy_buffer_[toAddress(id)] > mp_.min_occupancy_log_ ? 1 : 0;
 }
 
-inline int SDFMap::getInflateOccupancy(Eigen::Vector2d pos) {
+inline int GridMap::getInflateOccupancy(Eigen::Vector2d pos) {
   if (!isInMap(pos)) return -1;
 
   Eigen::Vector2i id;
@@ -361,7 +361,7 @@ inline int SDFMap::getInflateOccupancy(Eigen::Vector2d pos) {
   return int(md_.occupancy_buffer_inflate_[toAddress(id)]);
 }
 
-inline int SDFMap::getFusedInflateOccupancy(Eigen::Vector2d pos){
+inline int GridMap::getFusedInflateOccupancy(Eigen::Vector2d pos){
   if (!isInMap(pos)) return -1;
 
   Eigen::Vector2i id;
@@ -375,26 +375,26 @@ inline int SDFMap::getFusedInflateOccupancy(Eigen::Vector2d pos){
 
 }
 
-inline void SDFMap::boundIndex(Eigen::Vector2i& id) {
+inline void GridMap::boundIndex(Eigen::Vector2i& id) {
   Eigen::Vector2i id1;
   id1(0) = std::max(std::min(id(0), mp_.map_pixel_num_(0) - 1), 0);
   id1(1) = std::max(std::min(id(1), mp_.map_pixel_num_(1) - 1), 0);
   id = id1;
 }
 
-inline bool SDFMap::isUnknown(const Eigen::Vector2i& id) {
+inline bool GridMap::isUnknown(const Eigen::Vector2i& id) {
   Eigen::Vector2i id1 = id;
   boundIndex(id1);
   return md_.occupancy_buffer_[toAddress(id1)] < mp_.clamp_min_log_ - 1e-3;
 }
 
-inline bool SDFMap::isUnknown(const Eigen::Vector2d& pos) {
+inline bool GridMap::isUnknown(const Eigen::Vector2d& pos) {
   Eigen::Vector2i idc;
   posToIndex(pos, idc);
   return isUnknown(idc);
 }
 
-inline bool SDFMap::isKnownFree(const Eigen::Vector2i& id) {
+inline bool GridMap::isKnownFree(const Eigen::Vector2i& id) {
   Eigen::Vector2i id1 = id;
   boundIndex(id1);
   int adr = toAddress(id1);
@@ -404,7 +404,7 @@ inline bool SDFMap::isKnownFree(const Eigen::Vector2i& id) {
   return md_.occupancy_buffer_[adr] >= mp_.clamp_min_log_ && md_.occupancy_buffer_inflate_[adr] == 0;
 }
 
-inline bool SDFMap::isKnownOccupied(const Eigen::Vector2i& id) {
+inline bool GridMap::isKnownOccupied(const Eigen::Vector2i& id) {
   Eigen::Vector2i id1 = id;
   boundIndex(id1);
   int adr = toAddress(id1);
@@ -412,7 +412,7 @@ inline bool SDFMap::isKnownOccupied(const Eigen::Vector2i& id) {
   return md_.occupancy_buffer_inflate_[adr] == 1;
 }
 
-inline void SDFMap::inflatePoint(const Eigen::Vector2i& pt, int step, std::vector<Eigen::Vector2i>& pts) {
+inline void GridMap::inflatePoint(const Eigen::Vector2i& pt, int step, std::vector<Eigen::Vector2i>& pts) {
   int num = 0;
 
   /* ---------- + shape inflate ---------- */
@@ -441,7 +441,7 @@ inline void SDFMap::inflatePoint(const Eigen::Vector2i& pt, int step, std::vecto
 }
 
 /* DISTANCE FIELD*/
-inline double SDFMap::getDistance(const Eigen::Vector2d& pos) {
+inline double GridMap::getDistance(const Eigen::Vector2d& pos) {
   Eigen::Vector2i id;
   posToIndex(pos, id);
   boundIndex(id);
@@ -449,7 +449,7 @@ inline double SDFMap::getDistance(const Eigen::Vector2d& pos) {
   return md_.distance_buffer_all_[toAddress(id)];
 }
 
-inline double SDFMap::getDistance(const Eigen::Vector2i& id) {
+inline double GridMap::getDistance(const Eigen::Vector2i& id) {
   Eigen::Vector2i id1 = id;
   boundIndex(id1);
   return md_.distance_buffer_all_[toAddress(id1)];

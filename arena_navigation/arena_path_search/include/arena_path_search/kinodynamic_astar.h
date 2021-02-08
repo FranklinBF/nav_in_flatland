@@ -15,7 +15,6 @@
 #include <utility>
 
 #include "arena_mapping/mapping.h"
-#include "arena_mapping/edt_environment.h"
 
 #define IN_CLOSE_SET 'a'
 #define IN_OPEN_SET 'b'
@@ -45,10 +44,6 @@ class PathNode {
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 };
 typedef PathNode* PathNodePtr;
-
-
-
-
 
 class NodeComparator {
  public:
@@ -124,8 +119,9 @@ class KinodynamicAstar {
 
   Eigen::Matrix<double, 4, 4> phi_;  // state transit matrix 
 
-  // shared_ptr<SDFMap> sdf_map;
-  EDTEnvironment::Ptr edt_environment_;
+  // shared_ptr<GridMap> sdf_map;
+  GridMap::Ptr grid_map_;//edt_environment_;
+  
 
   bool is_shot_succ_ = false;
   Eigen::MatrixXd coef_shot_;
@@ -170,15 +166,18 @@ public:
   enum { REACH_HORIZON = 1, REACH_END = 2, NO_PATH = 3, NEAR_END = 4 };
 
   /* main API */
-  void setParam(ros::NodeHandle& nh);
+  void setParam(ros::NodeHandle& private_nh);
+  void setEnvironment(const GridMap::Ptr& env);
   void init();
+  void init(ros::NodeHandle& private_nh, const GridMap::Ptr& env);
+
   void reset();
   int search(Eigen::Vector2d start_pt, Eigen::Vector2d start_vel,
              Eigen::Vector2d start_acc, Eigen::Vector2d end_pt,
              Eigen::Vector2d end_vel, bool init, bool dynamic = false,
              double time_start = -1.0);
 
-  void setEnvironment(const EDTEnvironment::Ptr& env);
+  
 
   std::vector<Eigen::Vector2d> getKinoTraj(double delta_t);
 

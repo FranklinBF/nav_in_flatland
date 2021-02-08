@@ -27,12 +27,12 @@ public:
     // define EDTEnvironment Ptr
     typedef std::shared_ptr<EDTEnvironment> Ptr;
 
-    SDFMap::Ptr sdf_map_;
+    GridMap::Ptr sdf_map_;
     
     /* Init env*/
     void init();
 
-    void setMap(SDFMap::Ptr map);
+    void setMap(GridMap::Ptr map);
 
     void getMapRegion(Eigen::Vector2d& ori, Eigen::Vector2d& size) {sdf_map_->getRegion(ori, size);}
 

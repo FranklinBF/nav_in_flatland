@@ -1,4 +1,4 @@
-#include "arena_global_planner/kinodynamic_astar.h"
+#include "arena_path_search/kinodynamic_astar.h"
 
 
 
@@ -11,34 +11,40 @@ KinodynamicAstar::~KinodynamicAstar()
 }
 
 /* Initialization */
-void KinodynamicAstar::setParam(ros::NodeHandle& nh)
+void KinodynamicAstar::setParam(ros::NodeHandle& private_nh)
 {
-  nh.param("kino_astar/max_tau", max_tau_,  0.6);               // max step time
-  nh.param("kino_astar/init_max_tau", init_max_tau_, 0.8);      // initial max step time
-  nh.param("kino_astar/max_vel", max_vel_, 0.5);                // max vel
-  nh.param("kino_astar/max_acc", max_acc_, 1.0);                // max acc
-  nh.param("kino_astar/w_time", w_time_, 10.0);                 // ? w_time
-  nh.param("kino_astar/horizon", horizon_, 7.0);                // look ahead distance
   
-  nh.param("kino_astar/resolution_astar", resolution_, 0.05);   // map resolution
-  nh.param("kino_astar/time_resolution", time_resolution_, 0.8);// time resolution
-  nh.param("kino_astar/lambda_heu", lambda_heu_, 5.0);          // lambda heu
-  nh.param("kino_astar/allocate_num", allocate_num_, 10000);    // buffer size
-  nh.param("kino_astar/check_num", check_num_, 5);              // occupancy safety check for each transit
+  private_nh.param("kino_astar/max_tau", max_tau_,  0.6);               // max step time
+  private_nh.param("kino_astar/init_max_tau", init_max_tau_, 0.8);      // initial max step time
+  private_nh.param("kino_astar/max_vel", max_vel_, 0.5);                // max vel
+  private_nh.param("kino_astar/max_acc", max_acc_, 1.0);                // max acc
+  private_nh.param("kino_astar/w_time", w_time_, 10.0);                 // ? w_time
+  private_nh.param("kino_astar/horizon", horizon_, 7.0);                // look ahead distance
+  
+  private_nh.param("kino_astar/resolution_astar", resolution_, 0.05);   // map resolution
+  private_nh.param("kino_astar/time_resolution", time_resolution_, 0.8);// time resolution
+  private_nh.param("kino_astar/lambda_heu", lambda_heu_, 5.0);          // lambda heu
+  private_nh.param("kino_astar/allocate_num", allocate_num_, 10000);    // buffer size
+  private_nh.param("kino_astar/check_num", check_num_, 5);              // occupancy safety check for each transit
    
   tie_breaker_ = 1.0 + 1.0 / 10000;
 
   double vel_margin;
-  nh.param("kino_astar/vel_margin", vel_margin, 0.0);
+  private_nh.param("kino_astar/vel_margin", vel_margin, 0.0);
   max_vel_ += vel_margin;
 }
 
-void KinodynamicAstar::init()
+
+void KinodynamicAstar::setEnvironment(const GridMap::Ptr& env)
 {
+  this->grid_map_ = env;
+}
+
+void KinodynamicAstar::init(){
   /* ---------- map params ---------- */
   this->inv_resolution_ = 1.0 / resolution_;
   inv_time_resolution_ = 1.0 / time_resolution_;
-  edt_environment_->sdf_map_->getRegion(origin_, map_size_2d_);
+  grid_map_->getRegion(origin_, map_size_2d_);
 
   std::cout << "origin_: " << origin_.transpose() << std::endl;
   std::cout << "map size: " << map_size_2d_.transpose() << std::endl;
@@ -55,9 +61,33 @@ void KinodynamicAstar::init()
   iter_num_ = 0;
 }
 
-void KinodynamicAstar::setEnvironment(const EDTEnvironment::Ptr& env)
-{
-  this->edt_environment_ = env;
+void KinodynamicAstar::init(ros::NodeHandle& private_nh, const GridMap::Ptr& env)
+{ 
+  /* ---------- get ros params & set env---------- */
+  setParam(private_nh);
+  setEnvironment(env);
+
+  /* ---------- map params ---------- */
+  this->inv_resolution_ = 1.0 / resolution_;
+  inv_time_resolution_ = 1.0 / time_resolution_;
+  grid_map_->getRegion(origin_, map_size_2d_);
+
+  std::cout << "origin_: " << origin_.transpose() << std::endl;
+  std::cout << "map size: " << map_size_2d_.transpose() << std::endl;
+
+  /* ---------- pre-allocated node ---------- */
+  path_node_pool_.resize(allocate_num_);
+  for (int i = 0; i < allocate_num_; i++)
+  {
+    path_node_pool_[i] = new PathNode;
+  }
+
+  phi_ = Eigen::MatrixXd::Identity(4, 4);
+  use_node_num_ = 0;
+  iter_num_ = 0;
+
+  /* reset */
+  reset();
 }
 
 void KinodynamicAstar::reset()
@@ -258,7 +288,7 @@ int KinodynamicAstar::search(Eigen::Vector2d start_pt, Eigen::Vector2d start_v, 
           double dt = tau * double(k) / double(check_num_);
           stateTransit(cur_state, xt, um, dt);
           pos = xt.head(2);
-          if (edt_environment_->getOccupancy(pos) == 1 )
+          if (grid_map_->getFusedInflateOccupancy(pos) == 1 )
           {
             is_occ = true;
             break;
@@ -696,7 +726,7 @@ bool KinodynamicAstar::computeShotTraj(Eigen::VectorXd state1, Eigen::VectorXd s
     // if (edt_environment_->evaluateCoarseEDT(coord, -1.0) <= margin_) {
     //   return false;
     // }
-    if (edt_environment_->getOccupancy(coord) == 1)
+    if (grid_map_->getFusedInflateOccupancy(coord) == 1)
     {
       return false;
     }
