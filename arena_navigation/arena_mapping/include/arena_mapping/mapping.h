@@ -4,6 +4,7 @@
 //
 #include <Eigen/Eigen>
 #include <iostream>
+#include <ros/ros.h>
 
 //data structure
 #include <queue>
@@ -15,27 +16,24 @@
 #include <algorithm>
 
 // tf
-#include <ros/ros.h>
 #include <tf/transform_listener.h>
+#include <geometry_msgs/TransformStamped.h>
 
-#include <pcl_conversions/pcl_conversions.h>
-
-// Laser
+// Laser & PCL
 #include <sensor_msgs/PointCloud.h>
 #include <sensor_msgs/PointCloud2.h>
 #include <sensor_msgs/LaserScan.h>
 #include <laser_geometry/laser_geometry.h>
+#include <pcl_conversions/pcl_conversions.h>
 
-// Odom
+// Odom & Pose
 #include <geometry_msgs/PoseStamped.h>
 #include <nav_msgs/Odometry.h>
 
+// Map
 #include <nav_msgs/GetMap.h>
 #include <std_srvs/Empty.h>
 #include <nav_msgs/OccupancyGrid.h>
-
-// Transform
-#include <geometry_msgs/TransformStamped.h>
 
 // message filter
 #include <message_filters/subscriber.h>
@@ -50,21 +48,6 @@
 #include <arena_mapping/raycast.h>
 
 #define logit(x) (log((x) / (1 - (x))))  
-#define logitxy(x,y) (log((x) / (y)))
-
-
-// // voxel hashing
-// template <typename T>
-// struct matrix_hash : std::unary_function<T, size_t> {
-//   std::size_t operator()(T const& matrix) const {
-//     size_t seed = 0;
-//     for (size_t i = 0; i < matrix.size(); ++i) {
-//       auto elem = *(matrix.data() + i);
-//       seed ^= std::hash<typename T::Scalar>()(elem) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
-//     }
-//     return seed;
-//   }
-// };
 
 struct MappingParameters {
 
@@ -77,44 +60,34 @@ struct MappingParameters {
   double resolution_, resolution_inv_;
   double obstacles_inflation_;
   std::string frame_id_;
-  int pose_type_;
-  std::string map_input_;  // 1: pose+depth; 2: odom + cloud
-
-  /* camera parameters */
-  //double cx_, cy_, fx_, fy_;
-
-  /* depth image projection filtering */
-  //double depth_filter_maxdist_, depth_filter_mindist_, depth_filter_tolerance_;
-  //int depth_filter_margin_;
-  //bool use_depth_filter_;
-  //double k_depth_scaling_factor_;
-  //int skip_pixel_;
 
   /* raycasting */
-  double p_hit_, p_miss_, p_min_, p_max_, p_occ_;  // occupancy probability
+  double p_hit_, p_miss_, p_min_, p_max_, p_occ_;     // occupancy probability
   double prob_hit_log_, prob_miss_log_, clamp_min_log_, clamp_max_log_,
-      min_occupancy_log_;                   // logit of occupancy probability
-  double min_ray_length_, max_ray_length_;  // range of doing raycasting
+      min_occupancy_log_;                             // logit of occupancy probability
+  double min_ray_length_, max_ray_length_;            // range of doing raycasting
 
   /* local map update and clear */
   double local_bound_inflate_;
   int local_map_margin_;
 
   /* visualization and computation time display */
-  double esdf_slice_height_, visualization_truncate_height_, virtual_ceil_height_, ground_height_;
   bool show_esdf_time_, show_occ_time_;
 
   /* active mapping */
   double unknown_flag_;
+
+  /* flag for using esdf */
+  bool use_occ_esdf_;
 };
 
 struct MappingData {
   // main map data, occupancy of each voxel and Euclidean distance
   std::vector<double> occupancy_buffer_;
   std::vector<char>   occupancy_buffer_inflate_;
+  std::vector<char>   occupancy_buffer_static_inflate_;
+
   std::vector<char>   occupancy_buffer_neg;             // for esdf
-  std::vector<char>   occupancy_static_buffer_inflate_;
-  
   std::vector<double> distance_buffer_;
   std::vector<double> distance_buffer_neg_;
   std::vector<double> distance_buffer_all_;
@@ -128,6 +101,10 @@ struct MappingData {
   pcl::PointCloud<pcl::PointXYZ> depth_cloud, last_depth_cloud;
   int depth_cloud_cnt_;
 
+  // laser scan projected point cloud
+  std::vector<Eigen::Vector2d> proj_points_;
+  int proj_points_cnt;
+
   // flags of map state
   bool occ_need_update_, local_updated_, esdf_need_update_;
   bool has_first_depth_;
@@ -138,10 +115,6 @@ struct MappingData {
   ros::Time last_occ_update_time_;
   bool flag_depth_odom_timeout_;
   bool flag_use_depth_fusion;
-
-  // laser scan projected point cloud
-  std::vector<Eigen::Vector2d> proj_points_;
-  int proj_points_cnt;
 
   // flag buffers for speeding up raycasting
   std::vector<short> count_hit_, count_hit_and_miss_;
@@ -205,9 +178,17 @@ class SDFMap{
         inline bool isKnownOccupied(const Eigen::Vector2i& id);
 
         /* distance field management */
+        // get distance
         inline double getDistance(const Eigen::Vector2d& pos);
         inline double getDistance(const Eigen::Vector2i& id);
+        double evaluateCoarseEDT(Eigen::Vector2d& pos);
+        
+        // get distance gradient
+        void evaluateEDTWithGrad(const Eigen::Vector2d& pos,double& dist, Eigen::Vector2d& grad);
         void getSurroundPts(const Eigen::Vector2d& pos, Eigen::Vector2d pts[2][2], Eigen::Vector2d& diff);
+        void getSurroundDistance(Eigen::Vector2d pts[2][2], double dists[2][2]);
+        void interpolateBilinear(double values[2][2], const Eigen::Vector2d& diff,
+                                                     double& value, Eigen::Vector2d& grad);
         
         /* utils map */
         void getRegion(Eigen::Vector2d& ori, Eigen::Vector2d& size);
@@ -278,17 +259,22 @@ class SDFMap{
         int setCacheOccupancy(Eigen::Vector2d pos, int occ);
         Eigen::Vector2d closetPointInMap(const Eigen::Vector2d& pt, const Eigen::Vector2d& laser_pos);
         //void fuseOccupancyBuffer();
+        // service static callback
+        bool get_static_map();
+
 
         /* ESDF map update */
         void updateESDF2d();
-        
+
         template <typename F_get_val, typename F_set_val>
         void fillESDF(F_get_val f_get_val, F_set_val f_set_val, int start, int end, int dim);
 
+        
 
-        /* service static callback */
-        bool get_static_map();
 };
+
+
+
 
 inline void SDFMap::posToIndex(const Eigen::Vector2d& pos, Eigen::Vector2i& id) {
   for (int i = 0; i < 2; ++i) id(i) = floor((pos(i) - mp_.map_origin_(i)) * mp_.resolution_inv_);
@@ -381,7 +367,7 @@ inline int SDFMap::getFusedInflateOccupancy(Eigen::Vector2d pos){
   Eigen::Vector2i id;
   posToIndex(pos, id);
 
-  if(md_.has_static_map_ && md_.occupancy_static_buffer_inflate_[toAddress(id)]==1){
+  if(md_.has_static_map_ && md_.occupancy_buffer_static_inflate_[toAddress(id)]==1){
     return 1;
   }
 

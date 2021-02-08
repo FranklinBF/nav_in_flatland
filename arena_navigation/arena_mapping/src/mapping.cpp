@@ -10,6 +10,9 @@ void SDFMap::initMap(ros::NodeHandle& nh){
     bool is_static_map_avail=get_static_map();
     if (!is_static_map_avail){ROS_ERROR("No static map available, please check map_server.");}
     
+    // check if use esdf
+    node_.param("sdf_map/use_occ_esdf", mp_.use_occ_esdf_, true);
+
     // local map size
     node_.param("sdf_map/local_update_range_x", mp_.local_update_range_(0), 5.5);
     node_.param("sdf_map/local_update_range_y", mp_.local_update_range_(1), 5.5);
@@ -31,7 +34,7 @@ void SDFMap::initMap(ros::NodeHandle& nh){
 
     // local map
     node_.param("sdf_map/frame_id", mp_.frame_id_, std::string("map"));
-    node_.param("sdf_map/obstacles_inflation", mp_.obstacles_inflation_, 0.1);
+    node_.param("sdf_map/obstacles_inflation", mp_.obstacles_inflation_, 0.3);
     node_.param("sdf_map/local_bound_inflate", mp_.local_bound_inflate_, 0.0);
     node_.param("sdf_map/local_map_margin", mp_.local_map_margin_, 50);
 
@@ -103,8 +106,8 @@ void SDFMap::initMap(ros::NodeHandle& nh){
     md_.occupancy_buffer_ = std::vector<double>(buffer_size, mp_.clamp_min_log_ - mp_.unknown_flag_); // save state_occu probability [mp_.clamp_min_log_,mp_.clamp_max_log_]
     md_.occupancy_buffer_neg = std::vector<char>(buffer_size, 0);
     md_.occupancy_buffer_inflate_ = std::vector<char>(buffer_size, 0);                                // save is_occ {0,1}, 0 free, 1 occ 
-    md_.occupancy_static_buffer_inflate_=std::vector<char>(buffer_size, 0);                           // static map buffer
-    get_static_buffer(md_.occupancy_static_buffer_inflate_);
+    md_.occupancy_buffer_static_inflate_=std::vector<char>(buffer_size, 0);                           // static map buffer
+    get_static_buffer(md_.occupancy_buffer_static_inflate_);
 
     // global distance map buffer
     md_.distance_buffer_      = std::vector<double>(buffer_size, 10000);
@@ -158,7 +161,9 @@ void SDFMap::initMap(ros::NodeHandle& nh){
 
     // timer callbacks
     occ_timer_ = node_.createTimer(ros::Duration(0.05),   &SDFMap::updateOccupancyCallback, this); // raycasting & setCacheOccupancy is the key
-    esdf_timer_ = node_.createTimer(ros::Duration(0.05), &SDFMap::updateESDFCallback, this);
+    if (mp_.use_occ_esdf_){
+      esdf_timer_ = node_.createTimer(ros::Duration(0.05), &SDFMap::updateESDFCallback, this);
+    }
     vis_timer_ = node_.createTimer(ros::Duration(0.05), &SDFMap::visCallback, this);
     
     // publishers 
@@ -228,7 +233,7 @@ void SDFMap::get_static_buffer(std::vector<char> & static_buffer_inflate){
           idx(0)=id_x;idx(1)=id_y;
           indexToPos(idx, idx_pos);
           //idx_inf=toAddress(idx);
-          //md_.occupancy_static_buffer_inflate_[idx_inf]=1;
+          //md_.occupancy_buffer_static_inflate_[idx_inf]=1;
 
           /* inflate the point */
           Eigen::Vector2i inf_pt;
@@ -820,7 +825,7 @@ void SDFMap::fuseOccupancyBuffer(){
 
   for (int x = min_cut(0); x <= max_cut(0); ++x)
     for (int y = min_cut(1); y <= max_cut(1); ++y){
-      if(md_.occupancy_static_buffer_inflate_[toAddress(x, y)]==1){
+      if(md_.occupancy_buffer_static_inflate_[toAddress(x, y)]==1){
         md_.occupancy_buffer_inflate_[toAddress(x, y)] = 1;
       }
     }
@@ -841,7 +846,7 @@ void SDFMap::fuseOccupancyBuffer(){
   //       int pt_addr = toAddress(pt_idx);
 
   //       // add point_inf into occupancy_buffer_inflate_
-  //       if(md_.occupancy_static_buffer_inflate_[pt_addr]==1){
+  //       if(md_.occupancy_buffer_static_inflate_[pt_addr]==1){
   //         md_.occupancy_buffer_inflate_[pt_addr] = 1;
   //       }
   //   }
@@ -981,6 +986,11 @@ void SDFMap::updateESDF2d() {
 }
 
 /* DISTANCE FIELD MANAGEMENT*/
+double SDFMap::evaluateCoarseEDT(Eigen::Vector2d& pos) {
+  double d1 = getDistance(pos);
+  return d1;
+}
+
 void SDFMap::getSurroundPts(const Eigen::Vector2d& pos, Eigen::Vector2d pts[2][2],
                             Eigen::Vector2d& diff) {
   if (!isInMap(pos)) {
@@ -1006,12 +1016,59 @@ void SDFMap::getSurroundPts(const Eigen::Vector2d& pos, Eigen::Vector2d pts[2][2
   }
 }
 
-/* utils */
+void SDFMap::getSurroundDistance(Eigen::Vector2d pts[2][2], double dists[2][2]) {
+  for (int x = 0; x < 2; x++) {
+    for (int y = 0; y < 2; y++) {
+        dists[x][y] = getDistance(pts[x][y]);
+    }
+  }
+}
+
+void SDFMap::interpolateBilinear(double values[2][2],const Eigen::Vector2d& diff,double& value,Eigen::Vector2d& grad) {
+  
+  // bilinear interpolation
+  double v00=values[0][0];  //f(x0,y0)
+  double v10=values[1][0];  //f(x1,y0)
+  double v01=values[0][1];  //f(x0,y1)
+  double v11=values[1][1];  //f(x1,y1)
+
+  double v0=(1-diff(0))*v00+diff(0)*v10;  
+  double v1=(1-diff(0))*v01+diff(0)*v11;
+  value = (1-diff(1))*v0 + diff(1)*v1;
+  
+  // calculate gradient
+  grad[1]= (v1-v0) * mp_.resolution_inv_;
+  grad[0]= ((1 - diff[1]) * (v10 - v00) + diff[1] * (v11 - v01)) * mp_.resolution_inv_;
+
+}
+
+void SDFMap::evaluateEDTWithGrad(  const Eigen::Vector2d& pos,double& dist,Eigen::Vector2d& grad) {
+    // get diff & surround pts
+    Eigen::Vector2d diff;
+    Eigen::Vector2d sur_pts[2][2];
+    getSurroundPts(pos, sur_pts, diff);
+
+    // get distances of the surround pts
+    double dists[2][2];
+    getSurroundDistance(sur_pts, dists);
+
+    // do interpolate to get distance gradient
+    interpolateBilinear(dists, diff, dist, grad);
+    
+}
+
+
+
+
+/* Map utils */
 void SDFMap::getRegion(Eigen::Vector2d& ori, Eigen::Vector2d& size) {
   ori = mp_.map_origin_, size = mp_.map_size_;
 }
 
 double SDFMap::getResolution() { return mp_.resolution_; }
+
+
+
 
 /* Visualization Publishers*/
 void SDFMap::publishMap() {
@@ -1062,7 +1119,7 @@ void SDFMap::publishStaticMap(){
       for (int y = 0; y <= mp_.map_pixel_num_(1); ++y){ 
         //if (md_.occupancy_buffer_[toAddress(x, y)] == 0) continue;
         int idx_inf=toAddress(x,y);
-        if (md_.occupancy_static_buffer_inflate_[idx_inf] == 0) continue;
+        if (md_.occupancy_buffer_static_inflate_[idx_inf] == 0) continue;
 
         Eigen::Vector2d pos;
         indexToPos(Eigen::Vector2i(x, y), pos);
@@ -1225,12 +1282,12 @@ void SDFMap::visCallback(const ros::TimerEvent& /*event*/) {
   publishMap();
   publishStaticMap();
   //publishMapInflate(false);
-  publishESDF();
+  if(mp_.use_occ_esdf_){
+    publishESDF();
+  }
   publishDepth();
   publishUnknown();
   publishUpdateRange();
-  
-
   //std::cout<<"VisualCallback:"<<std::endl;
 }
 

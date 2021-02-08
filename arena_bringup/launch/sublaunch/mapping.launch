@@ -1,31 +1,71 @@
-<launch>    
+<launch>
+    <arg name="max_vel"         value="3.0" />
+    <arg name="max_acc"         value="2.0" />
+    <arg name="lambda_heu"      value="0.01" />
+    
+
     <!-- arena_plan_manager -->
     <node pkg="arena_global_planner" name="global_planner" type="arena_global_planner" output="screen">
         <!-- <param name="train_mode" value="$(arg train_mode)"/> -->
         <param name="global_planner/use_astar"              value="true"/>
         <param name="global_planner/use_kino_astar"         value="true" />
+        <param name="global_planner/use_optimization"       value="true" />
+
+        
+        <!-- b-spline -->
+        <param name="b_spline/control_points_distance"      value="0.5"             type="double"/>
+        <param name="b_spline/max_vel"                      value="$(arg max_vel)"/>
+        <param name="b_spline/max_acc"                      value="$(arg max_acc)"/>
+
+        <!-- trajectory optimization -->
+        <param name="optimization/lambda1"                  value="10.0" type="double"/>
+        <param name="optimization/lambda2"                  value="5.0" type="double"/>
+        <param name="optimization/lambda3"                  value="0.00001" type="double"/>
+        <param name="optimization/lambda4"                  value="0.01" type="double"/>
+        <param name="optimization/lambda7"                  value="100.0" type="double"/>
+        <param name="optimization/dist0"                    value="0.4" type="double"/>
+        <param name="optimization/max_vel"                  value="$(arg max_vel)" type="double"/>
+        <param name="optimization/max_acc"                  value="$(arg max_acc)" type="double"/>
+
+        <param name="optimization/algorithm1"               value="15" type="int"/>
+        <param name="optimization/algorithm2"               value="11" type="int"/>
+
+        <param name="optimization/max_iteration_num1"       value="2" type="int"/>
+        <param name="optimization/max_iteration_num2"       value="300" type="int"/>
+        <param name="optimization/max_iteration_num3"       value="200" type="int"/>
+        <param name="optimization/max_iteration_num4"       value="200" type="int"/>
+
+        <param name="optimization/max_iteration_time1"      value="0.0001" type="double"/>
+        <param name="optimization/max_iteration_time2"      value="0.005" type="double"/>
+        <param name="optimization/max_iteration_time3"      value="0.003" type="double"/>
+        <param name="optimization/max_iteration_time4"      value="0.003" type="double"/>
+
+        <param name="optimization/order"                    value="3" type="int"/>
+
 
         <!-- astar -->
         <param name="astar/resolution_astar"                value="0.05"/>
         <param name="astar/time_resolution"                 value="0.8" />
-        <param name="astar/lambda_heu"                      value="0.05"/>
+        <param name="astar/lambda_heu"                      value="$(arg lambda_heu)"/>
         <param name="astar/allocate_num"                    value="100000" />
 
         <!-- kino astar -->
         <param name="kino_astar/max_tau"                    value="0.6"/>
         <param name="kino_astar/init_max_tau"               value="0.8"/>
-        <param name="kino_astar/max_vel"                    value="3"/>
-        <param name="kino_astar/max_acc"                    value="1.0"/>
+        <param name="kino_astar/max_vel"                    value="$(arg max_vel)"/>
+        <param name="kino_astar/max_acc"                    value="$(arg max_acc)"/>
         <param name="kino_astar/w_time"                     value="10.0"/>
         
         <param name="kino_astar/horizon"                    value="20" />
         <param name="kino_astar/resolution_astar"           value="0.05"/>
         <param name="kino_astar/time_resolution"            value="0.8" />
+        <param name="kino_astar/lambda_heu"                 value="$(arg lambda_heu)" />
         <param name="kino_astar/allocate_num"               value="100000"/>
         <param name="kino_astar/check_num"                  value="5"/>         
         
 
         <!-- map size -->
+        <param name="sdf_map/use_occ_esdf"                  value="true"/>
         <param name="sdf_map/frame_id"                      value="map"/>
         <param name="sdf_map/resolution"                    value="0.05" />   <!-- provide by map_server: static_map -->
         
@@ -33,7 +73,7 @@
         <param name="sdf_map/local_update_range_y"          value="10.0" />    <!-- update range -->
         <param name="sdf_map/local_map_margin"              value="50.0"/>     <!-- Keep in history range -->
 
-        <param name="sdf_map/obstacles_inflation"           value="0.8" /> 
+        <param name="sdf_map/obstacles_inflation"           value="0.3" /> 
         <param name="sdf_map/local_bound_inflate"           value="0.0"/>
         
         <!-- local fusion -->
