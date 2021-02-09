@@ -1,4 +1,4 @@
-#include "arena_global_planner/bspline_optimizer.h"
+#include "arena_traj_planner/bspline_optimizer.h"
 #include <nlopt.hpp>
 
 

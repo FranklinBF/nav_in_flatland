@@ -21,6 +21,7 @@ void KinodynamicAstar::setParam(ros::NodeHandle& private_nh)
   private_nh.param("kino_astar/w_time", w_time_, 10.0);                 // ? w_time
   private_nh.param("kino_astar/horizon", horizon_, 7.0);                // look ahead distance
   
+  private_nh.param("kino_astar/goal_tolerance", goal_tolerance_, 0.2);  // goal_tolerance
   private_nh.param("kino_astar/resolution_astar", resolution_, 0.05);   // map resolution
   private_nh.param("kino_astar/time_resolution", time_resolution_, 0.8);// time resolution
   private_nh.param("kino_astar/lambda_heu", lambda_heu_, 5.0);          // lambda heu
@@ -150,7 +151,7 @@ int KinodynamicAstar::search(Eigen::Vector2d start_pt, Eigen::Vector2d start_v, 
   //PathNodePtr neighbor = NULL;
   PathNodePtr terminate_node = NULL;
   bool init_search = init;
-  const int tolerance = ceil(1 / resolution_);
+  const int tolerance = ceil(1 / resolution_);//ceil(1 / resolution_); //goal_tolerance_
 
   while (!open_set_.empty())
   {
@@ -160,6 +161,8 @@ int KinodynamicAstar::search(Eigen::Vector2d start_pt, Eigen::Vector2d start_v, 
     bool reach_horizon = (cur_node->state.head(2) - start_pt).norm() >= horizon_;
     bool near_end = abs(cur_node->index(0) - end_index(0)) <= tolerance &&
                     abs(cur_node->index(1) - end_index(1)) <= tolerance;
+    
+    //bool near_end = (cur_node->state.head(2) - end_pt).norm() <= tolerance;
 
     if (reach_horizon || near_end)
     {

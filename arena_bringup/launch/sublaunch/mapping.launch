@@ -1,7 +1,7 @@
 <launch>
     <arg name="max_vel"         value="3.0" />
     <arg name="max_acc"         value="2.0" />
-    <arg name="lambda_heu"      value="0.01" />
+    <arg name="lambda_heu"      value="0.1" />
     
     <arg name="plan_horizon"    value=""/>
 
@@ -45,7 +45,7 @@
 
 
         <!-- astar -->
-        <param name="$(arg plan_horizon)/astar/resolution_astar"                value="0.05"/>
+        <param name="$(arg plan_horizon)/astar/resolution_astar"                value="0.1"/>
         <param name="$(arg plan_horizon)/astar/time_resolution"                 value="0.8" />
         <param name="$(arg plan_horizon)/astar/lambda_heu"                      value="$(arg lambda_heu)"/>
         <param name="$(arg plan_horizon)/astar/allocate_num"                    value="100000" />
@@ -57,8 +57,8 @@
         <param name="$(arg plan_horizon)/kino_astar/max_acc"                    value="$(arg max_acc)"/>
         <param name="$(arg plan_horizon)/kino_astar/w_time"                     value="10.0"/>
         
-        <param name="$(arg plan_horizon)/kino_astar/horizon"                    value="20" />
-        <param name="$(arg plan_horizon)/kino_astar/resolution_astar"           value="0.05"/>
+        <param name="$(arg plan_horizon)/kino_astar/horizon"                    value="30" />
+        <param name="$(arg plan_horizon)/kino_astar/resolution_astar"           value="0.10"/>
         <param name="$(arg plan_horizon)/kino_astar/time_resolution"            value="0.8" />
         <param name="$(arg plan_horizon)/kino_astar/lambda_heu"                 value="$(arg lambda_heu)" />
         <param name="$(arg plan_horizon)/kino_astar/allocate_num"               value="100000"/>

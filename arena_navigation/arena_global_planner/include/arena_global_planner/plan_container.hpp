@@ -7,7 +7,7 @@
 
 #include <ros/ros.h>
 
-#include <arena_global_planner/non_uniform_bspline.h>
+#include <arena_traj_planner/non_uniform_bspline.h>
 
 
 struct PlanParameters {

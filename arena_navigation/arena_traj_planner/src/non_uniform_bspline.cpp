@@ -1,4 +1,4 @@
-#include "arena_global_planner/non_uniform_bspline.h"
+#include "arena_traj_planner/non_uniform_bspline.h"
 #include <ros/ros.h>
 
 NonUniformBspline::NonUniformBspline(const Eigen::MatrixXd& points, const int& order,

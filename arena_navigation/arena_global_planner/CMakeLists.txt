@@ -17,6 +17,7 @@ find_package(catkin REQUIRED COMPONENTS
   plan_visualization
   arena_mapping
   arena_path_search
+  arena_traj_planner
   nlopt
 )
 
@@ -115,7 +116,7 @@ find_package(PCL 1.7 REQUIRED)
 catkin_package(
   INCLUDE_DIRS include
   LIBRARIES arena_global_planner
-  CATKIN_DEPENDS roscpp rospy std_msgs nav_msgs geometry_msgs plan_visualization arena_mapping arena_path_search
+  CATKIN_DEPENDS roscpp rospy std_msgs nav_msgs geometry_msgs plan_visualization arena_mapping arena_path_search arena_traj_planner
   #DEPENDS system_lib
 )
 
@@ -148,9 +149,8 @@ set(CMAKE_CXX_FLAGS "-std=c++11 ${CMAKE_CXX_FLAGS} -O3 -Wall")
 ## The recommended prefix ensures that target names across packages don't collide
 # add_executable(${PROJECT_NAME}_node src/arena_global_planner_node.cpp)
 add_executable(arena_global_planner 
-                  src/global_planner_collector.cpp
-                  src/non_uniform_bspline.cpp
-                  src/bspline_optimizer.cpp)
+              src/global_planner_collector.cpp
+)
 
 
 

@@ -3,6 +3,8 @@ project(arena_traj_planner)
 
 ## Compile as C++11, supported in ROS Kinetic and newer
 # add_compile_options(-std=c++11)
+set(CMAKE_CXX_FLAGS "-std=c++11 ${CMAKE_CXX_FLAGS} -O3 -Wall") # -Wextra -Werror
+
 
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
@@ -13,7 +15,17 @@ find_package(catkin REQUIRED COMPONENTS
   roscpp
   rospy
   std_msgs
+  arena_mapping
+  nlopt
 )
+
+find_package(Eigen3 REQUIRED)
+find_package(PCL REQUIRED)
+
+# this is important to find eigen path
+set(Eigen3_INCLUDE_DIRS ${EIGEN3_INCLUDE_DIR})
+
+
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
@@ -105,9 +117,9 @@ find_package(catkin REQUIRED COMPONENTS
 ## CATKIN_DEPENDS: catkin_packages dependent projects also need
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
-#  INCLUDE_DIRS include
-#  LIBRARIES arena_traj_planner
-#  CATKIN_DEPENDS geometry_msgs nav_msgs roscpp rospy std_msgs
+  INCLUDE_DIRS include
+  LIBRARIES arena_traj_planner
+  CATKIN_DEPENDS geometry_msgs nav_msgs roscpp rospy std_msgs arena_mapping
 #  DEPENDS system_lib
 )
 
@@ -118,14 +130,17 @@ catkin_package(
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
 include_directories(
-# include
+  include
   ${catkin_INCLUDE_DIRS}
+  ${Eigen3_INCLUDE_DIRS} 
+  ${PCL_INCLUDE_DIRS} 
 )
 
 ## Declare a C++ library
-# add_library(${PROJECT_NAME}
-#   src/${PROJECT_NAME}/arena_traj_planner.cpp
-# )
+add_library(arena_traj_planner
+  src/bspline_optimizer.cpp
+  src/non_uniform_bspline.cpp
+)
 
 ## Add cmake target dependencies of the library
 ## as an example, code may need to be generated before libraries
@@ -148,9 +163,11 @@ include_directories(
 # add_dependencies(${PROJECT_NAME}_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 ## Specify libraries to link a library or executable target against
-# target_link_libraries(${PROJECT_NAME}_node
-#   ${catkin_LIBRARIES}
-# )
+target_link_libraries(arena_traj_planner
+  ${catkin_LIBRARIES}
+  ${PCL_LIBRARIES}
+)
+
 
 #############
 ## Install ##

@@ -18,8 +18,8 @@
 #include "arena_path_search/kinodynamic_astar.h"
 
 // b-spline
-#include <arena_global_planner/non_uniform_bspline.h>
-#include "arena_global_planner/bspline_optimizer.h"
+#include "arena_traj_planner/non_uniform_bspline.h"
+#include "arena_traj_planner/bspline_optimizer.h"
 
 //
 #include "arena_global_planner/plan_container.hpp"
