@@ -37,7 +37,7 @@ private:
 
   // publisher
   ros::Publisher global_path_pub_;
-  ros::Publisher astar_path_pub_;
+  ros::Publisher astar_path_pub_,astar_traj_pub_;
   ros::Publisher kino_astar_path_pub_;
   ros::Publisher sample_path_pub_;
   ros::Publisher traj_pub_;

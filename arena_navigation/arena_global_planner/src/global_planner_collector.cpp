@@ -62,6 +62,7 @@ void GlobalPlanner::init(ros::NodeHandle & nh){
 
   // publisher
   astar_path_pub_ =node_.advertise<nav_msgs::Path>("astar_plan", 1);
+  astar_traj_pub_ =node_.advertise<nav_msgs::Path>("astar_traj_plan", 1);
   kino_astar_path_pub_ =node_.advertise<nav_msgs::Path>("kino_astar_plan", 1);
   sample_path_pub_ =node_.advertise<nav_msgs::Path>("sample_plan", 1);
   bspline_esdf_pub_ =node_.advertise<nav_msgs::Path>("bspline_esdf_plan", 1);
@@ -175,39 +176,75 @@ void GlobalPlanner::findPath( Eigen::Vector2d start_pt, Eigen::Vector2d start_ve
   int status;
   global_path_.clear();
 
+  //timer
+  double dur;
+  ros::WallTime t1, t2;
+
   bool find_astar_success=false, find_kino_astar_success=false;
   // astar
   if(use_astar_){
   
     find_astar_success=findPath_astar(start_pt,end_pt);
     //global_path_=global_planner_astar_->getPath()
+    if(find_astar_success){
+      double ts = ctrl_pt_dist_ / max_vel_;
+      std::vector<Eigen::Vector2d> point_set, start_end_derivatives;
+      point_set.clear();
+      start_end_derivatives.clear();
+      point_set=global_planner_astar_->getPath();
+
+      start_end_derivatives.push_back(start_vel_);
+      start_end_derivatives.push_back(end_vel);
+      start_end_derivatives.push_back(start_acc);
+      start_end_derivatives.push_back(Eigen::Vector2d::Zero());
+
+      std::vector<Eigen::Vector2d> astar_traj;
+      optimizePath(ts,point_set,start_end_derivatives,astar_traj);
+    
+      visualize_path(astar_traj,astar_traj_pub_);
+    }
   }
 
   // kino star
+  t1 = ros::WallTime::now();
   if(use_kino_astar_){
     find_kino_astar_success=findPath_kino_astar(start_pt,start_vel,start_acc,end_pt,end_vel);
     //global_path_ = global_planner_kino_astar_->getKinoTraj(0.01);
+
+    // sample from global path
+    if(find_kino_astar_success){
+      double ts = ctrl_pt_dist_ / max_vel_;
+      std::vector<Eigen::Vector2d> point_set, start_end_derivatives;
+      global_planner_kino_astar_->getSamples(ts, point_set, start_end_derivatives);
+
+      // optimize path
+      std::vector<Eigen::Vector2d> traj_pts_esdf,traj_pts_astar;
+      
+      std::cout<<"optimize_astar kino start----------------"<<std::endl;
+      t1 = ros::WallTime::now();
+      optimizePath_Astar(ts,point_set,start_end_derivatives,traj_pts_astar);
+      t2 = ros::WallTime::now();
+      dur=(t2 - t1).toSec();
+      std::cout<<"optimize_astar kino end----------------dur="<<dur<<std::endl;
+
+      std::cout<<"optimize_esdf kino start----------------"<<std::endl;
+      t1 = ros::WallTime::now();
+      optimizePath(ts,point_set,start_end_derivatives,traj_pts_esdf);
+      t2 = ros::WallTime::now();
+      dur=(t2 - t1).toSec();
+      std::cout<<"optimize_esdf kino end----------------dur="<<dur<<std::endl;
+
+      // get & visualize path
+      visualize_path(traj_pts_esdf,bspline_esdf_pub_);
+      visualize_path(traj_pts_astar,bspline_astar_pub_);
+      visualize_path(point_set,sample_path_pub_);
+    }
   }
 
 
-  // sample from global path
-  if(find_kino_astar_success){
-    double ts = ctrl_pt_dist_ / max_vel_;
-    std::vector<Eigen::Vector2d> point_set, start_end_derivatives;
-    global_planner_kino_astar_->getSamples(ts, point_set, start_end_derivatives);
+  
 
-    // optimize path
-    std::vector<Eigen::Vector2d> traj_pts_esdf,traj_pts_astar;
-    optimizePath(ts,point_set,start_end_derivatives,traj_pts_esdf);
-
-    optimizePath_Astar(ts,point_set,start_end_derivatives,traj_pts_astar);
-
-    // get & visualize path
-    visualize_path(traj_pts_esdf,bspline_esdf_pub_);
-    visualize_path(traj_pts_astar,bspline_astar_pub_);
-    visualize_path(point_set,sample_path_pub_);
-  }
-
+  
   bool find_global_traj_success=false;
   find_global_traj_success = planGlobalTraj(start_pt, start_vel, Eigen::Vector2d::Zero(), end_pt_, end_vel, Eigen::Vector2d::Zero());
 
@@ -238,11 +275,19 @@ void GlobalPlanner::findPath( Eigen::Vector2d start_pt, Eigen::Vector2d start_ve
    
 
     std::vector<Eigen::Vector2d> gloabl_traj_astar;
-
+    std::cout<<"optimize naive start----------------"<<std::endl;
+    
+    
     optimizePath_Astar(ts,point_set,start_end_derivatives,gloabl_traj_astar);
+    t2 = ros::WallTime::now();
+    dur=(t2 - t1).toSec();
 
+    std::cout<<"optimize naive end----------------dur="<<dur<<std::endl;
     visualize_path(gloabl_traj,global_traj_pub_);
     visualize_path(gloabl_traj_astar,global_traj_astar_pub_);
+
+
+    
   }
 
 
