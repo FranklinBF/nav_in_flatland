@@ -16,6 +16,7 @@ find_package(catkin REQUIRED COMPONENTS
   rospy
   std_msgs
   arena_mapping
+  arena_path_search
   nlopt
 )
 
@@ -119,7 +120,7 @@ set(Eigen3_INCLUDE_DIRS ${EIGEN3_INCLUDE_DIR})
 catkin_package(
   INCLUDE_DIRS include
   LIBRARIES arena_traj_planner
-  CATKIN_DEPENDS geometry_msgs nav_msgs roscpp rospy std_msgs arena_mapping
+  CATKIN_DEPENDS geometry_msgs nav_msgs roscpp rospy std_msgs arena_mapping arena_path_search
 #  DEPENDS system_lib
 )
 
@@ -139,7 +140,11 @@ include_directories(
 ## Declare a C++ library
 add_library(arena_traj_planner
   src/bspline_optimizer.cpp
+  src/bspline_optimizer_astar.cpp
+  
   src/non_uniform_bspline.cpp
+  src/uniform_bspline.cpp
+  src/polynomial_traj.cpp
 )
 
 ## Add cmake target dependencies of the library

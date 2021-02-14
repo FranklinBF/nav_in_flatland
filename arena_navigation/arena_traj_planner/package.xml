@@ -66,6 +66,7 @@
   <exec_depend>std_msgs</exec_depend>
 
   <depend>arena_mapping</depend>
+  <depend>arena_path_search</depend>
 
 
   <!-- The export tag contains other, unspecified, tags -->

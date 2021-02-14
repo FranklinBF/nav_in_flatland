@@ -242,9 +242,9 @@ int Astar::search(Eigen::Vector2d start_pt, Eigen::Vector2d end_pt, bool dynamic
   }
 
   /* ---------- open set empty, no path ---------- */
-  std::cout << "open set empty, no path!" << std::endl;
-  std::cout << "use node num: " << use_node_num_ << std::endl;
-  std::cout << "iter num: " << iter_num_ << std::endl;
+  std::cout << "[Astar replan]open set empty, no path!" << std::endl;
+  std::cout << "[Astar replan]use node num: " << use_node_num_ << std::endl;
+  std::cout << "[Astar replan]iter num: " << iter_num_ << std::endl;
   return NO_PATH;
 }
 

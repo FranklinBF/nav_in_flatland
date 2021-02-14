@@ -41,6 +41,7 @@ include_directories(
 add_library(arena_path_search
   src/astar.cpp
   src/kinodynamic_astar.cpp
+  src/dyn_astar.cpp
 )
 
 target_link_libraries(arena_path_search

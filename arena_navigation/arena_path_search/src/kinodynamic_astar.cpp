@@ -361,7 +361,7 @@ int KinodynamicAstar::search(Eigen::Vector2d start_pt, Eigen::Vector2d start_v, 
             use_node_num_ += 1;
             if (use_node_num_ == allocate_num_)
             {
-              std::cout << "run out of memory." << std::endl;
+              std::cout << "[kino replan]run out of memory." << std::endl;
               return NO_PATH;
             }
           }
@@ -382,16 +382,16 @@ int KinodynamicAstar::search(Eigen::Vector2d start_pt, Eigen::Vector2d start_v, 
           }
           else
           {
-            std::cout << "error type in searching: " << pro_node->node_state << std::endl;
+            std::cout << "[kino replan] error type in searching: " << pro_node->node_state << std::endl;
           }
         }
       }
     // init_search = false;
   }
 
-  std::cout << "open set empty, no path!" << std::endl;
-  std::cout << "use node num: " << use_node_num_ << std::endl;
-  std::cout << "iter num: " << iter_num_ << std::endl;
+  std::cout << "[kino replan]open set empty, no path!" << std::endl;
+  std::cout << "[kino replan]use node num: " << use_node_num_ << std::endl;
+  std::cout << "[kino replan]iter num: " << iter_num_ << std::endl;
   return NO_PATH;
 }
 

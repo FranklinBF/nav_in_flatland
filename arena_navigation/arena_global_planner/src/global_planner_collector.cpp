@@ -17,8 +17,6 @@ void GlobalPlanner::init(ros::NodeHandle & nh){
   nh.param("b_spline/max_vel", max_vel_, 3.0);
   nh.param("b_spline/max_acc", max_acc_, 2.0);
 
-
-
   // use_astar, use_kino_astar
   if(use_astar_){
     //global_planner_type_="astar";
@@ -45,6 +43,16 @@ void GlobalPlanner::init(ros::NodeHandle & nh){
       bspline_optimizer_->setEnvironment(grid_map_);
   }
 
+  if (use_optimization_) {
+      bspline_optimizer_rebound_.reset(new BsplineOptimizerAstar);
+      bspline_optimizer_rebound_->setParam(nh);
+      bspline_optimizer_rebound_->setEnvironment(grid_map_);
+      bspline_optimizer_rebound_->a_star_.reset(new AStar);
+      bspline_optimizer_rebound_->a_star_->initGridMap(grid_map_, Eigen::Vector2i(100, 100));
+  }
+
+
+
   // odom
   have_odom_=false;
 
@@ -56,7 +64,13 @@ void GlobalPlanner::init(ros::NodeHandle & nh){
   astar_path_pub_ =node_.advertise<nav_msgs::Path>("astar_plan", 1);
   kino_astar_path_pub_ =node_.advertise<nav_msgs::Path>("kino_astar_plan", 1);
   sample_path_pub_ =node_.advertise<nav_msgs::Path>("sample_plan", 1);
-  traj_pub_ =node_.advertise<nav_msgs::Path>("traj_plan", 1);
+  bspline_esdf_pub_ =node_.advertise<nav_msgs::Path>("bspline_esdf_plan", 1);
+  bspline_astar_pub_ =node_.advertise<nav_msgs::Path>("bspline_astar_plan", 1);
+  global_traj_pub_ =node_.advertise<nav_msgs::Path>("global_traj_plan", 1);
+  global_traj_astar_pub_ =node_.advertise<nav_msgs::Path>("global_traj_astar_plan", 1);
+
+
+
   
   visualization_.reset(new PlanningVisualization(nh));
   
@@ -107,28 +121,26 @@ void GlobalPlanner::goalCallback(const geometry_msgs::PoseStampedPtr& msg){
   
 }
 
-void GlobalPlanner::findPath( Eigen::Vector2d start_pt, Eigen::Vector2d start_vel, Eigen::Vector2d start_acc,  
-                              Eigen::Vector2d end_pt, Eigen::Vector2d end_vel){
-  // status
-  int status;
-  global_path_.clear();
-
-  // astar
-  if(use_astar_){
+bool GlobalPlanner::findPath_astar(Eigen::Vector2d start_pt, Eigen::Vector2d end_pt)
+{   
+    int status;
     global_planner_astar_->reset();
     status = global_planner_astar_->search( start_pt, end_pt, false,-1.0);
     //global_path_=global_planner_astar_->getPath();
     if(status==Astar::NO_PATH){
       std::cout << "[Astar replan]: Can't find path." <<std:: endl;
-      return;
+      return false;
     }else{
       std::cout << "[Astar replan]: Astar search success."<< std::endl;
       visualize_path(global_planner_astar_->getPath(),astar_path_pub_);
+      return true;
     }
-  }
 
-  // kino star
-  if(use_kino_astar_){
+}
+
+bool GlobalPlanner::findPath_kino_astar(Eigen::Vector2d start_pt, Eigen::Vector2d start_vel, Eigen::Vector2d start_acc, Eigen::Vector2d end_pt, Eigen::Vector2d end_vel)
+{   
+    int status;
     // search
     global_planner_kino_astar_->reset();
     status = global_planner_kino_astar_->search(start_pt, start_vel, start_acc, end_pt, end_vel, true);
@@ -143,7 +155,7 @@ void GlobalPlanner::findPath( Eigen::Vector2d start_pt, Eigen::Vector2d start_ve
 
       if (status == KinodynamicAstar::NO_PATH) {
         std::cout << "[kino replan]: Can't find path." << std::endl;
-        return;
+        return false;
 
       } else {
         std::cout << "[kino replan]: retry search success." << std::endl;
@@ -152,43 +164,179 @@ void GlobalPlanner::findPath( Eigen::Vector2d start_pt, Eigen::Vector2d start_ve
         std::cout << "[kino replan]: kinodynamic search success." << std::endl;
     }
 
-    // global path
-    global_path_ = global_planner_kino_astar_->getKinoTraj(0.01);
+    visualize_path(global_planner_kino_astar_->getKinoTraj(0.01),kino_astar_path_pub_);
+    return true;
     
-    // sample from global path
-    double      ts = ctrl_pt_dist_ / max_vel_;
+}
+
+void GlobalPlanner::findPath( Eigen::Vector2d start_pt, Eigen::Vector2d start_vel, Eigen::Vector2d start_acc,  
+                              Eigen::Vector2d end_pt, Eigen::Vector2d end_vel){
+  // status
+  int status;
+  global_path_.clear();
+
+  bool find_astar_success=false, find_kino_astar_success=false;
+  // astar
+  if(use_astar_){
+  
+    find_astar_success=findPath_astar(start_pt,end_pt);
+    //global_path_=global_planner_astar_->getPath()
+  }
+
+  // kino star
+  if(use_kino_astar_){
+    find_kino_astar_success=findPath_kino_astar(start_pt,start_vel,start_acc,end_pt,end_vel);
+    //global_path_ = global_planner_kino_astar_->getKinoTraj(0.01);
+  }
+
+
+  // sample from global path
+  if(find_kino_astar_success){
+    double ts = ctrl_pt_dist_ / max_vel_;
     std::vector<Eigen::Vector2d> point_set, start_end_derivatives;
     global_planner_kino_astar_->getSamples(ts, point_set, start_end_derivatives);
+
+    // optimize path
+    std::vector<Eigen::Vector2d> traj_pts_esdf,traj_pts_astar;
+    optimizePath(ts,point_set,start_end_derivatives,traj_pts_esdf);
+
+    optimizePath_Astar(ts,point_set,start_end_derivatives,traj_pts_astar);
+
+    // get & visualize path
+    visualize_path(traj_pts_esdf,bspline_esdf_pub_);
+    visualize_path(traj_pts_astar,bspline_astar_pub_);
+    visualize_path(point_set,sample_path_pub_);
+  }
+
+  bool find_global_traj_success=false;
+  find_global_traj_success = planGlobalTraj(start_pt, start_vel, Eigen::Vector2d::Zero(), end_pt_, end_vel, Eigen::Vector2d::Zero());
+
+  if(find_global_traj_success){
+    constexpr double step_size_t = 0.1;
+    int i_end = floor(global_data_.global_duration_ / step_size_t);
+    std::vector<Eigen::Vector2d> gloabl_traj(i_end);
+    std::vector<Eigen::Vector2d> point_set, start_end_derivatives;
+    point_set.clear();
+    start_end_derivatives.clear();
+    for (int i = 0; i < i_end; i++)
+    {
+        gloabl_traj[i] = global_data_.global_traj_.evaluate(i * step_size_t);
+        point_set.push_back(gloabl_traj[i]);
+    }
+    start_end_derivatives.push_back(start_vel_);
+    start_end_derivatives.push_back(end_vel);
+    start_end_derivatives.push_back(start_acc);
+    start_end_derivatives.push_back(Eigen::Vector2d::Zero());
+
+    //start_end_derivatives.push_back(global_data_.global_traj_.evaluateVel(0));
+    //start_end_derivatives.push_back(end_vel);
+    //start_end_derivatives.push_back(global_data_.global_traj_.evaluateAcc(0));
+    //start_end_derivatives.push_back(global_data_.global_traj_.evaluateAcc(i_end*step_size_t));
+
+    double ts = ctrl_pt_dist_ / max_vel_;
     
-    /* b-spline */
+   
+
+    std::vector<Eigen::Vector2d> gloabl_traj_astar;
+
+    optimizePath_Astar(ts,point_set,start_end_derivatives,gloabl_traj_astar);
+
+    visualize_path(gloabl_traj,global_traj_pub_);
+    visualize_path(gloabl_traj_astar,global_traj_astar_pub_);
+  }
+
+
+  
+}
+
+bool GlobalPlanner::planGlobalTraj(const Eigen::Vector2d &start_pos, const Eigen::Vector2d &start_vel, const Eigen::Vector2d &start_acc,
+                                         const Eigen::Vector2d &end_pos, const Eigen::Vector2d &end_vel, const Eigen::Vector2d &end_acc)
+{
+
+    // generate global reference trajectory
+
+    std::vector<Eigen::Vector2d> points;
+    points.push_back(start_pos);
+    points.push_back(end_pos);
+
+    // insert intermediate points if too far
+    std::vector<Eigen::Vector2d> inter_points;
+    const double dist_thresh = 4.0;
+
+    for (size_t i = 0; i < points.size() - 1; ++i)
+    {
+      inter_points.push_back(points.at(i));
+      double dist = (points.at(i + 1) - points.at(i)).norm();
+
+      if (dist > dist_thresh)
+      {
+        int id_num = floor(dist / dist_thresh) + 1;
+
+        for (int j = 1; j < id_num; ++j)
+        {
+          Eigen::Vector2d inter_pt =
+              points.at(i) * (1.0 - double(j) / id_num) + points.at(i + 1) * double(j) / id_num;
+          inter_points.push_back(inter_pt);
+        }
+      }
+    }
+
+    inter_points.push_back(points.back());
+
+    // write position matrix
+    int pt_num = inter_points.size();
+    Eigen::MatrixXd pos(2, pt_num);
+    for (int i = 0; i < pt_num; ++i)
+      pos.col(i) = inter_points[i];
+
+    Eigen::Vector2d zero(0, 0);
+    Eigen::VectorXd time(pt_num - 1);
+    for (int i = 0; i < pt_num - 1; ++i)
+    {
+      time(i) = (pos.col(i + 1) - pos.col(i)).norm() / (max_vel_);
+    }
+
+    time(0) *= 2.0;
+    time(time.rows() - 1) *= 2.0;
+
+    PolynomialTraj gl_traj;
+    if (pos.cols() >= 3)
+      gl_traj = PolynomialTraj::minSnapTraj(pos, start_vel, end_vel, start_acc, end_acc, time);
+    else if (pos.cols() == 2)
+      gl_traj = PolynomialTraj::one_segment_traj_gen(start_pos, start_vel, start_acc, end_pos, end_vel, end_acc, time(0));
+    else
+      return false;
+
+    auto time_now = ros::Time::now();
+    global_data_.setGlobalTraj(gl_traj, time_now);
+
+    return true;
+}
+
+void GlobalPlanner::optimizePath(double ts,std::vector<Eigen::Vector2d> point_set, std::vector<Eigen::Vector2d> start_end_derivatives,std::vector<Eigen::Vector2d> &traj_pts)
+{   
     Eigen::MatrixXd ctrl_pts;
     NonUniformBspline::parameterizeToBspline(ts, point_set, start_end_derivatives, ctrl_pts);
-    //NonUniformBspline init(ctrl_pts, 3, ts);
-
-
+    
     // bspline trajectory optimization
     ros::Time t1, t2;
-    double t_search = 0.0, t_opt = 0.0, t_adjust = 0.0;
-
+    double t_search, t_opt , t_adjust ;
     t1 = ros::Time::now();
-
+    // define cost function
     int cost_function = BsplineOptimizer::NORMAL_PHASE;//NORMAL_PHASE;
-
+    
+    int status;
     if (status != KinodynamicAstar::REACH_END) {
       cost_function |= BsplineOptimizer::ENDPOINT;
     }
 
+    // optimize control points
     ctrl_pts = bspline_optimizer_->BsplineOptimizeTraj(ctrl_pts, ts, cost_function, 1, 1);
 
     t_opt = (ros::Time::now() - t1).toSec();
 
-
-
-
-
     // iterative time adjustment
-
-    t1                    = ros::Time::now();
+    t1  = ros::Time::now();
     NonUniformBspline pos = NonUniformBspline(ctrl_pts, 3, ts);
 
     double to = pos.getTimeSum();
@@ -212,7 +360,7 @@ void GlobalPlanner::findPath( Eigen::Vector2d start_pt, Eigen::Vector2d start_ve
     position_traj_ = pos;
 
     // save traj pos
-    std::vector<Eigen::Vector2d> traj_pts;
+    
     double  tm, tmp;
     position_traj_.getTimeSpan(tm, tmp);
     for (double t = tm; t <= tmp; t += 0.01) {
@@ -221,8 +369,6 @@ void GlobalPlanner::findPath( Eigen::Vector2d start_pt, Eigen::Vector2d start_ve
     }
 
     // save traj ctl pts
-    // draw the control point
-
     Eigen::MatrixXd         ctrl_pts_draw = position_traj_.getControlPoint();
     std::vector<Eigen::Vector2d> ctp;
     nav_msgs::Path ctrl_points_path;
@@ -235,26 +381,117 @@ void GlobalPlanner::findPath( Eigen::Vector2d start_pt, Eigen::Vector2d start_ve
       ctrl_points_path.poses[i].pose.position.x=pt(0);
       ctrl_points_path.poses[i].pose.position.y=pt(1);
     }
-
-    
-//     gui_path.poses.resize(path.size());
     visualization_->drawGlobalPath(ctrl_points_path,0.2, Eigen::Vector4d(0.5, 0.5, 0.5, 0.6));
-
-
-
-    // get & visualize path
-    visualize_path(global_path_,kino_astar_path_pub_);
-    visualize_path(point_set,sample_path_pub_);
-    visualize_path(traj_pts,traj_pub_);
     
-
-  }
-  
-  
-  
-  
-
 }
+
+void GlobalPlanner::optimizePath_Astar(double ts,std::vector<Eigen::Vector2d> point_set, std::vector<Eigen::Vector2d> start_end_derivatives,std::vector<Eigen::Vector2d> &traj_pts){
+  Eigen::MatrixXd ctrl_pts;
+  UniformBspline::parameterizeToBspline(ts, point_set, start_end_derivatives, ctrl_pts);
+
+  std::vector<std::vector<Eigen::Vector2d>> a_star_pathes;
+  a_star_pathes = bspline_optimizer_rebound_->initControlPoints(ctrl_pts, true);
+
+  /*** STEP 2: OPTIMIZE ***/
+  bool flag_step_1_success = bspline_optimizer_rebound_->BsplineOptimizeTrajRebound(ctrl_pts, ts);
+  std::cout << "first_optimize_step_success=" << flag_step_1_success << std::endl;
+
+  if (!flag_step_1_success)
+  {
+      continous_failures_count_++;
+      return;
+  }
+
+  /*** STEP 3: REFINE(RE-ALLOCATE TIME) IF NECESSARY ***/
+  UniformBspline pos = UniformBspline(ctrl_pts, 3, ts);
+  double feasibility_tolerance_=0.0;
+  pos.setPhysicalLimits(max_vel_, max_acc_, feasibility_tolerance_);
+
+  double ratio;
+  bool flag_step_2_success = true;
+  if (!pos.checkFeasibility(ratio, false))
+  {
+      cout << "Need to reallocate time." << endl;
+
+      Eigen::MatrixXd optimal_control_points;
+      flag_step_2_success = refineTrajAlgo(pos, start_end_derivatives, ratio, ts, optimal_control_points);
+      if (flag_step_2_success)
+        pos = UniformBspline(optimal_control_points, 3, ts);
+  }
+
+  if (!flag_step_2_success)
+  { 
+      printf("\033[34mThis refined trajectory hits obstacles. It doesn't matter if appeares occasionally. But if continously appearing, Increase parameter \"lambda_fitness\".\n\033[0m");
+      continous_failures_count_++;
+      // save traj pos
+    double  tm, tmp;
+    pos.getTimeSpan(tm, tmp);
+    for (double t = tm; t <= tmp; t += 0.01) {
+      Eigen::Vector2d pt = pos.evaluateDeBoor(t);
+      traj_pts.push_back(pt);
+    }
+      return;
+  }
+
+  continous_failures_count_ = 0;
+
+
+  // save traj pos
+  double  tm, tmp;
+  pos.getTimeSpan(tm, tmp);
+  for (double t = tm; t <= tmp; t += 0.01) {
+      Eigen::Vector2d pt = pos.evaluateDeBoor(t);
+      traj_pts.push_back(pt);
+  }
+  return;
+}
+
+bool GlobalPlanner::refineTrajAlgo(UniformBspline &traj, vector<Eigen::Vector2d> &start_end_derivative, double ratio, double &ts, Eigen::MatrixXd &optimal_control_points)
+{
+    double t_inc;
+
+    Eigen::MatrixXd ctrl_pts; // = traj.getControlPoint()
+
+    // std::cout << "ratio: " << ratio << std::endl;
+    reparamBspline(traj, start_end_derivative, ratio, ctrl_pts, ts, t_inc);
+
+    traj = UniformBspline(ctrl_pts, 3, ts);
+
+    double t_step = traj.getTimeSum() / (ctrl_pts.cols() - 3);
+    bspline_optimizer_rebound_->ref_pts_.clear();
+    for (double t = 0; t < traj.getTimeSum() + 1e-4; t += t_step)
+      bspline_optimizer_rebound_->ref_pts_.push_back(traj.evaluateDeBoorT(t));
+
+    bool success = bspline_optimizer_rebound_->BsplineOptimizeTrajRefine(ctrl_pts, ts, optimal_control_points);
+
+    return success;
+}
+
+void GlobalPlanner::reparamBspline(UniformBspline &bspline, vector<Eigen::Vector2d> &start_end_derivative, double ratio,
+                                         Eigen::MatrixXd &ctrl_pts, double &dt, double &time_inc)
+{
+    double time_origin = bspline.getTimeSum();
+    int seg_num = bspline.getControlPoint().cols() - 3;
+    // double length = bspline.getLength(0.1);
+    // int seg_num = ceil(length / pp_.ctrl_pt_dist);
+
+    bspline.lengthenTime(ratio);
+    double duration = bspline.getTimeSum();
+    dt = duration / double(seg_num);
+    time_inc = duration - time_origin;
+
+    vector<Eigen::Vector2d> point_set;
+    for (double time = 0.0; time <= duration + 1e-4; time += dt)
+    {
+      point_set.push_back(bspline.evaluateDeBoorT(time));
+    }
+    UniformBspline::parameterizeToBspline(dt, point_set, start_end_derivative, ctrl_pts);
+}
+
+
+
+
+
 
 void GlobalPlanner::visualize_path(std::vector<Eigen::Vector2d> path, const ros::Publisher & pub){
 
