@@ -1,19 +1,19 @@
-#include "arena_traj_planner/bspline_optimizer.h"
+#include "arena_traj_planner/bspline_optimizer_esdf.h"
 #include <nlopt.hpp>
 
 
-const int BsplineOptimizer::SMOOTHNESS  = (1 << 0);
-const int BsplineOptimizer::DISTANCE    = (1 << 1);
-const int BsplineOptimizer::FEASIBILITY = (1 << 2);
-const int BsplineOptimizer::ENDPOINT    = (1 << 3);
-const int BsplineOptimizer::GUIDE       = (1 << 4);
-const int BsplineOptimizer::WAYPOINTS   = (1 << 6);
+const int BsplineOptimizerESDF::SMOOTHNESS  = (1 << 0);
+const int BsplineOptimizerESDF::DISTANCE    = (1 << 1);
+const int BsplineOptimizerESDF::FEASIBILITY = (1 << 2);
+const int BsplineOptimizerESDF::ENDPOINT    = (1 << 3);
+const int BsplineOptimizerESDF::GUIDE       = (1 << 4);
+const int BsplineOptimizerESDF::WAYPOINTS   = (1 << 6);
 
-const int BsplineOptimizer::GUIDE_PHASE     = BsplineOptimizer::SMOOTHNESS | BsplineOptimizer::GUIDE;
-const int BsplineOptimizer::NORMAL_PHASE    = BsplineOptimizer::SMOOTHNESS | BsplineOptimizer::DISTANCE | BsplineOptimizer::FEASIBILITY;
+const int BsplineOptimizerESDF::GUIDE_PHASE     = BsplineOptimizerESDF::SMOOTHNESS | BsplineOptimizerESDF::GUIDE;
+const int BsplineOptimizerESDF::NORMAL_PHASE    = BsplineOptimizerESDF::SMOOTHNESS | BsplineOptimizerESDF::DISTANCE | BsplineOptimizerESDF::FEASIBILITY;
 
 /* main API */
-void BsplineOptimizer::setParam(ros::NodeHandle& nh) {
+void BsplineOptimizerESDF::setParam(ros::NodeHandle& nh) {
     nh.param("optimization/lambda1", lambda1_, -1.0);
     nh.param("optimization/lambda2", lambda2_, -1.0);
     nh.param("optimization/lambda3", lambda3_, -1.0);
@@ -44,11 +44,11 @@ void BsplineOptimizer::setParam(ros::NodeHandle& nh) {
     nh.param("optimization/order", order_, -1);
 }
 
-void BsplineOptimizer::setEnvironment(const GridMap::Ptr& env) {
+void BsplineOptimizerESDF::setEnvironment(const GridMap::Ptr& env) {
     this->grid_map_ = env;
 }
 
-Eigen::MatrixXd BsplineOptimizer::BsplineOptimizeTraj(const Eigen::MatrixXd& points, const double& ts,
+Eigen::MatrixXd BsplineOptimizerESDF::BsplineOptimizeTraj(const Eigen::MatrixXd& points, const double& ts,
                                                       const int& cost_function, int max_num_id,
                                                       int max_time_id) {
   setControlPoints(points);
@@ -61,19 +61,19 @@ Eigen::MatrixXd BsplineOptimizer::BsplineOptimizeTraj(const Eigen::MatrixXd& poi
 }
 
 /* required inputs */
-void BsplineOptimizer::setControlPoints(const Eigen::MatrixXd& points) {
+void BsplineOptimizerESDF::setControlPoints(const Eigen::MatrixXd& points) {
     control_points_ = points;
-    dim_            = control_points_.cols();
+    dim_            = control_points_.rows();
 }
 
-void BsplineOptimizer::setBsplineInterval(const double& ts) { bspline_interval_ = ts; }
+void BsplineOptimizerESDF::setBsplineInterval(const double& ts) { bspline_interval_ = ts; }
 
-void BsplineOptimizer::setTerminateCond(const int& max_num_id, const int& max_time_id) {
+void BsplineOptimizerESDF::setTerminateCond(const int& max_num_id, const int& max_time_id) {
     max_num_id_  = max_num_id;
     max_time_id_ = max_time_id;
 }
 
-void BsplineOptimizer::setCostFunction(const int& cost_code) {
+void BsplineOptimizerESDF::setCostFunction(const int& cost_code) {
     cost_function_ = cost_code;
 
     // print optimized cost function
@@ -89,9 +89,9 @@ void BsplineOptimizer::setCostFunction(const int& cost_code) {
 }
 
 /* optional inputs */
-void BsplineOptimizer::setGuidePath(const std::vector<Eigen::Vector2d>& guide_pt) { guide_pts_ = guide_pt; }
+void BsplineOptimizerESDF::setGuidePath(const std::vector<Eigen::Vector2d>& guide_pt) { guide_pts_ = guide_pt; }
 
-void BsplineOptimizer::setWaypoints(const std::vector<Eigen::Vector2d>& waypts,
+void BsplineOptimizerESDF::setWaypoints(const std::vector<Eigen::Vector2d>& waypts,
                                     const std::vector<int>&             waypt_idx) {
   waypoints_ = waypts;
   waypt_idx_ = waypt_idx;
@@ -99,11 +99,11 @@ void BsplineOptimizer::setWaypoints(const std::vector<Eigen::Vector2d>& waypts,
 
 
 /* optimize */
-void BsplineOptimizer::optimize() {
+void BsplineOptimizerESDF::optimize() {
   /* initialize solver */
   iter_num_        = 0;
   min_cost_        = std::numeric_limits<double>::max();
-  const int pt_num = control_points_.rows();
+  const int pt_num = control_points_.cols();
   g_q_.resize(pt_num);
   g_smoothness_.resize(pt_num);
   g_distance_.resize(pt_num);
@@ -116,15 +116,15 @@ void BsplineOptimizer::optimize() {
     variable_num_ = dim_ * (pt_num - order_);
     // end position used for hard constraint
     end_pt_ = (1 / 6.0) *
-        (control_points_.row(pt_num - 3) + 4 * control_points_.row(pt_num - 2) +
-         control_points_.row(pt_num - 1));
+        (control_points_.col(pt_num - 3) + 4 * control_points_.col(pt_num - 2) +
+         control_points_.col(pt_num - 1));
   } else {
     variable_num_ = std::max(0, dim_ * (pt_num - 2 * order_)) ;
   }
 
   /* do optimization using NLopt slover */
   nlopt::opt opt(nlopt::algorithm(isQuadratic() ? algorithm1_ : algorithm2_), variable_num_);
-  opt.set_min_objective(BsplineOptimizer::costFunction, this);
+  opt.set_min_objective(BsplineOptimizerESDF::costFunction, this);
   opt.set_maxeval(max_iteration_num_[max_num_id_]);
   opt.set_maxtime(max_iteration_time_[max_time_id_]);
   opt.set_xtol_rel(1e-5);
@@ -133,7 +133,7 @@ void BsplineOptimizer::optimize() {
   for (int i = order_; i < pt_num; ++i) {
     if (!(cost_function_ & ENDPOINT) && i >= pt_num - order_) continue;
     for (int j = 0; j < dim_; j++) {
-      q[dim_ * (i - order_) + j] = control_points_(i, j);
+      q[dim_ * (i - order_) + j] = control_points_(j, i);
     }
   }
 
@@ -164,10 +164,10 @@ void BsplineOptimizer::optimize() {
     std::cout << e.what() << std::endl;
   }
 
-  for (int i = order_; i < control_points_.rows(); ++i) {
+  for (int i = order_; i < control_points_.cols(); ++i) {
     if (!(cost_function_ & ENDPOINT) && i >= pt_num - order_) continue;
     for (int j = 0; j < dim_; j++) {
-      control_points_(i, j) = best_variable_[dim_ * (i - order_) + j];
+      control_points_(j, i) = best_variable_[dim_ * (i - order_) + j];
     }
   }
 
@@ -179,7 +179,7 @@ void BsplineOptimizer::optimize() {
   /* calculate each part of cost function with control points q as input */
 
 
-void BsplineOptimizer::calcSmoothnessCost(const std::vector<Eigen::Vector2d>& q, double& cost,
+void BsplineOptimizerESDF::calcSmoothnessCost(const std::vector<Eigen::Vector2d>& q, double& cost,
                                           std::vector<Eigen::Vector2d>& gradient) {
   cost = 0.0;
   Eigen::Vector2d zero(0, 0);
@@ -199,7 +199,7 @@ void BsplineOptimizer::calcSmoothnessCost(const std::vector<Eigen::Vector2d>& q,
   }
 }
 
-void BsplineOptimizer::calcDistanceCost(const std::vector<Eigen::Vector2d>& q, double& cost,
+void BsplineOptimizerESDF::calcDistanceCost(const std::vector<Eigen::Vector2d>& q, double& cost,
                                         std::vector<Eigen::Vector2d>& gradient) {
   cost = 0.0;
   Eigen::Vector2d zero(0, 0);
@@ -221,7 +221,7 @@ void BsplineOptimizer::calcDistanceCost(const std::vector<Eigen::Vector2d>& q, d
   }
 }
 
-void BsplineOptimizer::calcFeasibilityCost(const std::vector<Eigen::Vector2d>& q, double& cost,
+void BsplineOptimizerESDF::calcFeasibilityCost(const std::vector<Eigen::Vector2d>& q, double& cost,
                                            std::vector<Eigen::Vector2d>& gradient) {
   cost = 0.0;
   Eigen::Vector2d zero(0, 0);
@@ -270,7 +270,7 @@ void BsplineOptimizer::calcFeasibilityCost(const std::vector<Eigen::Vector2d>& q
   }
 }
 
-void BsplineOptimizer::calcEndpointCost(const std::vector<Eigen::Vector2d>& q, double& cost,
+void BsplineOptimizerESDF::calcEndpointCost(const std::vector<Eigen::Vector2d>& q, double& cost,
                                         std::vector<Eigen::Vector2d>& gradient) {
   cost = 0.0;
   Eigen::Vector2d zero(0, 0);
@@ -290,7 +290,7 @@ void BsplineOptimizer::calcEndpointCost(const std::vector<Eigen::Vector2d>& q, d
   gradient[q.size() - 1] += 2 * dq * (1 / 6.0);
 }
 
-void BsplineOptimizer::calcWaypointsCost(const std::vector<Eigen::Vector2d>& q, double& cost,
+void BsplineOptimizerESDF::calcWaypointsCost(const std::vector<Eigen::Vector2d>& q, double& cost,
                                          std::vector<Eigen::Vector2d>& gradient) {
   cost = 0.0;
   Eigen::Vector2d zero(0, 0);
@@ -316,7 +316,7 @@ void BsplineOptimizer::calcWaypointsCost(const std::vector<Eigen::Vector2d>& q, 
   }
 }
 
-void BsplineOptimizer::calcGuideCost(const std::vector<Eigen::Vector2d>& q, double& cost,
+void BsplineOptimizerESDF::calcGuideCost(const std::vector<Eigen::Vector2d>& q, double& cost,
                                      std::vector<Eigen::Vector2d>& gradient) {
   cost = 0.0;
   Eigen::Vector2d zero(0, 0);
@@ -331,7 +331,7 @@ void BsplineOptimizer::calcGuideCost(const std::vector<Eigen::Vector2d>& q, doub
   }
 }
 
-void BsplineOptimizer::combineCost(const std::vector<double>& x, std::vector<double>& grad,
+void BsplineOptimizerESDF::combineCost(const std::vector<double>& x, std::vector<double>& grad,
                                    double& f_combine) {
   /* convert the NLopt format vector to control points. */
 
@@ -339,7 +339,7 @@ void BsplineOptimizer::combineCost(const std::vector<double>& x, std::vector<dou
   // For 1D case, the second and third elements are zero, and similar for the 2D case.
   for (int i = 0; i < order_; i++) {
     for (int j = 0; j < dim_; ++j) {
-      g_q_[i][j] = control_points_(i, j);
+      g_q_[i][j] = control_points_(j, i);
     }
     for (int j = dim_; j < 3; ++j) {
       g_q_[i][j] = 0.0;
@@ -360,7 +360,7 @@ void BsplineOptimizer::combineCost(const std::vector<double>& x, std::vector<dou
 
       for (int j = 0; j < dim_; ++j) {
         g_q_[order_ + variable_num_ / dim_ + i][j] =
-            control_points_(control_points_.rows() - order_ + i, j);
+            control_points_(j,control_points_.cols() - order_ + i);
       }
       for (int j = dim_; j < 3; ++j) {
         g_q_[order_ + variable_num_ / dim_ + i][j] = 0.0;
@@ -427,9 +427,9 @@ void BsplineOptimizer::combineCost(const std::vector<double>& x, std::vector<dou
   // }
 }
 
-double BsplineOptimizer::costFunction(const std::vector<double>& x, std::vector<double>& grad,
+double BsplineOptimizerESDF::costFunction(const std::vector<double>& x, std::vector<double>& grad,
                                       void* func_data) {
-  BsplineOptimizer* opt = reinterpret_cast<BsplineOptimizer*>(func_data);
+  BsplineOptimizerESDF* opt = reinterpret_cast<BsplineOptimizerESDF*>(func_data);
   double            cost;
   opt->combineCost(x, grad, cost);
   opt->iter_num_++;
@@ -459,17 +459,17 @@ double BsplineOptimizer::costFunction(const std::vector<double>& x, std::vector<
   // }
 }
 
-std::vector<Eigen::Vector2d> BsplineOptimizer::matrixToVectors(const Eigen::MatrixXd& ctrl_pts) {
+std::vector<Eigen::Vector2d> BsplineOptimizerESDF::matrixToVectors(const Eigen::MatrixXd& ctrl_pts) {
   std::vector<Eigen::Vector2d> ctrl_q;
-  for (int i = 0; i < ctrl_pts.rows(); ++i) {
-    ctrl_q.push_back(ctrl_pts.row(i));
+  for (int i = 0; i < ctrl_pts.cols(); ++i) {
+    ctrl_q.push_back(ctrl_pts.col(i));
   }
   return ctrl_q;
 }
 
-Eigen::MatrixXd BsplineOptimizer::getControlPoints() { return this->control_points_; }
+Eigen::MatrixXd BsplineOptimizerESDF::getControlPoints() { return this->control_points_; }
 
-bool BsplineOptimizer::isQuadratic() {
+bool BsplineOptimizerESDF::isQuadratic() {
   if (cost_function_ == GUIDE_PHASE) {
     return true;
   } else if (cost_function_ == (SMOOTHNESS | WAYPOINTS)) {

@@ -18,8 +18,7 @@
 #include "arena_path_search/kinodynamic_astar.h"
 
 // b-spline
-#include "arena_traj_planner/non_uniform_bspline.h"
-#include "arena_traj_planner/bspline_optimizer.h"
+#include "arena_traj_planner/bspline_optimizer_esdf.h"
 
 #include "arena_traj_planner/uniform_bspline.h"
 #include "arena_traj_planner/bspline_optimizer_astar.h"
@@ -74,8 +73,8 @@ private:
   double max_acc_;
 
   // bspline 1
-  NonUniformBspline position_traj_;
-  BsplineOptimizer::Ptr bspline_optimizer_;
+  UniformBspline position_traj_;
+  BsplineOptimizerESDF::Ptr bspline_optimizer_;
 
   // bspline 2
   BsplineOptimizerAstar::Ptr bspline_optimizer_rebound_; 

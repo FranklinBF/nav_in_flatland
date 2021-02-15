@@ -18,8 +18,7 @@
 #include "arena_path_search/kinodynamic_astar.h"
 
 // b-spline
-#include "arena_traj_planner/non_uniform_bspline.h"
-#include "arena_traj_planner/bspline_optimizer.h"
+#include "arena_traj_planner/bspline_optimizer_esdf.h"
 
 #include "arena_traj_planner/uniform_bspline.h"
 #include "arena_traj_planner/bspline_optimizer_astar.h"

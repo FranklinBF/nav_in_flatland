@@ -139,10 +139,9 @@ include_directories(
 
 ## Declare a C++ library
 add_library(arena_traj_planner
-  src/bspline_optimizer.cpp
+  src/bspline_optimizer_esdf.cpp
   src/bspline_optimizer_astar.cpp
   
-  src/non_uniform_bspline.cpp
   src/uniform_bspline.cpp
   src/polynomial_traj.cpp
 )

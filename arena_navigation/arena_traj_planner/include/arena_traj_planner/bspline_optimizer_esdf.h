@@ -1,12 +1,12 @@
-#ifndef _BSPLINE_OPTIMIZER_H_
-#define _BSPLINE_OPTIMIZER_H_
+#ifndef _BSPLINE_OPTIMIZER_ESDF_H_
+#define _BSPLINE_OPTIMIZER_ESDF_H_
 
 
 
 #include <Eigen/Eigen>
 #include <arena_mapping/mapping.h>
 #include <ros/ros.h>
-class BsplineOptimizer {
+class BsplineOptimizerESDF {
 
 public:
     static const int SMOOTHNESS;
@@ -19,8 +19,8 @@ public:
     static const int GUIDE_PHASE;
     static const int NORMAL_PHASE;
 
-    BsplineOptimizer() {}
-    ~BsplineOptimizer() {}
+    BsplineOptimizerESDF() {}
+    ~BsplineOptimizerESDF() {}
 
     /* main API */
     void            setEnvironment(const GridMap::Ptr& env);
@@ -143,7 +143,7 @@ public:
     }
 
 
-    typedef std::unique_ptr<BsplineOptimizer> Ptr;
+    typedef std::unique_ptr<BsplineOptimizerESDF> Ptr;
     
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 };

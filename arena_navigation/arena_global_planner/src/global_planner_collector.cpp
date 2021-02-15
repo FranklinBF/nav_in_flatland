@@ -38,7 +38,7 @@ void GlobalPlanner::init(ros::NodeHandle & nh){
   }
   
   if (use_optimization_) {
-      bspline_optimizer_.reset(new BsplineOptimizer);
+      bspline_optimizer_.reset(new BsplineOptimizerESDF);
       bspline_optimizer_->setParam(nh);
       bspline_optimizer_->setEnvironment(grid_map_);
   }
@@ -361,18 +361,18 @@ bool GlobalPlanner::planGlobalTraj(const Eigen::Vector2d &start_pos, const Eigen
 void GlobalPlanner::optimizePath(double ts,std::vector<Eigen::Vector2d> point_set, std::vector<Eigen::Vector2d> start_end_derivatives,std::vector<Eigen::Vector2d> &traj_pts)
 {   
     Eigen::MatrixXd ctrl_pts;
-    NonUniformBspline::parameterizeToBspline(ts, point_set, start_end_derivatives, ctrl_pts);
+    UniformBspline::parameterizeToBspline(ts, point_set, start_end_derivatives, ctrl_pts);
     
     // bspline trajectory optimization
     ros::Time t1, t2;
     double t_search, t_opt , t_adjust ;
     t1 = ros::Time::now();
     // define cost function
-    int cost_function = BsplineOptimizer::NORMAL_PHASE;//NORMAL_PHASE;
+    int cost_function = BsplineOptimizerESDF::NORMAL_PHASE;//NORMAL_PHASE;
     
     int status;
     if (status != KinodynamicAstar::REACH_END) {
-      cost_function |= BsplineOptimizer::ENDPOINT;
+      cost_function |= BsplineOptimizerESDF::ENDPOINT;
     }
 
     // optimize control points
@@ -382,11 +382,13 @@ void GlobalPlanner::optimizePath(double ts,std::vector<Eigen::Vector2d> point_se
 
     // iterative time adjustment
     t1  = ros::Time::now();
-    NonUniformBspline pos = NonUniformBspline(ctrl_pts, 3, ts);
+    UniformBspline pos = UniformBspline(ctrl_pts, 3, ts);
 
     double to = pos.getTimeSum();
-    pos.setPhysicalLimits(max_vel_, max_acc_);
-    bool feasible = pos.checkFeasibility(false);
+    double feasibility_tolerance_=0.0;
+    pos.setPhysicalLimits(max_vel_, max_acc_,feasibility_tolerance_);
+    double ratio;
+    bool feasible = pos.checkFeasibility(ratio,false);
 
     int iter_num = 0;
     while (!feasible && ros::ok()) {
