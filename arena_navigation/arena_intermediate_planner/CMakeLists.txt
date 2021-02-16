@@ -21,6 +21,7 @@ find_package(catkin REQUIRED COMPONENTS
   arena_mapping
   arena_path_search
   arena_traj_planner
+  arena_plan_msgs
 )
 
 find_package(Eigen3 REQUIRED)
@@ -30,7 +31,7 @@ find_package(PCL 1.7 REQUIRED)
 catkin_package(
   INCLUDE_DIRS include
   LIBRARIES arena_intermediate_planner
-  CATKIN_DEPENDS roscpp rospy std_msgs nav_msgs geometry_msgs plan_visualization arena_mapping arena_path_search arena_traj_planner
+  CATKIN_DEPENDS roscpp rospy std_msgs nav_msgs geometry_msgs plan_visualization arena_mapping arena_path_search arena_traj_planner arena_plan_msgs
   #DEPENDS system_lib
 )
 

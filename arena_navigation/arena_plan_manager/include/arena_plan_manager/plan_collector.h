@@ -7,11 +7,13 @@
 
 #include <ros/ros.h>
 #include <nav_msgs/GetPlan.h>
+
 #include <nav_msgs/Path.h>
 #include <geometry_msgs/PoseStamped.h>  // goal, subgoal needs time stamp
 
 
 #include <arena_plan_manager/robot_state.h>
+#include <arena_plan_msgs/MakeGlobalPlan.h>
 
 class PlanCollector{
 

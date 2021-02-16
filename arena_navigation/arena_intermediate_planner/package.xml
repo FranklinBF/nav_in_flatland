@@ -75,6 +75,7 @@
   <depend>arena_path_search</depend>
   <depend>arena_traj_planner</depend>
   <depend>plan_visualization</depend>
+  <depend>arena_plan_msgs</depend>
 
 
 

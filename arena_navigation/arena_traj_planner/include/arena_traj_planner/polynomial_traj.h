@@ -4,6 +4,7 @@
 #include <Eigen/Eigen>
 #include <vector>
 #include <iostream>
+#include <memory>
 
 using std::vector;
 
@@ -327,6 +328,9 @@ public:
   static PolynomialTraj one_segment_traj_gen(const Eigen::Vector2d &start_pt, const Eigen::Vector2d &start_vel, const Eigen::Vector2d &start_acc,
                                              const Eigen::Vector2d &end_pt, const Eigen::Vector2d &end_vel, const Eigen::Vector2d &end_acc,
                                              double t);
+
+
+  typedef std::shared_ptr<PolynomialTraj> Ptr;
 };
 
 #endif
