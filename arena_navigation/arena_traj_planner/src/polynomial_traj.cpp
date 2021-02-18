@@ -169,6 +169,7 @@ PolynomialTraj PolynomialTraj::minSnapTraj(const Eigen::MatrixXd &Pos, const Eig
     double ts = Time(i);
     poly_traj.addSegment(cx, cy, ts);
   }
+  poly_traj.init();
 
   return poly_traj;
 }
@@ -208,6 +209,7 @@ PolynomialTraj PolynomialTraj::one_segment_traj_gen(const Eigen::Vector2d &start
 
   PolynomialTraj poly_traj;
   poly_traj.addSegment(cx, cy, t);
+  poly_traj.init();
 
   return poly_traj;
 }
