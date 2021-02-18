@@ -14,34 +14,34 @@ const int BsplineOptimizerESDF::NORMAL_PHASE    = BsplineOptimizerESDF::SMOOTHNE
 
 /* main API */
 void BsplineOptimizerESDF::setParam(ros::NodeHandle& nh) {
-    nh.param("optimization/lambda1", lambda1_, -1.0);
-    nh.param("optimization/lambda2", lambda2_, -1.0);
-    nh.param("optimization/lambda3", lambda3_, -1.0);
-    nh.param("optimization/lambda4", lambda4_, -1.0);
-    nh.param("optimization/lambda5", lambda5_, -1.0);
-    nh.param("optimization/lambda6", lambda6_, -1.0);
-    nh.param("optimization/lambda7", lambda7_, -1.0);
-    nh.param("optimization/lambda8", lambda8_, -1.0);
+    nh.param("optimization_ESDF/lambda1", lambda1_, 10.0);
+    nh.param("optimization_ESDF/lambda2", lambda2_, 5.0);
+    nh.param("optimization_ESDF/lambda3", lambda3_, 0.00001);
+    nh.param("optimization_ESDF/lambda4", lambda4_, 0.01);
+    nh.param("optimization_ESDF/lambda5", lambda5_, -1.0);
+    nh.param("optimization_ESDF/lambda6", lambda6_, -1.0);
+    nh.param("optimization_ESDF/lambda7", lambda7_, 100.0);
+    nh.param("optimization_ESDF/lambda8", lambda8_, -1.0);
 
-    nh.param("optimization/dist0", dist0_, -1.0);
-    nh.param("optimization/max_vel", max_vel_, -1.0);
-    nh.param("optimization/max_acc", max_acc_, -1.0);
-    nh.param("optimization/visib_min", visib_min_, -1.0);
-    nh.param("optimization/dlmin", dlmin_, -1.0);
-    nh.param("optimization/wnl", wnl_, -1.0);
+    nh.param("optimization_ESDF/dist0", dist0_, 0.4);
+    nh.param("optimization_ESDF/max_vel", max_vel_, 3.0);
+    nh.param("optimization_ESDF/max_acc", max_acc_, 3.0);
+    nh.param("optimization_ESDF/visib_min", visib_min_, -1.0);
+    nh.param("optimization_ESDF/dlmin", dlmin_, -1.0);
+    nh.param("optimization_ESDF/wnl", wnl_, -1.0);
 
-    nh.param("optimization/max_iteration_num1", max_iteration_num_[0], -1);
-    nh.param("optimization/max_iteration_num2", max_iteration_num_[1], -1);
-    nh.param("optimization/max_iteration_num3", max_iteration_num_[2], -1);
-    nh.param("optimization/max_iteration_num4", max_iteration_num_[3], -1);
-    nh.param("optimization/max_iteration_time1", max_iteration_time_[0], -1.0);
-    nh.param("optimization/max_iteration_time2", max_iteration_time_[1], -1.0);
-    nh.param("optimization/max_iteration_time3", max_iteration_time_[2], -1.0);
-    nh.param("optimization/max_iteration_time4", max_iteration_time_[3], -1.0);
+    nh.param("optimization_ESDF/max_iteration_num1", max_iteration_num_[0], 2);
+    nh.param("optimization_ESDF/max_iteration_num2", max_iteration_num_[1], 300);
+    nh.param("optimization_ESDF/max_iteration_num3", max_iteration_num_[2], 200);
+    nh.param("optimization_ESDF/max_iteration_num4", max_iteration_num_[3], 200);
+    nh.param("optimization_ESDF/max_iteration_time1", max_iteration_time_[0], 0.0001);
+    nh.param("optimization_ESDF/max_iteration_time2", max_iteration_time_[1], 0.005);
+    nh.param("optimization_ESDF/max_iteration_time3", max_iteration_time_[2], 0.003);
+    nh.param("optimization_ESDF/max_iteration_time4", max_iteration_time_[3], 0.003);
 
-    nh.param("optimization/algorithm1", algorithm1_, -1);
-    nh.param("optimization/algorithm2", algorithm2_, -1);
-    nh.param("optimization/order", order_, -1);
+    nh.param("optimization_ESDF/algorithm1", algorithm1_, 15);
+    nh.param("optimization_ESDF/algorithm2", algorithm2_, 11);
+    nh.param("optimization_ESDF/order", order_, 3);
 }
 
 void BsplineOptimizerESDF::setEnvironment(const GridMap::Ptr& env) {

@@ -4,16 +4,16 @@ using namespace std;
 
 void BsplineOptimizerAstar::setParam(ros::NodeHandle &nh)
 {
-    nh.param("optimization/lambda_smooth", lambda1_, 1.0);
-    nh.param("optimization/lambda_collision", lambda2_, 0.5);
-    nh.param("optimization/lambda_feasibility", lambda3_, 0.1);
-    nh.param("optimization/lambda_fitness", lambda4_, 1.0);
+    nh.param("optimization_astar/lambda_smooth", lambda1_, 1.0);
+    nh.param("optimization_astar/lambda_collision", lambda2_, 0.5);
+    nh.param("optimization_astar/lambda_feasibility", lambda3_, 0.1);
+    nh.param("optimization_astar/lambda_fitness", lambda4_, 1.0);
 
-    nh.param("optimization/dist0", dist0_, 0.5);
-    nh.param("optimization/max_vel", max_vel_, 2.0);
-    nh.param("optimization/max_acc", max_acc_, 3.0);
+    nh.param("optimization_astar/dist0", dist0_, 0.5);
+    nh.param("optimization_astar/max_vel", max_vel_, 2.0);
+    nh.param("optimization_astar/max_acc", max_acc_, 3.0);
 
-    nh.param("optimization/order", order_, 3);
+    nh.param("optimization_astar/order", order_, 3);
 }
 
 void BsplineOptimizerAstar::setEnvironment(const GridMap::Ptr &env)
@@ -52,7 +52,7 @@ std::vector<std::vector<Eigen::Vector2d>> BsplineOptimizerAstar::initControlPoin
     int same_occ_state_times = ENOUGH_INTERVAL + 1;
     bool occ, last_occ = false;
     bool flag_got_start = false, flag_got_end = false, flag_got_end_maybe = false;
-    int i_end = (int)init_points.cols() - order_ - ((int)init_points.cols() - 2 * order_) / 3; // only check closed 2/3 points.
+    int i_end = (int)init_points.cols() - order_ ;//- ((int)init_points.cols() - 2 * order_) / 3; // only check closed 2/3 points.
     
     for (int i = order_; i <= i_end; ++i)
     {
@@ -322,7 +322,7 @@ bool BsplineOptimizerAstar::check_collision_and_rebound(void)
     int in_id, out_id;
     vector<std::pair<int, int>> segment_ids;
     bool flag_new_obs_valid = false;
-    int i_end = end_idx - (end_idx - order_) / 3;
+    int i_end = end_idx;// (end_idx - order_) / 3;
     for (int i = order_ - 1; i <= i_end; ++i)
     {
 
@@ -587,7 +587,7 @@ bool BsplineOptimizerAstar::rebound_optimize()
         double tm, tmp;
         traj.getTimeSpan(tm, tmp);
         double t_step = (tmp - tm) / ((traj.evaluateDeBoorT(tmp) - traj.evaluateDeBoorT(tm)).norm() / grid_map_->getResolution());
-        for (double t = tm; t < tmp * 2 / 3; t += t_step) // Only check the closest 2/3 partition of the whole trajectory.
+        for (double t = tm; t < tmp ; t += t_step) // t< tmp* 2 / 3 Only check the closest 2/3 partition of the whole trajectory.
         {
           flag_occ = grid_map_->getFusedInflateOccupancy(traj.evaluateDeBoorT(t));
           if (flag_occ)
