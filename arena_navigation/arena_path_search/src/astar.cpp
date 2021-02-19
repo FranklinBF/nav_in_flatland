@@ -26,16 +26,10 @@ void Astar::reset() {
 }
 
 void Astar::setParam(ros::NodeHandle& private_nh) {
-
   private_nh.param("astar/resolution_astar", resolution_, 0.05);
-  private_nh.param("astar/time_resolution", time_resolution_, 0.8);
   private_nh.param("astar/lambda_heu", lambda_heu_, 0.0001);
   private_nh.param("astar/allocate_num", allocate_num_, 100000);
-
-  private_nh.param("astar/margin", margin_, 0.2);
-
   tie_breaker_ = 1.0 + 1.0 / 10000;
-  std::cout << "margin:" << margin_ << std::endl;
   std::cout << "lambda_heu_:" << lambda_heu_ << std::endl;
 }
 
@@ -46,7 +40,6 @@ void Astar::setEnvironment(const GridMap::Ptr& env) {
 void Astar::init(){
   /* ---------- map params ---------- */
   this->inv_resolution_ = 1.0 / resolution_;
-  inv_time_resolution_ = 1.0 / time_resolution_;
   grid_map_->getRegion(origin_, map_size_2d_);
 
   std::cout << "origin_: " << origin_.transpose() << std::endl;
@@ -62,34 +55,7 @@ void Astar::init(){
   iter_num_ = 0;
 }
 
-void Astar::init(ros::NodeHandle& private_nh,const GridMap::Ptr& env) {
-  
-  /* ---------- get ros params & set env---------- */
-  setParam(private_nh);
-  setEnvironment(env);
-
-  /* ---------- map params ---------- */
-  this->inv_resolution_ = 1.0 / resolution_;
-  inv_time_resolution_ = 1.0 / time_resolution_;
-  grid_map_->getRegion(origin_, map_size_2d_);
-
-  std::cout << "origin_: " << origin_.transpose() << std::endl;
-  std::cout << "map size: " << map_size_2d_.transpose() << std::endl;
-
-  /* ---------- pre-allocated node ---------- */
-  path_node_pool_.resize(allocate_num_);
-  for (int i = 0; i < allocate_num_; i++) {
-    path_node_pool_[i] = new Node;
-  }
-
-  use_node_num_ = 0;
-  iter_num_ = 0;
-
-  /* reset */
-  reset();
-}
-
-int Astar::search(Eigen::Vector2d start_pt, Eigen::Vector2d end_pt, bool dynamic, double time_start) {
+int Astar::search(Eigen::Vector2d start_pt, Eigen::Vector2d end_pt) {
   /* ---------- initialize ---------- */
   NodePtr cur_node = path_node_pool_[0];
   cur_node->parent = NULL;
@@ -115,13 +81,6 @@ int Astar::search(Eigen::Vector2d start_pt, Eigen::Vector2d end_pt, bool dynamic
   while (!open_set_.empty()) {
     /* ---------- get lowest f_score node ---------- */
     cur_node = open_set_.top();  
-
-    // std::cout << "pos: " << cur_node->state.head(3).transpose() << std::endl;
-    // std::cout << "time: " << cur_node->time << std::endl;
-    // std::cout << "dist: " <<
-    // edt_environment_->evaluateCoarseEDT(cur_node->state.head(3),
-    // cur_node->time) <<
-    // std::endl;
 
     /* ---------- determine termination ---------- */
 
@@ -182,12 +141,6 @@ int Astar::search(Eigen::Vector2d start_pt, Eigen::Vector2d end_pt, bool dynamic
             //std::cout << "in closeset" << std::endl;
             continue;
           }
-
-          /* collision free */
-          // double dist = dynamic ?
-          // edt_environment_->evaluateCoarseEDT(pro_pos, cur_node->time + dt) :
-          //                         edt_environment_->evaluateCoarseEDT(pro_pos,
-          //                         -1.0);
 
           // check if pro_ps is in collision
           int occu = grid_map_->getFusedInflateOccupancy(pro_pos);
@@ -288,11 +241,6 @@ double Astar::getEuclHeu(Eigen::Vector2d x1, Eigen::Vector2d x2) {
 
 Eigen::Vector2i Astar::posToIndex(Eigen::Vector2d pt) {
   Eigen::Vector2i idx = ((pt - origin_) * inv_resolution_).array().floor().cast<int>();
-  return idx;
-}
-
-int Astar::timeToIndex(double time) {
-  int idx = floor((time - time_origin_) * inv_time_resolution_);
   return idx;
 }
 

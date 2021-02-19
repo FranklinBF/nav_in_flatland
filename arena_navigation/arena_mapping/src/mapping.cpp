@@ -6,6 +6,7 @@ void GridMap::initMap(ros::NodeHandle& nh){
 
     /* get parameters*/
     std::string static_map_service_name = "/static_map";  
+    ros::service::waitForService(static_map_service_name); // important
     static_map_client_= nh.serviceClient<nav_msgs::GetMap>(static_map_service_name);  
     bool is_static_map_avail=get_static_map();
     if (!is_static_map_avail){ROS_ERROR("No static map available, please check map_server.");}
@@ -18,15 +19,15 @@ void GridMap::initMap(ros::NodeHandle& nh){
     node_.param("sdf_map/local_update_range_y", mp_.local_update_range_(1), 5.5);
 
     // occupancy map
-    node_.param("sdf_map/p_hit", mp_.p_hit_, 0.70);
-    node_.param("sdf_map/p_miss", mp_.p_miss_, 0.05);
+    node_.param("sdf_map/p_hit", mp_.p_hit_, 0.55);
+    node_.param("sdf_map/p_miss", mp_.p_miss_, 0.2);
     node_.param("sdf_map/p_min", mp_.p_min_, 0.12);
-    node_.param("sdf_map/p_max", mp_.p_max_, 0.97);
-    node_.param("sdf_map/p_occ", mp_.p_occ_, 0.80);
+    node_.param("sdf_map/p_max", mp_.p_max_, 0.80);
+    node_.param("sdf_map/p_occ", mp_.p_occ_, 0.70);
 
     // laser ray length
     node_.param("sdf_map/min_ray_length", mp_.min_ray_length_, 0.5);
-    node_.param("sdf_map/max_ray_length", mp_.max_ray_length_, 10.5);
+    node_.param("sdf_map/max_ray_length", mp_.max_ray_length_, 3.5);
 
     //show time
     node_.param("sdf_map/show_occ_time", mp_.show_occ_time_, false);
@@ -149,33 +150,34 @@ void GridMap::initMap(ros::NodeHandle& nh){
     eng_ = default_random_engine(rd());
     */
 
+    ros::NodeHandle public_nh("");
     // sensor sub: syn message filter
-    scan_sub_.reset(new message_filters::Subscriber<sensor_msgs::LaserScan>(node_, "/scan", 50));
-    odom_sub_.reset(new message_filters::Subscriber<nav_msgs::Odometry>(node_, "/odom", 100));
+    scan_sub_.reset(new message_filters::Subscriber<sensor_msgs::LaserScan>(public_nh, "scan", 50));
+    odom_sub_.reset(new message_filters::Subscriber<nav_msgs::Odometry>(public_nh, "odometry/ground_truth", 100));
     sync_scan_odom_.reset(new message_filters::Synchronizer<SyncPolicyScanOdom>(SyncPolicyScanOdom(100), *scan_sub_, *odom_sub_));
     sync_scan_odom_->registerCallback(boost::bind(&GridMap::scanOdomCallback, this, _1, _2));
 
     // sensor sub
-    indep_scan_sub_ =node_.subscribe<sensor_msgs::LaserScan>("/scan", 10, &GridMap::scanCallback, this);
-    indep_odom_sub_ =node_.subscribe<nav_msgs::Odometry>("/odom", 10, &GridMap::odomCallback, this);
+    indep_scan_sub_ =public_nh.subscribe<sensor_msgs::LaserScan>("scan", 10, &GridMap::scanCallback, this);
+    indep_odom_sub_ =public_nh.subscribe<nav_msgs::Odometry>("odometry/ground_truth", 10, &GridMap::odomCallback, this);
 
     // timer callbacks
-    occ_timer_ = node_.createTimer(ros::Duration(0.05),   &GridMap::updateOccupancyCallback, this); // raycasting & setCacheOccupancy is the key
+    occ_timer_ = public_nh.createTimer(ros::Duration(0.05),   &GridMap::updateOccupancyCallback, this); // raycasting & setCacheOccupancy is the key
     if (mp_.use_occ_esdf_){
-      esdf_timer_ = node_.createTimer(ros::Duration(0.05), &GridMap::updateESDFCallback, this);
+      esdf_timer_ = public_nh.createTimer(ros::Duration(0.05), &GridMap::updateESDFCallback, this);
     }
-    vis_timer_ = node_.createTimer(ros::Duration(0.05), &GridMap::visCallback, this);
+    vis_timer_ = public_nh.createTimer(ros::Duration(0.05), &GridMap::visCallback, this);
     
     // publishers 
-    map_pub_ = node_.advertise<sensor_msgs::PointCloud2>("/sdf_map/occupancy", 10);
-    static_map_pub_= node_.advertise<sensor_msgs::PointCloud2>("/sdf_map/occupancy_static", 10);
+    map_pub_ = public_nh.advertise<sensor_msgs::PointCloud2>("sdf_map/occupancy", 10);
+    static_map_pub_= public_nh.advertise<sensor_msgs::PointCloud2>("sdf_map/occupancy_static", 10);
     
     //map_inf_pub_ = node_.advertise<sensor_msgs::PointCloud2>("/sdf_map/occupancy_inflate", 10);
     
-    esdf_pub_ = node_.advertise<sensor_msgs::PointCloud2>("/sdf_map/esdf", 10);
-    update_range_pub_ = node_.advertise<visualization_msgs::Marker>("/sdf_map/update_range", 10);
-    unknown_pub_ = node_.advertise<sensor_msgs::PointCloud2>("/sdf_map/unknown", 10);
-    depth_pub_ = node_.advertise<sensor_msgs::PointCloud2>("/sdf_map/depth_cloud", 10);
+    esdf_pub_ = public_nh.advertise<sensor_msgs::PointCloud2>("sdf_map/esdf", 10);
+    update_range_pub_ = public_nh.advertise<visualization_msgs::Marker>("sdf_map/update_range", 10);
+    unknown_pub_ = public_nh.advertise<sensor_msgs::PointCloud2>("sdf_map/unknown", 10);
+    depth_pub_ = public_nh.advertise<sensor_msgs::PointCloud2>("sdf_map/depth_cloud", 10);
 
 }
 
@@ -297,13 +299,13 @@ void GridMap::scanOdomCallback(const sensor_msgs::LaserScanConstPtr& scan, const
   // wait for transform from robot_base to laser scan
   if(!tfListener_.waitForTransform(
         laser_scan.header.frame_id,
-        "/map",
+        mp_.frame_id_,
         laser_scan.header.stamp + ros::Duration().fromSec(laser_scan.ranges.size()*laser_scan.time_increment),
         ros::Duration(1.0))){return;}
      //"/base_footprint",
 
   // High fidelity projection: suitable for laser that is moving
-  projector_.transformLaserScanToPointCloud("map", laser_scan, cloud, tfListener_);  //projector_.projectLaser(laser_scan, cloud);
+  projector_.transformLaserScanToPointCloud(mp_.frame_id_, laser_scan, cloud, tfListener_);  //projector_.projectLaser(laser_scan, cloud);
 
   // ros_cloud to pcl_cloud
   pcl::fromROSMsg(cloud, md_.depth_cloud);//pcl::PointCloud<pcl::PointXYZ> rawCloud;
@@ -366,7 +368,7 @@ void GridMap::scanCallback(const sensor_msgs::LaserScanConstPtr& scan) {
 
 
   // High fidelity projection: suitable for laser that is moving
-  projector_.transformLaserScanToPointCloud("map", laser_scan, scan_cloud, tfListener_);
+  projector_.transformLaserScanToPointCloud(mp_.frame_id_, laser_scan, scan_cloud, tfListener_);
 
   
   //projector_.projectLaser(*scan, scan_cloud);

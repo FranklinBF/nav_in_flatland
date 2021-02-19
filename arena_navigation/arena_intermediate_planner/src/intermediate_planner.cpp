@@ -9,14 +9,16 @@ void InterPlanner::init(ros::NodeHandle & nh){
   grid_map_->initMap(node_);
 
   // global planner
-  node_.param("global_planner/use_astar", pp_.use_astar_, false);
+  node_.param("global_planner/use_astar", pp_.use_astar_,false);
   node_.param("global_planner/use_kino_astar", pp_.use_kino_astar_, true);
   node_.param("global_planner/use_oneshot", pp_.use_oneshot_, false);
 
-  node_.param("global_planner/dist_next_wp", pp_.dist_next_wp_, 3.0);
+  node_.param("global_planner/dist_next_wp", pp_.dist_next_wp_, 133.0);
   node_.param("global_planner/dist_tolerance", pp_.dist_tolerance_, 1.0);
-  node_.param("global_planner/rou_thresh", pp_.rou_thresh_, 100.0);
+  node_.param("global_planner/rou_thresh", pp_.rou_thresh_, 15.0);
   
+  std::cout<<"dist_next_wp_="<<pp_.dist_next_wp_<<std::endl;
+
   node_.param("b_spline/max_vel",  pp_.max_vel_, 3.0);
   node_.param("b_spline/max_acc",  pp_.max_acc_, 2.0);
   node_.param("b_spline/max_jerk", pp_.max_jerk_, 4.0);
@@ -24,8 +26,9 @@ void InterPlanner::init(ros::NodeHandle & nh){
   node_.param("b_spline/feasibility_tolerance", pp_.feasibility_tolerance_, 0.05);
   node_.param("b_spline/planning_horizon", pp_.planning_horizen_, 7.5);
 
-  node_.param("optimizer/use_optimization_esdf", pp_.use_optimization_esdf_, true);
-  node_.param("optimizer/use_optimization_astar", pp_.use_optimization_astar_, true);
+  node_.param("global_planner/use_optimization_esdf", pp_.use_optimization_esdf_, true);
+  node_.param("global_planner/use_optimization_astar", pp_.use_optimization_astar_, true);
+  node_.param("global_planner/time_alloc_coefficient", pp_.time_alloc_coefficient_, 0.5);
   
   // init global data
   global_data_.setGlobalDataParam(pp_.dist_next_wp_,pp_.dist_tolerance_,pp_.rou_thresh_);
@@ -67,13 +70,29 @@ void InterPlanner::init(ros::NodeHandle & nh){
   // odom
   have_odom_=false;
 
+  ros::NodeHandle public_nh("");
   // subscriber
-  goal_sub_ =nh.subscribe("/goal", 1, &InterPlanner::goalCallback,this);
-  odom_sub_ = nh.subscribe("/odometry/ground_truth", 1, &InterPlanner::odomCallback, this);
+  goal_sub_ =public_nh.subscribe("goal", 1, &InterPlanner::goalCallback,this);
+  odom_sub_ = public_nh.subscribe("odometry/ground_truth", 1, &InterPlanner::odomCallback, this);
 
   // publisher
-  kino_astar_path_pub_ =node_.advertise<nav_msgs::Path>("kino_astar_path", 1);
-  kino_astar_traj_pub_ =node_.advertise<nav_msgs::Path>("kino_astar_traj", 1);
+  kino_astar_path_pub_ =public_nh.advertise<nav_msgs::Path>("kino_astar_path", 1);
+  kino_astar_traj_pub_ =public_nh.advertise<nav_msgs::Path>("kino_astar_traj", 1);
+  kino_astar_waypoints_pub_ = public_nh.advertise<visualization_msgs::Marker>("kino_astar_wps", 20);
+
+  astar_path_pub_ =public_nh.advertise<nav_msgs::Path>("astar_path", 1);
+  astar_traj_pub_ =public_nh.advertise<nav_msgs::Path>("astar_traj", 1);
+  astar_waypoints_pub_ = public_nh.advertise<visualization_msgs::Marker>("astar_wps", 20);
+
+  oneshot_path_pub_ =public_nh.advertise<nav_msgs::Path>("oneshot_path", 1);
+  oneshot_traj_pub_ =public_nh.advertise<nav_msgs::Path>("oneshot_traj", 1);
+  oneshot_waypoints_pub_ = public_nh.advertise<visualization_msgs::Marker>("oneshot_wps", 20);
+
+  vis_goal_pub_ = public_nh.advertise<visualization_msgs::Marker>("Goal", 20);
+  vis_subgoal_pub_ = public_nh.advertise<visualization_msgs::Marker>("Subgoal", 20);
+  
+  vis_control_pts_pub_=public_nh.advertise<visualization_msgs::Marker>("ControlPoints", 20);
+  vis_control_pts_optimized_pub_=public_nh.advertise<visualization_msgs::Marker>("ControlPoints_opt", 20);
   /*
   astar_path_pub_ =node_.advertise<nav_msgs::Path>("astar_plan", 1);
   astar_traj_pub_ =node_.advertise<nav_msgs::Path>("astar_traj_plan", 1);
@@ -86,8 +105,8 @@ void InterPlanner::init(ros::NodeHandle & nh){
   
   */
   
- global_plan_service_server_=node_.advertiseService("global_kino_make_plan", &InterPlanner::makeGlobalPlan, this);
- visualization_.reset(new PlanningVisualization(node_));
+ global_plan_service_server_=public_nh.advertiseService("global_kino_make_plan", &InterPlanner::makeGlobalPlan, this);
+ //visualization_.reset(new PlanningVisualization(node_));
 }
 
 void InterPlanner::odomCallback(const nav_msgs::OdometryConstPtr& msg){
@@ -121,19 +140,19 @@ void InterPlanner::goalCallback(const geometry_msgs::PoseStampedPtr& msg){
 
   // vis goal
   std::cout << "Goal set!" << std::endl;
-  geometry_msgs::PoseStamped p;
-  p.header=msg->header;     
-  p.pose=msg->pose;
-  visualization_->drawGoal(p, 0.5, Eigen::Vector4d(1, 1, 1, 1.0));
+  vector<Eigen::Vector2d> point_set;
+  point_set.push_back(end_pt_);
+  visualizePoints(point_set,0.5,Eigen::Vector4d(1, 1, 1, 1.0),vis_goal_pub_);
   
   // rotation matrix
   //Eigen::Vector3d rot_x = odom_orient_.toRotationMatrix().block(0, 0, 3, 1);
 
   // find path
   //findPath( start_pt_, start_vel_, start_acc_, end_pt_, end_vel_ );
-  
-  bool find_global_traj_success;
-  find_global_traj_success=planKinoAstarTraj(start_pt_, start_vel_, start_acc_, end_pt_, end_vel_);
+  OptimizerType type_optimizer=InterPlanner::OptimizerType::GRADIENT_ASTAR;
+  planAstarTraj(start_pt_,end_pt_,type_optimizer);
+  planKinoAstarTraj(start_pt_, start_vel_, start_acc_, end_pt_, end_vel_,type_optimizer);
+  planOneshotTraj(start_pt_, start_vel_, start_acc_, end_pt_, end_vel_,end_acc_);
 
   //find_global_traj_success = planGlobalTraj(start_pt_, start_vel_, start_acc_, end_pt_, end_vel_, end_acc_);
 }
@@ -178,7 +197,7 @@ bool InterPlanner::makeGlobalPlan(arena_plan_msgs::MakeGlobalPlan::Request  &req
 
     std::vector<Eigen::Vector2d> global_path=global_planner_kino_astar_->getKinoTraj(0.01); // delta_t=0.01s
     
-    //visualize_path(global_path ,kino_astar_path_pub_);
+    visualizePath(global_path ,kino_astar_path_pub_);
 
     std::vector<geometry_msgs::PoseStamped> plan;
 
@@ -202,8 +221,230 @@ bool InterPlanner::makeGlobalPlan(arena_plan_msgs::MakeGlobalPlan::Request  &req
   return true;
 }
 
-bool InterPlanner::planKinoAstarTraj(const Eigen::Vector2d &start_pos, const Eigen::Vector2d &start_vel, const Eigen::Vector2d &start_acc, const Eigen::Vector2d &end_pos, const Eigen::Vector2d &end_vel){
+bool InterPlanner::planOneshotTraj(const Eigen::Vector2d &start_pos, const Eigen::Vector2d &start_vel, const Eigen::Vector2d &start_acc,
+                      const Eigen::Vector2d &end_pos, const Eigen::Vector2d &end_vel, const Eigen::Vector2d &end_acc, OptimizerType type_optimizer)
+{ 
+  
+  /* path search */
+  std::cout<<"*******************************************************"<<std::endl;
+  std::cout<<"[oneshot replan]start----------------------------------"<<std::endl;
+  std::cout<<"*******************************************************"<<std::endl;
+  t1_ = ros::WallTime::now();
+  auto t_start=ros::WallTime::now();
+  // select points
+  std::vector<Eigen::Vector2d> points;
+  points.push_back(start_pos);
+  points.push_back(end_pos);
+
+  // insert intermediate points if too far
+  std::vector<Eigen::Vector2d> inter_points;
+  const double dist_thresh = 4.0;
+
+  for (size_t i = 0; i < points.size() - 1; ++i){
+    inter_points.push_back(points.at(i));
+    double dist = (points.at(i + 1) - points.at(i)).norm();
+
+    
+    if (dist > dist_thresh){
+      // find how many inter points needed to be added
+      int id_num = floor(dist / dist_thresh) + 1;
+
+      // add points
+      for (int j = 1; j < id_num; ++j){
+        Eigen::Vector2d inter_pt =points.at(i) * (1.0 - double(j) / id_num)+points.at(i + 1) * double(j) / id_num;
+        inter_points.push_back(inter_pt);
+      }
+    }
+  }
+
+  inter_points.push_back(points.back());
+
+  // write position matrix
+  int pt_num = inter_points.size();
+  Eigen::MatrixXd pos(2, pt_num);  //(dim,pt_num)
+  for (int i = 0; i < pt_num; ++i)
+      pos.col(i) = inter_points[i];
+  
+  // segements time allocation
+  Eigen::Vector2d zero(0, 0);
+  Eigen::VectorXd time(pt_num - 1);
+  for (int i = 0; i < pt_num - 1; ++i)
+  {
+      time(i) = (pos.col(i + 1) - pos.col(i)).norm() / (pp_.max_vel_);
+  }
+
+  time(0) *= 2.0;                 // start gentlely
+  time(time.rows() - 1) *= 2.0;   // stop gentlely
+
+  //double dist = (start_pos - end_pos).norm();
+  //double time = pow(pp_.max_vel_, 2) / pp_.max_acc_ > dist ? sqrt(dist / pp_.max_acc_) : (dist - pow(pp_.max_vel_, 2) / pp_.max_acc_) / pp_.max_vel_ + 2 * pp_.max_vel_ / pp_.max_acc_;
+
+
+  /* generate init trajectory */
+  PolynomialTraj init_traj;
+
+  if (pos.cols() >= 3){
+    init_traj = PolynomialTraj::minSnapTraj(pos, start_vel, end_vel, start_acc, end_acc, time);
+  }else if (pos.cols() == 2){
+    init_traj = PolynomialTraj::one_segment_traj_gen(start_pos, start_vel, start_acc, end_pos, end_vel, end_acc, time(0));
+  }else{
+    std::cout<<"[Oneshot traj]start point & end point are not valid, cannot init traj"<<std::endl;
+    return false;
+  }
+
+
+  t2_ = ros::WallTime::now();
+  dur_=(t2_ - t1_).toSec();
+  std::cout<<"[oneshot replan]-------search duration="<<dur_<<std::endl;
+  
+
+  /* Optimize Path */
+  t1_ = ros::WallTime::now();
+
+  // get ts, pointset, derivatives
+  //double ts = pp_.ctrl_pt_dist_ / pp_.max_vel_*1.2;
+  //double ts = (start_pos - end_pos).norm() > 0.1 ? pp_.ctrl_pt_dist_ / pp_.max_vel_ * 10.0 : pp_.ctrl_pt_dist_ / pp_.max_vel_ * 5; // pp_.ctrl_pt_dist / pp_.max_vel_ is too tense, and will surely exceed the acc/vel limits
+  
+  constexpr double step_size_t = 0.1;
+  int i_end = floor(init_traj.getTimeSum()/ step_size_t);
+  std::vector<Eigen::Vector2d>init_path, point_set, start_end_derivatives;
+  double ts;
+  point_set.clear();
+  start_end_derivatives.clear();
+
+  for (int i = 1; i < i_end; i++){
+    init_path.push_back(init_traj.evaluate(double(i * step_size_t)));
+  }
+  init_path.push_back(end_pos);
+  bool is_pointset_success=getPointSet(init_path,point_set,ts);
+  
+
+  if(!is_pointset_success){
+    ROS_WARN_STREAM("pointset is not available");
+    return false;
+  }
+
+  start_end_derivatives.push_back(start_vel_);
+  start_end_derivatives.push_back(end_vel);
+  start_end_derivatives.push_back(start_acc);
+  start_end_derivatives.push_back(Eigen::Vector2d::Zero());
+
+  visualizePoints(point_set,0.3,Eigen::Vector4d(0.4,0.1,0.0,0.3),vis_control_pts_pub_);
+  
+  
+
+  // optimize
+  UniformBspline global_traj;
+  bool optimize_success;
+  optimize_success=optimizePath(ts,point_set,start_end_derivatives,global_traj,type_optimizer);
+  
+  if(optimize_success){
+      global_data_.resetGlobalData(global_traj);
+  }
+
+  /* visualization */
+  //visualizePoints(global_traj.get_control_points(),0.3,Eigen::Vector4d(0.4,0.1,0.0,0.3),vis_control_pts_optimized_pub_);
+  if(optimize_success){
+    std::vector<Eigen::Vector2d> global_traj_optimized,landmark_pts;
+    global_data_.getGlobalPath(global_traj_optimized);
+    global_data_.getLandmarks(landmark_pts);
+    visualizePath(global_traj_optimized ,oneshot_traj_pub_);
+    visualizePoints(landmark_pts,0.2,Eigen::Vector4d(0.5, 0.5, 0.5, 0.6),oneshot_waypoints_pub_);
+  }
+
+  visualizePath(init_path ,oneshot_path_pub_);
+  
+  t2_ = ros::WallTime::now();
+  dur_=(t2_ - t1_).toSec();
+  std::cout<<"[oneshot replan]-------optimize duration="<<dur_<<std::endl;
+  std::cout<<"[oneshot replan]-------oneshot sum="<<(t2_-t_start).toSec()<<std::endl;
+  return true;
+}
+
+bool InterPlanner::planAstarTraj(const Eigen::Vector2d &start_pos,const Eigen::Vector2d &end_pos, OptimizerType type_optimizer){
+  /* path search */
+  std::cout<<"******************************************************"<<std::endl;
+  std::cout<<"[astar replan]start----------------------------------"<<std::endl;
+  std::cout<<"******************************************************"<<std::endl;
+  t1_ = ros::WallTime::now();
+  auto t_start=ros::WallTime::now();
+
+  int status;
+  global_planner_astar_->reset();
+
+  // search
+  status = global_planner_astar_->search( start_pos, end_pos);
+  
+  if(status==Astar::NO_PATH){
+      std::cout << "[Astar replan]: Can't find path." <<std:: endl;
+      return false;
+  }else{
+      std::cout << "[Astar replan]: Astar search success."<< std::endl;
+  }
+
+  t2_ = ros::WallTime::now();
+  dur_=(t2_ - t1_).toSec();
+  std::cout<<"[astar replan]-------search duration="<<dur_<<std::endl;
+
+  /* traj optimization */
+  t1_ = ros::WallTime::now();
+  
+  // get ts, pointset, derivatives
+  double ts;
+  std::vector<Eigen::Vector2d> init_path, point_set, start_end_derivatives;
+  init_path=global_planner_astar_->getPath();
+  std::cout<<"[astar replan]-------getpath success"<<dur_<<std::endl;
+  init_path.push_back(end_pos);
+  bool is_pointset_success=getPointSet(init_path,point_set,ts);
+  std::cout<<"[astar replan]-------getpointset success"<<dur_<<std::endl;
+
+
+  if(!is_pointset_success){
+    ROS_WARN_STREAM("pointset is not available");
+    return false;
+  }
+
+  start_end_derivatives.push_back(Eigen::Vector2d::Zero());
+  start_end_derivatives.push_back(Eigen::Vector2d::Zero());
+  start_end_derivatives.push_back(Eigen::Vector2d::Zero());
+  start_end_derivatives.push_back(Eigen::Vector2d::Zero());
+
+  // optimize
+  UniformBspline global_traj;
+  bool optimize_success;
+  std::cout<<"[astar replan]-------optimize start"<<dur_<<std::endl;
+  optimize_success=optimizePath(ts,point_set,start_end_derivatives,global_traj,type_optimizer);
+  std::cout<<"[astar replan]-------optimize success"<<dur_<<std::endl;
+  if(optimize_success){
+      global_data_.resetGlobalData(global_traj);
+  }
+  
+  /* visualization */
+  if(optimize_success){
+    std::vector<Eigen::Vector2d> global_traj_optimized,landmark_pts;
+    global_data_.getGlobalPath(global_traj_optimized);
+    global_data_.getLandmarks(landmark_pts);
+    visualizePath(global_traj_optimized ,astar_traj_pub_);
+    visualizePoints(landmark_pts,0.2,Eigen::Vector4d(0.5, 0.5, 0.5, 0.6),astar_waypoints_pub_);
+  }
+
+  
+  visualizePath(init_path ,astar_path_pub_);
+  t2_ = ros::WallTime::now();
+  dur_=(t2_ - t1_).toSec();
+  std::cout<<"[astar replan]-------optimize duration="<<dur_<<std::endl;
+  std::cout<<"[astar replan]-------astar sum="<<(t2_-t_start).toSec()<<std::endl;
+  return true;
+}
+
+bool InterPlanner::planKinoAstarTraj(const Eigen::Vector2d &start_pos, const Eigen::Vector2d &start_vel, const Eigen::Vector2d &start_acc, const Eigen::Vector2d &end_pos, const Eigen::Vector2d &end_vel, OptimizerType type_optimizer){
     /* path search */
+    std::cout<<"******************************************************"<<std::endl;
+    std::cout<<"[kino replan]start----------------------------------"<<std::endl;
+    std::cout<<"******************************************************"<<std::endl;
+    t1_ = ros::WallTime::now();
+    auto t_start=ros::WallTime::now();
+
     int status;
     global_planner_kino_astar_->reset();
     
@@ -229,65 +470,75 @@ bool InterPlanner::planKinoAstarTraj(const Eigen::Vector2d &start_pos, const Eig
         std::cout << "[kino replan]: kinodynamic search success." << std::endl;
     }
 
-    std::vector<Eigen::Vector2d> global_path=global_planner_kino_astar_->getKinoTraj(0.01); // delta_t=0.01s
-
-    visualize_path(global_path ,kino_astar_path_pub_);
+    t2_ = ros::WallTime::now();
+    dur_=(t2_ - t1_).toSec();
+    std::cout<<"[kino replan]-------search duration="<<dur_<<std::endl;
+    //std::vector<Eigen::Vector2d> global_path=global_planner_kino_astar_->getKinoTraj(0.01); // delta_t=0.01s
 
     /* traj optimization */
+    t1_ = ros::WallTime::now();
     // get ts, pointset, derivatives
     double ts = pp_.ctrl_pt_dist_ / pp_.max_vel_;
-    std::vector<Eigen::Vector2d> point_set, start_end_derivatives;
-    global_planner_kino_astar_->getSamples(ts, point_set, start_end_derivatives);
-    
+    std::vector<Eigen::Vector2d> init_path,point_set, start_end_derivatives;
+    global_planner_kino_astar_->getSamples(ts, init_path, start_end_derivatives);
+
+    //init_path.push_back(end_pos);
+    //bool is_pointset_success=getPointSet(init_path,point_set,ts);
+    point_set=init_path;
+
     // optimize
     UniformBspline global_traj;
     bool optimize_success;
-    optimize_success=optimizePath(ts,point_set,start_end_derivatives,global_traj,InterPlanner::OptimizerType::GRADIENT_ESDF);
+    optimize_success=optimizePath(ts,point_set,start_end_derivatives,global_traj,type_optimizer);
     
     if(optimize_success){
-        std::vector<Eigen::Vector2d> traj_pts_esdf,traj_pts_astar,landmark_pts;
         global_data_.resetGlobalData(global_traj);
-        global_data_.getGlobalPath(traj_pts_esdf);
-        global_data_.getLandmarks(landmark_pts);
-        visualize_path(traj_pts_esdf ,kino_astar_traj_pub_);
-
-        nav_msgs::Path ctrl_points_path;
-        ctrl_points_path.poses.resize(int(landmark_pts.size()));
-    
-
-        for (int i = 0; i < int(landmark_pts.size()); ++i) {
-          Eigen::Vector2d pt = landmark_pts[i];
-          ctrl_points_path.poses[i].pose.position.x=pt(0);
-          ctrl_points_path.poses[i].pose.position.y=pt(1);
-        }
-
-        visualization_->drawGlobalPath(ctrl_points_path,0.2, Eigen::Vector4d(0.5, 0.5, 0.5, 0.6));
     }
+
+    /* visualization */
+    if(optimize_success){
+      std::vector<Eigen::Vector2d> global_traj_optimized,landmark_pts;
+      global_data_.getGlobalPath(global_traj_optimized);
+      global_data_.getLandmarks(landmark_pts);
+      visualizePath(global_traj_optimized ,kino_astar_traj_pub_);
+      visualizePoints(landmark_pts,0.2,Eigen::Vector4d(0.5, 0.5, 0.5, 0.6),kino_astar_waypoints_pub_);
+    }
+
     
-    
-    t1_ = ros::WallTime::now();
+    visualizePath(init_path ,kino_astar_path_pub_);
     t2_ = ros::WallTime::now();
     dur_=(t2_ - t1_).toSec();
-    std::cout<<"-------kino astar end,duration="<<dur_<<std::endl;
+    std::cout<<"[kino replan]-------optimize duration="<<dur_<<std::endl;
+    std::cout<<"[kino replan]-------kino sum="<<(t2_-t_start).toSec()<<std::endl;
     return true;
 }
 
 bool InterPlanner::optimizePath(double ts,std::vector<Eigen::Vector2d> point_set, std::vector<Eigen::Vector2d> start_end_derivatives, UniformBspline & bspline_traj, OptimizerType type_optimizer){
-    // init B-spline control points
-    Eigen::MatrixXd ctrl_pts;
-    UniformBspline::parameterizeToBspline(ts, point_set, start_end_derivatives, ctrl_pts);
     
-    if(type_optimizer==InterPlanner::OptimizerType::GRADIENT_ASTAR){
+    
+    int trial_num=0;
+
+    while(trial_num<1){
+      trial_num++;
+      // init B-spline control points
+      Eigen::MatrixXd ctrl_pts;
+      UniformBspline::parameterizeToBspline(ts, point_set, start_end_derivatives, ctrl_pts);
+
+      std::cout<<"[astar replan]-------optimize param bspline success"<<std::endl;
+      if(type_optimizer==InterPlanner::OptimizerType::GRADIENT_ASTAR)
+      {
         std::vector<std::vector<Eigen::Vector2d>> a_star_pathes;
         a_star_pathes = bspline_optimizer_rebound_->initControlPoints(ctrl_pts, true);
-
+        std::cout<<"[astar replan]-------optimize init control point success"<<dur_<<std::endl;
         /*** STEP 2: OPTIMIZE ***/
         bool flag_step_1_success = bspline_optimizer_rebound_->BsplineOptimizeTrajRebound(ctrl_pts, ts);
         std::cout << "[bspline optimize_astar]first_optimize_step_success=" << flag_step_1_success << std::endl;
 
         if (!flag_step_1_success)
-        {
-            return false;
+        {   
+            std::cout << "[bspline optimize_astar] return false" << std::endl;
+            //return false;
+            continue;
         }
 
         /*** STEP 3: REFINE(RE-ALLOCATE TIME) IF NECESSARY ***/
@@ -311,40 +562,44 @@ bool InterPlanner::optimizePath(double ts,std::vector<Eigen::Vector2d> point_set
 
         bspline_traj=pos;
         return true;
+      }
+
+      if(type_optimizer==InterPlanner::OptimizerType::GRADIENT_ESDF)
+      {
+
+          // define cost function
+          int cost_function = BsplineOptimizerESDF::NORMAL_PHASE;//NORMAL_PHASE;
+
+          /*** STEP 2: OPTIMIZE ***/
+          ctrl_pts = bspline_optimizer_esdf_->BsplineOptimizeTraj(ctrl_pts, ts, cost_function, 1, 1);
+
+          /*** STEP 3: REFINE(RE-ALLOCATE TIME) IF NECESSARY ***/
+          UniformBspline pos = UniformBspline(ctrl_pts, 3, ts);
+          pos.setPhysicalLimits(pp_.max_vel_, pp_.max_acc_, pp_.feasibility_tolerance_);
+
+          double to = pos.getTimeSum();
+          
+          double ratio;
+          bool feasible = pos.checkFeasibility(ratio,false);
+
+          int iter_num = 0;
+          while (!feasible && ros::ok()) {
+              feasible = pos.reallocateTime();
+              if (++iter_num >= 3) break;
+          }
+          double tn = pos.getTimeSum();
+
+          
+          std::cout << "[kino replan]: Reallocate ratio: " << tn / to << std::endl;
+          if (tn / to > 3.0) ROS_ERROR("reallocate error.");
+
+          bspline_traj=pos;
+          return true;
+      }
     }
 
-    if(type_optimizer==InterPlanner::OptimizerType::GRADIENT_ESDF){
-
-        // define cost function
-        int cost_function = BsplineOptimizerESDF::NORMAL_PHASE;//NORMAL_PHASE;
-
-        /*** STEP 2: OPTIMIZE ***/
-        ctrl_pts = bspline_optimizer_esdf_->BsplineOptimizeTraj(ctrl_pts, ts, cost_function, 1, 1);
-
-        /*** STEP 3: REFINE(RE-ALLOCATE TIME) IF NECESSARY ***/
-        UniformBspline pos = UniformBspline(ctrl_pts, 3, ts);
-        pos.setPhysicalLimits(pp_.max_vel_, pp_.max_acc_, pp_.feasibility_tolerance_);
-
-        double to = pos.getTimeSum();
-        
-        double ratio;
-        bool feasible = pos.checkFeasibility(ratio,false);
-
-        int iter_num = 0;
-        while (!feasible && ros::ok()) {
-            feasible = pos.reallocateTime();
-            if (++iter_num >= 3) break;
-        }
-        double tn = pos.getTimeSum();
-
-        
-        std::cout << "[kino replan]: Reallocate ratio: " << tn / to << std::endl;
-        if (tn / to > 3.0) ROS_ERROR("reallocate error.");
-
-        bspline_traj=pos;
-        return true;
-    }
-
+    return false;
+      
 }
 
 bool InterPlanner::refineTrajAlgo(UniformBspline &traj, vector<Eigen::Vector2d> &start_end_derivative, double ratio, double &ts, Eigen::MatrixXd &optimal_control_points)
@@ -389,7 +644,7 @@ void InterPlanner::reparamBspline(UniformBspline &bspline, vector<Eigen::Vector2
     UniformBspline::parameterizeToBspline(dt, point_set, start_end_derivative, ctrl_pts);
 }
 
-void InterPlanner::visualize_path(std::vector<Eigen::Vector2d> path, const ros::Publisher & pub){
+void InterPlanner::visualizePath(const vector<Eigen::Vector2d> path, const ros::Publisher & pub){
 
   //create a path message
   ros::Time plan_time = ros::Time::now();
@@ -417,12 +672,170 @@ void InterPlanner::visualize_path(std::vector<Eigen::Vector2d> path, const ros::
   pub.publish(gui_path);
 }
 
+void InterPlanner::visualizePoints(const vector<Eigen::Vector2d>& point_set, double pt_size, const Eigen::Vector4d& color, const ros::Publisher & pub) {
+  
+  visualization_msgs::Marker mk;
+  mk.header.frame_id = "map";
+  mk.header.stamp    = ros::Time::now();
+  mk.type            = visualization_msgs::Marker::SPHERE_LIST;
+  mk.action          = visualization_msgs::Marker::DELETE;
+  //mk.id              = id;
 
+  mk.action             = visualization_msgs::Marker::ADD;
+  mk.pose.orientation.x = 0.0;
+  mk.pose.orientation.y = 0.0;
+  mk.pose.orientation.z = 0.0;
+  mk.pose.orientation.w = 1.0;
 
+  mk.color.r = color(0);
+  mk.color.g = color(1);
+  mk.color.b = color(2);
+  mk.color.a = color(3);
 
+  mk.scale.x = pt_size;
+  mk.scale.y = pt_size;
+  mk.scale.z = pt_size;
 
+  geometry_msgs::Point pt;
+  for (int i = 0; i < int(point_set.size()); i++) {
+    pt.x = point_set[i](0);
+    pt.y = point_set[i](1);
+    pt.z = 0.0;
+    mk.points.push_back(pt);
+  }
+  pub.publish(mk);
+  ros::Duration(0.001).sleep();
+}
 
+bool InterPlanner::checkCollision(const Eigen::Vector2d &pos){
+  bool is_occ= grid_map_->getFusedInflateOccupancy(pos);
+  return is_occ;
+}
 
+bool InterPlanner::findCollisionWithinSegment(const Eigen::Vector2d &pt1,const Eigen::Vector2d &pt2,vector<Eigen::Vector2d> & inter_points){
+  double dist=(pt1-pt2).squaredNorm();                            // distance start pt to end pt
+  double dist_step=grid_map_->getResolution()*4;                 // collision check step distance
+
+  int id_num = floor(dist / dist_step) + 1;
+
+  for (int j = 1; j < id_num; ++j)
+  {
+    Eigen::Vector2d inter_pt = pt1 * (1.0 - double(j) / id_num) + pt2 * double(j) / id_num;
+    if(checkCollision(inter_pt)){
+      inter_points.push_back(inter_pt);
+    }    
+  }
+
+  if(inter_points.size()>0){
+    //std::cout<<"this segment collision num is "<<inter_points.size()<<std::endl;
+    return true;
+  }else{
+    //std::cout<<"this segment collision is empty"<<std::endl;
+    return false;
+  }
+  
+}
+
+bool InterPlanner::getPointSet(const vector<Eigen::Vector2d> &path, vector<Eigen::Vector2d> &point_set, double &ts){
+  /* input: a path ,each waypoint has distance small or big 
+     output: point set for bspline generation: according to  global path or local path
+     param: pt_distance,  collision check resolution
+  */
+
+  if(path.size()<2){
+    ROS_WARN_STREAM("[Get point set]: not enough initial path point, num="<<path.size());
+    return false;
+  }
+
+  Eigen::Vector2d start_pt,end_pt;
+  double start_end_dist;
+  start_pt=path.front();
+  end_pt=path.back();
+  start_end_dist=(end_pt-start_pt).squaredNorm();
+  double dist_thresh;
+  int min_num=5;
+
+  /* set dist_thresh */
+  if (start_end_dist>min_num*pp_.ctrl_pt_dist_)
+  { 
+    // if start_end_dist is big
+    dist_thresh=pp_.ctrl_pt_dist_;
+  }else{
+    // if start_end_dist is small
+    dist_thresh=start_end_dist/double(min_num+1);
+  }
+
+  if(dist_thresh< grid_map_->getResolution()){
+    ROS_WARN_STREAM("[Get point set]: too short initial path, dist_thresh="<<dist_thresh);
+    return false;
+  }
+  
+  /* add to point_set */
+  // init point_set
+  point_set.clear();
+  point_set.push_back(start_pt);          // add start pt
+  Eigen::Vector2d last_pt=start_pt;       // init last pt
+
+  for (size_t i = 1; i < path.size() - 1; ++i)
+  {
+    double dist = (path[i] - last_pt).norm();
+
+    if(dist>dist_thresh)
+    {
+      while(dist>dist_thresh)
+      {
+        Eigen::Vector2d curr_pt=last_pt*(1-dist_thresh/dist) + path[i] * (dist_thresh/dist);
+      
+        std::vector<Eigen::Vector2d> inter_points;
+        if(findCollisionWithinSegment(last_pt,curr_pt,inter_points))\
+        {
+          for(int j=0;j<inter_points.size();j++)
+          {
+            point_set.push_back(inter_points[j]);
+          }
+        }
+
+        last_pt=curr_pt;
+        dist=(path[i] - last_pt).norm();
+        if(dist>dist_thresh){
+          point_set.push_back(curr_pt);
+        }else{
+          point_set.push_back(path[i]);
+        }
+      }
+      
+    }else if(i==path.size()-1){
+      // make sure the endpoint is added
+      point_set.push_back(path[i]); 
+    }
+  }
+
+  ts=dist_thresh/pp_.max_vel_*pp_.time_alloc_coefficient_;
+
+  /* lack of points in point_set */
+  if(point_set.size()<min_num)
+  {
+    point_set.clear();
+    if(path.size()>=min_num){
+      point_set=path;
+    }else{
+      for(int i=0;i<min_num;i++){
+        Eigen::Vector2d pt=start_pt*(1-double(i)/min_num) + end_pt * (double(i)/min_num);
+        point_set.push_back(pt);
+      }
+    }
+    ts=start_end_dist/min_num/pp_.max_vel_*pp_.time_alloc_coefficient_;
+  }
+
+  if(point_set.size()<min_num){
+    ROS_WARN_STREAM("[Get point set]: not enough points in optimized point_set, num="<<point_set.size());
+    std::cout<<"dist_thresh:"<<dist_thresh<<std::endl;
+    return false;
+  }
+  
+  return true;
+
+}
 
 
 

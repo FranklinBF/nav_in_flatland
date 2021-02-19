@@ -138,7 +138,6 @@ set(CMAKE_CXX_FLAGS "-std=c++11 ${CMAKE_CXX_FLAGS} -O3 -Wall")
 # Declare a C++ library
 add_library(arena_mapping
   src/mapping.cpp 
-  src/edt_environment.cpp 
   src/raycast.cpp
 )
 

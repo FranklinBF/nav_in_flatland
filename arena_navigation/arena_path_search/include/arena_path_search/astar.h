@@ -115,18 +115,16 @@ public:
     /* ---------- parameter ---------- */
     /* search */
     double lambda_heu_;
-    double margin_;
     int allocate_num_;
     double tie_breaker_;
 
     /* map */
-    double resolution_, inv_resolution_, time_resolution_, inv_time_resolution_;
+    double resolution_, inv_resolution_;
     Eigen::Vector2d origin_, map_size_2d_;
-    double time_origin_;
+
 
     /* helper */
     Eigen::Vector2i posToIndex(Eigen::Vector2d pt);
-    int timeToIndex(double time);
     void retrievePath(NodePtr end_node);
 
     /* heuristic function */
@@ -146,14 +144,10 @@ public:
     void setEnvironment(const GridMap::Ptr& env);
 
     void init();
-    void init(ros::NodeHandle& private_nh,const GridMap::Ptr& env);
 
     void reset();
 
-    int search(Eigen::Vector2d start_pt, Eigen::Vector2d end_pt, bool dynamic = false,
-             double time_start = -1.0);
-
-    
+    int search(Eigen::Vector2d start_pt, Eigen::Vector2d end_pt);
 
     std::vector<Eigen::Vector2d> getPath();
 

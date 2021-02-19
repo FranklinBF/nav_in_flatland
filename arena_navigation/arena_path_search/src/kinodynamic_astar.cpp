@@ -19,7 +19,7 @@ void KinodynamicAstar::setParam(ros::NodeHandle& private_nh)
   private_nh.param("kino_astar/max_vel", max_vel_, 0.5);                // max vel
   private_nh.param("kino_astar/max_acc", max_acc_, 1.0);                // max acc
   private_nh.param("kino_astar/w_time", w_time_, 10.0);                 // ? w_time
-  private_nh.param("kino_astar/horizon", horizon_, 7.0);                // look ahead distance
+  private_nh.param("kino_astar/horizon", horizon_, 30.0);               // look ahead distance
   
   private_nh.param("kino_astar/goal_tolerance", goal_tolerance_, 0.2);  // goal_tolerance
   private_nh.param("kino_astar/resolution_astar", resolution_, 0.05);   // map resolution

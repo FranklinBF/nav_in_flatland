@@ -28,10 +28,12 @@
 #include "arena_intermediate_planner/plan_container_mid.hpp"
 
 // visulization
+#include <visualization_msgs/Marker.h>
 #include "plan_visualization/planning_visualization.h"
 
 // arena plan msg
 #include <arena_plan_msgs/MakeGlobalPlan.h>
+
 
 
 
@@ -43,8 +45,15 @@ private:
     // subscriber
     ros::Subscriber goal_sub_, odom_sub_;
 
-    // publisher
-    ros::Publisher kino_astar_path_pub_,kino_astar_traj_pub_;
+    // vis publisher
+    ros::Publisher kino_astar_path_pub_,    kino_astar_traj_pub_,   kino_astar_waypoints_pub_;
+    ros::Publisher astar_path_pub_,         astar_traj_pub_,        astar_waypoints_pub_;
+    ros::Publisher oneshot_path_pub_,       oneshot_traj_pub_,      oneshot_waypoints_pub_;
+    ros::Publisher vis_goal_pub_,vis_subgoal_pub_;
+
+    ros::Publisher vis_control_pts_pub_,vis_control_pts_optimized_pub_;
+
+
     
     // service server
     ros::ServiceServer global_plan_service_server_;
@@ -78,7 +87,7 @@ private:
 
     
     // visualization
-    PlanningVisualization::Ptr visualization_;
+    //PlanningVisualization::Ptr visualization_;
 
     // performance time
     double dur_;
@@ -106,22 +115,29 @@ public:
 
 
     bool planGlobalTraj(const Eigen::Vector2d &start_pos, const Eigen::Vector2d &start_vel, const Eigen::Vector2d &start_acc,
-                      const Eigen::Vector2d &end_pos, const Eigen::Vector2d &end_vel, const Eigen::Vector2d &end_acc);
+                      const Eigen::Vector2d &end_pos, const Eigen::Vector2d &end_vel, const Eigen::Vector2d &end_acc, OptimizerType type_optimizer=OptimizerType::GRADIENT_ASTAR);
 
 
 
     bool planOneshotTraj(const Eigen::Vector2d &start_pos, const Eigen::Vector2d &start_vel, const Eigen::Vector2d &start_acc,
-                      const Eigen::Vector2d &end_pos, const Eigen::Vector2d &end_vel, const Eigen::Vector2d &end_acc);
+                      const Eigen::Vector2d &end_pos, const Eigen::Vector2d &end_vel, const Eigen::Vector2d &end_acc,OptimizerType type_optimizer=OptimizerType::GRADIENT_ASTAR);
 
-    bool planKinoAstarTraj(const Eigen::Vector2d &start_pos, const Eigen::Vector2d &start_vel, const Eigen::Vector2d &start_acc, const Eigen::Vector2d &end_pos, const Eigen::Vector2d &end_vel);
+    bool planKinoAstarTraj(const Eigen::Vector2d &start_pos, const Eigen::Vector2d &start_vel, const Eigen::Vector2d &start_acc, const Eigen::Vector2d &end_pos, const Eigen::Vector2d &end_vel, OptimizerType type_optimizer=OptimizerType::GRADIENT_ASTAR);
 
-    bool planAstarTraj(const Eigen::Vector2d &start_pos,const Eigen::Vector2d &end_pos);
+    bool planAstarTraj(const Eigen::Vector2d &start_pos,const Eigen::Vector2d &end_pos, OptimizerType type_optimizer=OptimizerType::GRADIENT_ASTAR);
 
-    bool optimizePath(double ts,std::vector<Eigen::Vector2d> point_set, std::vector<Eigen::Vector2d> start_end_derivatives, UniformBspline &bspline_traj, OptimizerType type_optimizer=OptimizerType::GRADIENT_ASTAR);
+    bool optimizePath(double ts,vector<Eigen::Vector2d> point_set, vector<Eigen::Vector2d> start_end_derivatives, UniformBspline &bspline_traj, OptimizerType type_optimizer=OptimizerType::GRADIENT_ASTAR);
 
-    void visualize_path(std::vector<Eigen::Vector2d> path, const ros::Publisher & pub);
+    void visualizePath(const vector<Eigen::Vector2d> path, const ros::Publisher & pub);
+
+    void visualizePoints(const vector<Eigen::Vector2d>& point_set, double pt_size, const Eigen::Vector4d& color, const ros::Publisher & pub);
 
 
+    bool checkCollision(const Eigen::Vector2d &pos);
+
+    bool findCollisionWithinSegment(const Eigen::Vector2d &pt1,const Eigen::Vector2d &pt2,vector<Eigen::Vector2d> &inter_points);
+
+    bool getPointSet(const vector<Eigen::Vector2d> &path, vector<Eigen::Vector2d> &point_set, double &ts);
 
     typedef std::shared_ptr<InterPlanner> Ptr;
 

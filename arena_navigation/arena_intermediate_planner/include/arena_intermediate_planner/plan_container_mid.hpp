@@ -61,12 +61,12 @@ private:
       }
       // calculate curvature radius
       rou_t=calculateCurveRadius(getVelocity(t),getAcceleration(t));
-      std::cout<<"********************* rou="<<rou_t<<std::endl;
+      //std::cout<<"********************* rou="<<rou_t<<std::endl;
       // calculate gradient
       gradient_t=rou_t-rou_last;
       
       // set continue_descent_counter
-      if(gradient_t<-5.0){
+      if(gradient_t<-20.0){
         continue_descent_counter++;
       }else{
         continue_descent_counter=0;
@@ -78,8 +78,8 @@ private:
       }
 
       /* minimum vaule of the curvature radius || curvature radius is so small */
-      if((gradient_t>0 && gradient_last<0)|| rou_t<rou_thresh_|| continue_descent_counter>80){ //  //gradient_t*gradient_last<0
-        std::cout<<"in1************ rou="<<rou_t<<std::endl;
+      if((gradient_t>0 && gradient_last<0)|| rou_t<rou_thresh_|| continue_descent_counter>20){ //  //gradient_t*gradient_last<0
+        //std::cout<<"in1************ rou="<<rou_t<<std::endl;
         // negelect the start points 
         if((pos_t-start_pos_).squaredNorm()<=dist_next_wp_ && rou_t>rou_thresh_){
           rou_last=rou_t;
@@ -88,11 +88,11 @@ private:
         }
         // reset continue_descent_counter
         
-        if(continue_descent_counter>80){
-          std::cout<<"in counter************ rou="<<rou_t<<std::endl;
+        if(continue_descent_counter>20){
+          //std::cout<<"in counter************ rou="<<rou_t<<std::endl;
         }
 
-        std::cout<<"in2************ rou="<<rou_t<<std::endl;
+        //std::cout<<"in2************ rou="<<rou_t<<std::endl;
         // make sure two landmarks are not too close
         if((pos_t-last_landmark).squaredNorm()>2.0)
         { 
@@ -101,7 +101,7 @@ private:
           last_landmark=pos_t;
           id++;
           continue_descent_counter=0;
-          std::cout<<"add************ rou="<<rou_t<<std::endl;
+          //std::cout<<"add************ rou="<<rou_t<<std::endl;
         }
         
       }else if((pos_t-end_pos_).squaredNorm()<=dist_next_wp_){
@@ -163,15 +163,24 @@ public:
     resetLandmarks();
   }
 
-  void getGlobalPath(std::vector<Eigen::Vector2d> &global_path){
-     global_path=global_path_;
+  bool getGlobalPath(std::vector<Eigen::Vector2d> &global_path){
+     if(!global_path_.empty()){
+       global_path=global_path_;
+       return true;
+     }else{
+       return false;
+     }
   }
 
-  void getLandmarks(std::vector<Eigen::Vector2d> & landmark_pts){
-
-     for(int i=0;i<landmark_points_.size();i++){
-       landmark_pts.push_back(landmark_points_[i].pos);
-     }
+  bool getLandmarks(std::vector<Eigen::Vector2d> & landmark_pts){
+    if(!landmark_points_.empty()){
+      for(int i=0;i<landmark_points_.size();i++){
+          landmark_pts.push_back(landmark_points_[i].pos);
+      }
+      return true;
+    }else{
+      return false;
+    }
   }
 
   Eigen::Vector2d getLocalTarget(Eigen::Vector2d &current_pt){
@@ -399,6 +408,7 @@ struct PlanParameters
     /* flags */
     bool use_astar_, use_kino_astar_, use_oneshot_;
     bool use_optimization_esdf_, use_optimization_astar_;
+    double time_alloc_coefficient_;
 
     /* processing time */
     //double time_search_ = 0.0;
