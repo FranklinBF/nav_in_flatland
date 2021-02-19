@@ -109,6 +109,7 @@ private:
     int iter_num_;                  // iteration of the solver
     Eigen::VectorXd best_variable_; //
     double min_cost_;               //
+    int max_rebound_times_;
 
    
     /* cost function */
