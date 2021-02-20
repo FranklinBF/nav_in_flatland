@@ -299,7 +299,6 @@ bool GlobalPlanner::planGlobalTraj(const Eigen::Vector2d &start_pos, const Eigen
 {
 
     // generate global reference trajectory
-
     std::vector<Eigen::Vector2d> points;
     points.push_back(start_pos);
     points.push_back(end_pos);

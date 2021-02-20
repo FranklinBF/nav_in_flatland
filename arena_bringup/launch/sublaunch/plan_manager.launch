@@ -9,9 +9,8 @@
     <include file="$(find arena_bringup)/launch/sublaunch/move_base.launch"/>
 
     <!-- arena_plan_manager -->
-    <node pkg="arena_plan_manager" name="plan_manager" type="plan_manager_node" output="screen">
-        <!-- <param name="train_mode" value="$(arg train_mode)"/> -->
-    </node>
+    <!-- <node pkg="arena_plan_manager" name="plan_manager" type="plan_manager_node" output="screen">
+    </node> -->
 
 
     <!-- arena_local_planners -->

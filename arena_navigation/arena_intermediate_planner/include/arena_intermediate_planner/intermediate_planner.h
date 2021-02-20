@@ -52,6 +52,10 @@ private:
     ros::Publisher vis_goal_pub_,vis_subgoal_pub_;
 
     ros::Publisher vis_control_pts_pub_,vis_control_pts_optimized_pub_;
+    ros::Publisher vis_control_pts_astar_pub_,vis_control_pts_oneshot_pub_,vis_control_pts_kino_pub_;
+    ros::Publisher vis_control_pts_astar_optimized_pub_,vis_control_pts_oneshot_optimized_pub_,vis_control_pts_kino_optimized_pub_;
+    
+    
 
 
     

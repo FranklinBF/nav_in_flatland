@@ -172,6 +172,16 @@ public:
      }
   }
 
+  std::vector<Eigen::Vector2d> getControlPoints(){
+    Eigen::MatrixXd control_pts_matrix=global_pos_traj_.get_control_points();// (dim,cols)
+    std::vector<Eigen::Vector2d> ctrl_pts;
+    ctrl_pts.clear();
+    for(int i=0;i<control_pts_matrix.cols();i++){
+      ctrl_pts.push_back(control_pts_matrix.col(i));
+    }
+    return ctrl_pts;
+  }
+  
   bool getLandmarks(std::vector<Eigen::Vector2d> & landmark_pts){
     if(!landmark_points_.empty()){
       for(int i=0;i<landmark_points_.size();i++){

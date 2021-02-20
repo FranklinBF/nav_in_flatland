@@ -148,9 +148,10 @@ set(CMAKE_CXX_FLAGS "-std=c++11 ${CMAKE_CXX_FLAGS} -O3 -Wall")
 ## With catkin_make all packages are built within a single CMake context
 ## The recommended prefix ensures that target names across packages don't collide
 # add_executable(${PROJECT_NAME}_node src/arena_global_planner_node.cpp)
-add_executable(arena_global_planner 
-              src/global_planner_collector.cpp
-)
+
+# add_executable(arena_global_planner 
+#               src/global_planner_collector.cpp
+# )
 
 
 
@@ -169,10 +170,10 @@ add_executable(arena_global_planner
 #   ${catkin_LIBRARIES}
 # )
 
-target_link_libraries(arena_global_planner
-  ${catkin_LIBRARIES}
-  ${PCL_LIBRARIES}
-)
+# target_link_libraries(arena_global_planner
+#   ${catkin_LIBRARIES}
+#   ${PCL_LIBRARIES}
+# )
 
 #############
 ## Install ##

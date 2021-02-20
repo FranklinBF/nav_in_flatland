@@ -8,7 +8,7 @@ int main(int argc, char** argv) {
     ros::init(argc, argv, "plan_manager");
     
     //ros::NodeHandle node_handle("~"); every topic will be with namespace
-    ros::NodeHandle node_handle("~");
+    ros::NodeHandle node_handle("");
     //ros::WallRate r(100);
     ROS_INFO("abcd");
     PlanManager plan_manager;
