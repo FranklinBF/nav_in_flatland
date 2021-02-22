@@ -9,6 +9,7 @@ Panels:
         - /Sensors1
         - /Maps1
         - /plan_manager1
+        - /plan_manager1/jps_path1
       Splitter Ratio: 0.6515986919403076
     Tree Height: 797
   - Class: rviz/Selection
@@ -383,13 +384,67 @@ Visualization Manager:
           Unreliable: false
           Value: true
         - Class: rviz/Marker
-          Enabled: false
+          Enabled: true
           Marker Topic: /astar_wps
           Name: astar_wp
           Namespaces:
-            {}
+            "": true
           Queue Size: 100
-          Value: false
+          Value: true
+        - Alpha: 1
+          Buffer Length: 1
+          Class: rviz/Path
+          Color: 85; 170; 255
+          Enabled: true
+          Head Diameter: 0.30000001192092896
+          Head Length: 0.20000000298023224
+          Length: 0.30000001192092896
+          Line Style: Billboards
+          Line Width: 0.10000000149011612
+          Name: jps_path
+          Offset:
+            X: 0
+            Y: 0
+            Z: 0
+          Pose Color: 255; 85; 255
+          Pose Style: None
+          Radius: 0.029999999329447746
+          Shaft Diameter: 0.10000000149011612
+          Shaft Length: 0.10000000149011612
+          Topic: /jps_path
+          Unreliable: false
+          Value: true
+        - Alpha: 1
+          Buffer Length: 1
+          Class: rviz/Path
+          Color: 255; 247; 11
+          Enabled: true
+          Head Diameter: 0.30000001192092896
+          Head Length: 0.20000000298023224
+          Length: 0.30000001192092896
+          Line Style: Billboards
+          Line Width: 0.20000000298023224
+          Name: jps_traj
+          Offset:
+            X: 0
+            Y: 0
+            Z: 0
+          Pose Color: 255; 85; 255
+          Pose Style: None
+          Radius: 0.029999999329447746
+          Shaft Diameter: 0.10000000149011612
+          Shaft Length: 0.10000000149011612
+          Topic: /jps_traj
+          Unreliable: false
+          Value: true
+        - Class: rviz/Marker
+          Enabled: true
+          Marker Topic: /jps_wps
+          Name: jps_wp
+          Namespaces:
+            "": true
+          Queue Size: 100
+          Value: true
         - Alpha: 1
           Buffer Length: 1
           Class: rviz/Path
@@ -956,7 +1011,7 @@ Visualization Manager:
       Marker Topic: /ControlPoints_kino_opt
       Name: crtrl_pts_kino_opt
       Namespaces:
-        "": true
+        {}
       Queue Size: 100
       Value: true
     - Class: rviz/Marker
@@ -972,7 +1027,7 @@ Visualization Manager:
       Marker Topic: /ControlPoints_oneshot_opt
       Name: crtrl_pts_oneshot_opt
       Namespaces:
-        "": true
+        {}
       Queue Size: 100
       Value: true
   Enabled: true
@@ -1004,7 +1059,7 @@ Visualization Manager:
   Value: true
   Views:
     Current:
-      Angle: -5.085002422332764
+      Angle: -5.080002307891846
       Class: rviz/TopDownOrtho
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
@@ -1014,7 +1069,7 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Scale: 16.912137985229492
+      Scale: 17.8739013671875
       Target Frame: <Fixed Frame>
       Value: TopDownOrtho (rviz)
       X: 24.47783851623535

@@ -48,6 +48,7 @@ private:
     // vis publisher
     ros::Publisher kino_astar_path_pub_,    kino_astar_traj_pub_,   kino_astar_waypoints_pub_;
     ros::Publisher astar_path_pub_,         astar_traj_pub_,        astar_waypoints_pub_;
+    ros::Publisher jps_path_pub_,           jps_traj_pub_,          jps_waypoints_pub_;
     ros::Publisher oneshot_path_pub_,       oneshot_traj_pub_,      oneshot_waypoints_pub_;
     ros::Publisher vis_goal_pub_,vis_subgoal_pub_;
 

@@ -43,6 +43,7 @@ add_library(arena_path_search
   src/kinodynamic_astar.cpp
   src/dyn_astar.cpp
   src/jps.cpp
+  src/jps_utils.cpp
 )
 
 target_link_libraries(arena_path_search

@@ -38,7 +38,7 @@ void InterPlanner::init(ros::NodeHandle & nh){
     //global_planner_type_="astar";
     global_planner_astar_.reset(new JPS);
     global_planner_astar_->setEnvironment(grid_map_);
-    global_planner_astar_->setSearchMap(Eigen::Vector2i(1000, 1000),0.1,0.1,false);
+    global_planner_astar_->setSearchMap(Eigen::Vector2i(1000, 1000),0.1,0.20);
     // global_planner_astar_.reset(new Astar);
     // global_planner_astar_->setParam(node_);
     // global_planner_astar_->setEnvironment(grid_map_);
@@ -86,6 +86,10 @@ void InterPlanner::init(ros::NodeHandle & nh){
   astar_path_pub_ =public_nh.advertise<nav_msgs::Path>("astar_path", 1);
   astar_traj_pub_ =public_nh.advertise<nav_msgs::Path>("astar_traj", 1);
   astar_waypoints_pub_ = public_nh.advertise<visualization_msgs::Marker>("astar_wps", 20);
+
+  jps_path_pub_ =public_nh.advertise<nav_msgs::Path>("jps_path", 1);
+  jps_traj_pub_ =public_nh.advertise<nav_msgs::Path>("jps_traj", 1);
+  jps_waypoints_pub_ = public_nh.advertise<visualization_msgs::Marker>("jps_wps", 20);
 
   oneshot_path_pub_ =public_nh.advertise<nav_msgs::Path>("oneshot_path", 1);
   oneshot_traj_pub_ =public_nh.advertise<nav_msgs::Path>("oneshot_traj", 1);
@@ -369,16 +373,16 @@ bool InterPlanner::planAstarTraj( Eigen::Vector2d &start_pos, Eigen::Vector2d &e
   std::cout<<"******************************************************"<<std::endl;
   std::cout<<"[astar replan]start----------------------------------"<<std::endl;
   std::cout<<"******************************************************"<<std::endl;
-  t1_ = ros::WallTime::now();
+  
   auto t_start=ros::WallTime::now();
 
-  int status;
-  //global_planner_astar_->reset();
+  int astar_status, jps_status;
 
-  // search
-  status = global_planner_astar_->search(start_pos, end_pos);
-  
-  if(status==JPS::NO_PATH){
+  /* astar------------------------------------------------------------------- */
+  t1_ = ros::WallTime::now();
+  astar_status = global_planner_astar_->search(start_pos, end_pos,false,false);
+
+  if(astar_status==JPS::NO_PATH){
       std::cout << "[Astar replan]: Can't find path." <<std:: endl;
       return false;
   }else{
@@ -389,22 +393,51 @@ bool InterPlanner::planAstarTraj( Eigen::Vector2d &start_pos, Eigen::Vector2d &e
   dur_=(t2_ - t1_).toSec();
   std::cout<<"[astar replan]-------search duration="<<dur_<<std::endl;
 
-  /* traj optimization */
+  visualizePath(global_planner_astar_->getPath() ,astar_path_pub_);
+  visualizePoints(global_planner_astar_->getPath(),0.2,Eigen::Vector4d(0.5, 0.5, 0.5, 0.6),astar_waypoints_pub_);
+
+  /* jps------------------------------------------------------------------- */
+  std::cout << "<<<<<<<<<<<<<<<<<<<<<<<>>>>>>>>>>>>>>>>>>>>>>>" <<std:: endl;
   t1_ = ros::WallTime::now();
+  jps_status = global_planner_astar_->search(start_pos, end_pos,true,false);
+
+  if(jps_status==JPS::NO_PATH){
+      std::cout << "[JPS replan]: Can't find path." <<std:: endl;
+      return false;
+  }else{
+      std::cout << "[JPS replan]: JPS search success."<< std::endl;
+  }
+
+  t2_ = ros::WallTime::now();
+  dur_=(t2_ - t1_).toSec();
+  std::cout<<"[JPS replan]-------search duration="<<dur_<<std::endl;
+
+  visualizePath(global_planner_astar_->getPath() ,jps_path_pub_);
+  visualizePoints(global_planner_astar_->getPath(),0.2,Eigen::Vector4d(0.5, 0.5, 0.5, 0.6),jps_waypoints_pub_);
+
+
   
-  // get ts, pointset, derivatives
-  double ts;
-  std::vector<Eigen::Vector2d> init_path, point_set, start_end_derivatives;
-  init_path=global_planner_astar_->getPath();
-  std::cout<<"[astar replan]-------getpath success"<<dur_<<std::endl;
-  
-  //bool is_pointset_success=getPointSet(init_path,point_set,ts);
-  std::cout<<"[astar replan]-------getpointset success"<<dur_<<std::endl;
-  bool is_pointset_success=true;
-  point_set=init_path;
   
   
-  visualizePath(init_path ,astar_path_pub_);
+
+  
+
+  // /* traj optimization */
+  // t1_ = ros::WallTime::now();
+  
+  // // get ts, pointset, derivatives
+  // double ts;
+  // std::vector<Eigen::Vector2d> init_path, point_set, start_end_derivatives;
+  // init_path=global_planner_astar_->getPath();
+  // std::cout<<"[astar replan]-------getpath success"<<dur_<<std::endl;
+  
+  // //bool is_pointset_success=getPointSet(init_path,point_set,ts);
+  // std::cout<<"[astar replan]-------getpointset success"<<dur_<<std::endl;
+  // bool is_pointset_success=true;
+  // point_set=init_path;
+  
+  
+  
   // if(!is_pointset_success){
   //   ROS_WARN_STREAM("pointset is not available");
   //   return false;
@@ -456,8 +489,8 @@ bool InterPlanner::planAstarTraj( Eigen::Vector2d &start_pos, Eigen::Vector2d &e
  
   t2_ = ros::WallTime::now();
   dur_=(t2_ - t1_).toSec();
-  std::cout<<"[astar replan]-------optimize duration="<<dur_<<std::endl;
-  std::cout<<"[astar replan]-------astar sum="<<(t2_-t_start).toSec()<<std::endl;
+  //std::cout<<"[astar replan]-------optimize duration="<<dur_<<std::endl;
+  //std::cout<<"[astar replan]-------astar sum="<<(t2_-t_start).toSec()<<std::endl;
   return true;
 }
 
