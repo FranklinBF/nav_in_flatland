@@ -39,7 +39,7 @@ include_directories(
 
 ## Declare a C++ library
 add_library(arena_path_search
-  src/astar.cpp
+  #src/astar.cpp
   src/kinodynamic_astar.cpp
   src/dyn_astar.cpp
   src/jps.cpp

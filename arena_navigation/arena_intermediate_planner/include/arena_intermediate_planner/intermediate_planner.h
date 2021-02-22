@@ -14,7 +14,7 @@
 // mapping
 #include "arena_mapping/mapping.h"
 // path search
-#include "arena_path_search/astar.h"
+#include "arena_path_search/jps.h"
 #include "arena_path_search/kinodynamic_astar.h"
 
 // b-spline
@@ -81,7 +81,8 @@ private:
     Eigen::Vector2d end_pt_, end_vel_, end_acc_;                              // target state
 
     // global planners
-    Astar::Ptr global_planner_astar_;
+    //Astar::Ptr global_planner_astar_;
+    JPS::Ptr global_planner_astar_;
     KinodynamicAstar::Ptr global_planner_kino_astar_;
     PolynomialTraj::Ptr global_planner_oneshot_;
 
@@ -128,7 +129,7 @@ public:
 
     bool planKinoAstarTraj(const Eigen::Vector2d &start_pos, const Eigen::Vector2d &start_vel, const Eigen::Vector2d &start_acc, const Eigen::Vector2d &end_pos, const Eigen::Vector2d &end_vel, OptimizerType type_optimizer=OptimizerType::GRADIENT_ASTAR);
 
-    bool planAstarTraj(const Eigen::Vector2d &start_pos,const Eigen::Vector2d &end_pos, OptimizerType type_optimizer=OptimizerType::GRADIENT_ASTAR);
+    bool planAstarTraj(Eigen::Vector2d &start_pos,Eigen::Vector2d &end_pos, OptimizerType type_optimizer=OptimizerType::GRADIENT_ASTAR);
 
     bool optimizePath(double ts,vector<Eigen::Vector2d> point_set, vector<Eigen::Vector2d> start_end_derivatives, UniformBspline &bspline_traj, OptimizerType type_optimizer=OptimizerType::GRADIENT_ASTAR);
 

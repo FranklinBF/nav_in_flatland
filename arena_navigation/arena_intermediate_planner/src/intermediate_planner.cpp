@@ -36,11 +36,14 @@ void InterPlanner::init(ros::NodeHandle & nh){
   // use_astar, use_kino_astar
   if(pp_.use_astar_){
     //global_planner_type_="astar";
-    global_planner_astar_.reset(new Astar);
-    global_planner_astar_->setParam(node_);
+    global_planner_astar_.reset(new JPS);
     global_planner_astar_->setEnvironment(grid_map_);
-    global_planner_astar_->init();
-    global_planner_astar_->reset();
+    global_planner_astar_->setSearchMap(Eigen::Vector2i(1000, 1000),0.1,0.1,false);
+    // global_planner_astar_.reset(new Astar);
+    // global_planner_astar_->setParam(node_);
+    // global_planner_astar_->setEnvironment(grid_map_);
+    // global_planner_astar_->init();
+    // global_planner_astar_->reset();
   }
 
   if(pp_.use_kino_astar_){
@@ -155,9 +158,9 @@ void InterPlanner::goalCallback(const geometry_msgs::PoseStampedPtr& msg){
   // find path
 
   OptimizerType type_optimizer=InterPlanner::OptimizerType::GRADIENT_ASTAR;
-  //planAstarTraj(start_pt_,end_pt_,type_optimizer);
+  planAstarTraj(start_pt_,end_pt_,type_optimizer);
   
-  planOneshotTraj(start_pt_, start_vel_, start_acc_, end_pt_, end_vel_,end_acc_);
+  //planOneshotTraj(start_pt_, start_vel_, start_acc_, end_pt_, end_vel_,end_acc_);
   //planKinoAstarTraj(start_pt_, start_vel_, start_acc_, end_pt_, end_vel_,type_optimizer);
 
   //find_global_traj_success = planGlobalTraj(start_pt_, start_vel_, start_acc_, end_pt_, end_vel_, end_acc_);
@@ -361,7 +364,7 @@ bool InterPlanner::planOneshotTraj(const Eigen::Vector2d &start_pos, const Eigen
   return true;
 }
 
-bool InterPlanner::planAstarTraj(const Eigen::Vector2d &start_pos,const Eigen::Vector2d &end_pos, OptimizerType type_optimizer){
+bool InterPlanner::planAstarTraj( Eigen::Vector2d &start_pos, Eigen::Vector2d &end_pos, OptimizerType type_optimizer){
   /* path search */
   std::cout<<"******************************************************"<<std::endl;
   std::cout<<"[astar replan]start----------------------------------"<<std::endl;
@@ -370,12 +373,12 @@ bool InterPlanner::planAstarTraj(const Eigen::Vector2d &start_pos,const Eigen::V
   auto t_start=ros::WallTime::now();
 
   int status;
-  global_planner_astar_->reset();
+  //global_planner_astar_->reset();
 
   // search
-  status = global_planner_astar_->search( start_pos, end_pos);
+  status = global_planner_astar_->search(start_pos, end_pos);
   
-  if(status==Astar::NO_PATH){
+  if(status==JPS::NO_PATH){
       std::cout << "[Astar replan]: Can't find path." <<std:: endl;
       return false;
   }else{
@@ -394,59 +397,62 @@ bool InterPlanner::planAstarTraj(const Eigen::Vector2d &start_pos,const Eigen::V
   std::vector<Eigen::Vector2d> init_path, point_set, start_end_derivatives;
   init_path=global_planner_astar_->getPath();
   std::cout<<"[astar replan]-------getpath success"<<dur_<<std::endl;
-  init_path.push_back(end_pos);
-  bool is_pointset_success=getPointSet(init_path,point_set,ts);
+  
+  //bool is_pointset_success=getPointSet(init_path,point_set,ts);
   std::cout<<"[astar replan]-------getpointset success"<<dur_<<std::endl;
-
-
-  if(!is_pointset_success){
-    ROS_WARN_STREAM("pointset is not available");
-    return false;
-  }
-
-  start_end_derivatives.push_back(Eigen::Vector2d::Zero());
-  start_end_derivatives.push_back(Eigen::Vector2d::Zero());
-  start_end_derivatives.push_back(Eigen::Vector2d::Zero());
-  start_end_derivatives.push_back(Eigen::Vector2d::Zero());
+  bool is_pointset_success=true;
+  point_set=init_path;
+  
+  
   visualizePath(init_path ,astar_path_pub_);
-  // optimize
-  UniformBspline global_traj;
-  bool optimize_success;
+  // if(!is_pointset_success){
+  //   ROS_WARN_STREAM("pointset is not available");
+  //   return false;
+  // }
 
-  optimize_success=optimizePath(ts,point_set,start_end_derivatives,global_traj,type_optimizer);
+  // start_end_derivatives.push_back(Eigen::Vector2d::Zero());
+  // start_end_derivatives.push_back(Eigen::Vector2d::Zero());
+  // start_end_derivatives.push_back(Eigen::Vector2d::Zero());
+  // start_end_derivatives.push_back(Eigen::Vector2d::Zero());
+  
+  // // optimize
+  // UniformBspline global_traj;
+  // bool optimize_success;
+
+  // optimize_success=optimizePath(ts,point_set,start_end_derivatives,global_traj,type_optimizer);
 
 
-  if(optimize_success){
-    global_data_.resetGlobalData(global_traj);
-  }else{
-    global_data_.resetGlobalData(global_traj);
-    // Eigen::MatrixXd ctrl_pts;
-    // UniformBspline::parameterizeToBspline(ts, init_path, start_end_derivatives, ctrl_pts);
-    // global_traj = UniformBspline(ctrl_pts, 3, ts);
-    // global_data_.resetGlobalData(global_traj);
-  }
+  // if(optimize_success){
+  //   global_data_.resetGlobalData(global_traj);
+  // }else{
+  //   global_data_.resetGlobalData(global_traj);
+  //   // Eigen::MatrixXd ctrl_pts;
+  //   // UniformBspline::parameterizeToBspline(ts, init_path, start_end_derivatives, ctrl_pts);
+  //   // global_traj = UniformBspline(ctrl_pts, 3, ts);
+  //   // global_data_.resetGlobalData(global_traj);
+  // }
   
   
-  /* visualization */
-  if(optimize_success){
-    std::vector<Eigen::Vector2d> global_traj_optimized,landmark_pts;
-    global_data_.getGlobalPath(global_traj_optimized);
-    global_data_.getLandmarks(landmark_pts);
-    visualizePath(global_traj_optimized ,astar_traj_pub_);
-    visualizePoints(landmark_pts,0.2,Eigen::Vector4d(0.5, 0.5, 0.5, 0.6),astar_waypoints_pub_);
-  }else{
-    std::vector<Eigen::Vector2d> global_traj_optimized,landmark_pts;
-    global_data_.getGlobalPath(global_traj_optimized);
-    global_data_.getLandmarks(landmark_pts);
-    //visualizePath(global_traj_optimized ,astar_traj_pub_);
-    //visualizePoints(landmark_pts,0.2,Eigen::Vector4d(0.5, 0.5, 0.5, 0.6),astar_waypoints_pub_);
+  // /* visualization */
+  // if(optimize_success){
+  //   std::vector<Eigen::Vector2d> global_traj_optimized,landmark_pts;
+  //   global_data_.getGlobalPath(global_traj_optimized);
+  //   global_data_.getLandmarks(landmark_pts);
+  //   visualizePath(global_traj_optimized ,astar_traj_pub_);
+  //   visualizePoints(landmark_pts,0.2,Eigen::Vector4d(0.5, 0.5, 0.5, 0.6),astar_waypoints_pub_);
+  // }else{
+  //   std::vector<Eigen::Vector2d> global_traj_optimized,landmark_pts;
+  //   global_data_.getGlobalPath(global_traj_optimized);
+  //   global_data_.getLandmarks(landmark_pts);
+  //   //visualizePath(global_traj_optimized ,astar_traj_pub_);
+  //   //visualizePoints(landmark_pts,0.2,Eigen::Vector4d(0.5, 0.5, 0.5, 0.6),astar_waypoints_pub_);
 
-  }
+  // }
 
 
   
-  visualizePoints(point_set,0.3,Eigen::Vector4d(0.4,0.1,0.0,1),vis_control_pts_astar_pub_);
-  visualizePoints(global_data_.getControlPoints(),0.3,Eigen::Vector4d(0.4,0.1,1.0,1),vis_control_pts_astar_optimized_pub_);
+  // visualizePoints(point_set,0.3,Eigen::Vector4d(0.4,0.1,0.0,1),vis_control_pts_astar_pub_);
+  // visualizePoints(global_data_.getControlPoints(),0.3,Eigen::Vector4d(0.4,0.1,1.0,1),vis_control_pts_astar_optimized_pub_);
  
   t2_ = ros::WallTime::now();
   dur_=(t2_ - t1_).toSec();
