@@ -39,6 +39,108 @@ private:
   double rou_thresh_;
   int id_last_landmark_;
 
+  void resetLandmarks2()
+  {
+    global_path_.clear();
+    landmark_points_.clear();
+
+    double angle_sum=0;
+    double angle_delta;
+    double angle_vel, angle_vel_last=0.0;
+    
+    double delta_t=0.01;
+
+    double angle_thresh=8*3.14/180;
+    double dist_thresh=2.0;
+    double min_angle_vel=5*3.14/180;
+    double max_angle_vel=360*3.14/180;
+
+    Eigen::Vector2d last_landmark=start_pos_;
+
+    int id=0;
+    int iter=0;
+    int iter_sum=round((tm_end_-tm_start_)/delta_t);
+
+    for (double t = tm_start_+delta_t; t <= tm_end_; t += delta_t) 
+    {
+      iter++;
+      // get pos
+      Eigen::Vector2d pos_t = getPosition(t);
+      global_path_.push_back(pos_t);
+
+      // get angular vel
+      angle_vel=calculateRotationVelocity(getVelocity(t),getAcceleration(t));
+      printf("\033[32miter(+1)=%d,sum=%d: angle vel=%5.3f, angle_sum=%5.3f\n\033[0m", iter, iter_sum,angle_vel*180/3.14,angle_sum*180/3.14);
+
+      // pre-process angular vel( for condition1: to delay add landmark under condition1)  
+      if(std::abs(angle_vel)<min_angle_vel){
+        angle_vel=0;
+      }else if(std::abs(angle_vel)>max_angle_vel){
+        angle_vel=angle_vel>0?max_angle_vel:-max_angle_vel;
+      }
+
+      // check if near goal
+      if((pos_t-end_pos_).squaredNorm()<dist_thresh){
+        // near end
+        std::cout<<"near="<<std::endl;
+        continue;
+      }
+
+      /* condition1 : angular velocity direction change condition(calulation using modified angular_vel)*/
+      if(angle_vel_last*angle_vel<0){
+        std::cout<<"^^^^^^^^^^^^^^^^^^^^^^^id="<<id<<std::endl;
+        std::cout<<"condition 1: change direction="<<angle_sum*180/3.14<<std::endl;
+        //angle_sum=0.0; //(done by condition2 now)
+
+        if((pos_t-last_landmark).squaredNorm()>dist_thresh)
+        {
+          landmark_points_.push_back(LandmarkPoint(pos_t,id));
+          last_landmark=pos_t;
+          id++;
+        }
+      }
+
+      if(angle_vel!=0.0)
+      { 
+        angle_vel_last=angle_vel;
+      } 
+      
+
+
+      /* condition2: angular integral condition (calulation using real angular_vel) */
+      if(calculateRotationVelocity(getVelocity(t),getAcceleration(t))*calculateRotationVelocity(getVelocity(t-delta_t),getAcceleration(t-delta_t))<0)
+      {
+        angle_sum=0.0;
+      }
+      //angle_delta=angle_vel*delta_t;
+      angle_delta=calculateRotationVelocity(getVelocity(t),getAcceleration(t))*delta_t; // integral with original angular vel
+      angle_sum=angle_sum+angle_delta;
+      if(std::abs(angle_sum)>angle_thresh){
+        std::cout<<"^^^^^^^^^^^^^^^^^^^^^^^id="<<id<<std::endl;
+        std::cout<<"condition 2: angle_sum="<<angle_sum*180/3.14<<std::endl;
+        
+        if((pos_t-last_landmark).squaredNorm()>dist_thresh)
+        {
+          landmark_points_.push_back(LandmarkPoint(pos_t,id));
+          last_landmark=pos_t;
+          id++;
+          angle_sum=0.0;
+        }
+      } 
+
+      
+        
+    }
+
+  
+    // add end_pos to global path
+    landmark_points_.push_back(LandmarkPoint(end_pos_,id));
+
+    global_path_.push_back(end_pos_);
+    // reset landmark counter
+    id_last_landmark_=0;
+  }
+
   void resetLandmarks(){
     /* init */
     global_path_.clear();
@@ -136,6 +238,12 @@ private:
     return std::abs(rou);
   }
 
+  double calculateRotationVelocity(Eigen::Vector2d vel,Eigen::Vector2d acc){
+    double a_norm=(vel(0)*acc(1)-vel(1)*acc(0))/vel.squaredNorm();
+    double w=a_norm/vel.squaredNorm();
+    return w;
+  }
+
 public:
   UniformBspline global_pos_traj_, global_vel_traj_, global_acc_traj_;
   double tm_start_, tm_end_;
@@ -160,7 +268,7 @@ public:
     global_pos_traj_.getTimeSpan(tm_start_, tm_end_);
     start_pos_=getPosition(tm_start_);
     end_pos_=getPosition(tm_end_);
-    resetLandmarks();
+    resetLandmarks2();
   }
 
   bool getGlobalPath(std::vector<Eigen::Vector2d> &global_path){
@@ -400,7 +508,6 @@ class GlobalTrajData
     }
 
 };
-
 
 struct PlanParameters
 {

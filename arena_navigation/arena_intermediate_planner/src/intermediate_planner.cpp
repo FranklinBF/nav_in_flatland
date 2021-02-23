@@ -162,10 +162,10 @@ void InterPlanner::goalCallback(const geometry_msgs::PoseStampedPtr& msg){
   // find path
 
   OptimizerType type_optimizer=InterPlanner::OptimizerType::GRADIENT_ASTAR;
-  planAstarTraj(start_pt_,end_pt_,type_optimizer);
+  //planAstarTraj(start_pt_,end_pt_,type_optimizer);
   
   //planOneshotTraj(start_pt_, start_vel_, start_acc_, end_pt_, end_vel_,end_acc_);
-  //planKinoAstarTraj(start_pt_, start_vel_, start_acc_, end_pt_, end_vel_,type_optimizer);
+  planKinoAstarTraj(start_pt_, start_vel_, start_acc_, end_pt_, end_vel_,type_optimizer);
 
   //find_global_traj_success = planGlobalTraj(start_pt_, start_vel_, start_acc_, end_pt_, end_vel_, end_acc_);
 }

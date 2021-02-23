@@ -9,7 +9,6 @@ Panels:
         - /Sensors1
         - /Maps1
         - /plan_manager1
-        - /plan_manager1/jps_path1
       Splitter Ratio: 0.6515986919403076
     Tree Height: 797
   - Class: rviz/Selection
@@ -388,7 +387,7 @@ Visualization Manager:
           Marker Topic: /astar_wps
           Name: astar_wp
           Namespaces:
-            "": true
+            {}
           Queue Size: 100
           Value: true
         - Alpha: 1
@@ -442,7 +441,7 @@ Visualization Manager:
           Marker Topic: /jps_wps
           Name: jps_wp
           Namespaces:
-            "": true
+            {}
           Queue Size: 100
           Value: true
         - Alpha: 1
@@ -492,13 +491,13 @@ Visualization Manager:
           Unreliable: false
           Value: true
         - Class: rviz/Marker
-          Enabled: false
+          Enabled: true
           Marker Topic: /kino_astar_wps
           Name: kino_astar_wp
           Namespaces:
             {}
           Queue Size: 100
-          Value: false
+          Value: true
         - Alpha: 1
           Buffer Length: 1
           Class: rviz/Path
@@ -975,29 +974,29 @@ Visualization Manager:
       Queue Size: 100
       Value: false
     - Class: rviz/MarkerArray
-      Enabled: true
+      Enabled: false
       Marker Topic: /flatland_server/debug/layer/static
       Name: static_layer
       Namespaces:
-        "": true
+        {}
       Queue Size: 100
-      Value: true
+      Value: false
     - Class: rviz/Marker
-      Enabled: true
+      Enabled: false
       Marker Topic: /ControlPoints_astar
       Name: ctrl_pts_astar
       Namespaces:
         {}
       Queue Size: 100
-      Value: true
+      Value: false
     - Class: rviz/Marker
-      Enabled: true
+      Enabled: false
       Marker Topic: /ControlPoints_astar_opt
       Name: crtrl_pts_astar_opt
       Namespaces:
         {}
       Queue Size: 100
-      Value: true
+      Value: false
     - Class: rviz/Marker
       Enabled: false
       Marker Topic: /ControlPoints_kino
@@ -1007,13 +1006,13 @@ Visualization Manager:
       Queue Size: 100
       Value: false
     - Class: rviz/Marker
-      Enabled: true
+      Enabled: false
       Marker Topic: /ControlPoints_kino_opt
       Name: crtrl_pts_kino_opt
       Namespaces:
         {}
       Queue Size: 100
-      Value: true
+      Value: false
     - Class: rviz/Marker
       Enabled: false
       Marker Topic: /ControlPoints_oneshot
@@ -1023,13 +1022,13 @@ Visualization Manager:
       Queue Size: 100
       Value: false
     - Class: rviz/Marker
-      Enabled: true
+      Enabled: false
       Marker Topic: /ControlPoints_oneshot_opt
       Name: crtrl_pts_oneshot_opt
       Namespaces:
         {}
       Queue Size: 100
-      Value: true
+      Value: false
   Enabled: true
   Global Options:
     Background Color: 0; 0; 0
