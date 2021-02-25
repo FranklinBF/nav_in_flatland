@@ -822,7 +822,7 @@ int GridMap::setCacheOccupancy(Eigen::Vector2d pos, int occ) {
 
 void GridMap::clearAndInflateLocalMap() {
   /*clear outside local*/
-  const int vec_margin = 5;
+  const int vec_margin = 500;
   // Eigen::Vector3i min_vec_margin = min_vec - Eigen::Vector3i(vec_margin,
   // vec_margin, vec_margin); Eigen::Vector3i max_vec_margin = max_vec +
   // Eigen::Vector3i(vec_margin, vec_margin, vec_margin);
@@ -948,7 +948,7 @@ void GridMap::fuseOccupancyBuffer(){
 
 /*Time event callback: ESDF update*/
 void GridMap::updateESDFCallback(const ros::TimerEvent& /*event*/) {
-  if (!md_.esdf_need_update_) return;
+  //if (!md_.esdf_need_update_) return;  // because of dynamic env, we need to update more often
 
   /* esdf */
   ros::WallTime t1, t2;
