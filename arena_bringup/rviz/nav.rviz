@@ -252,13 +252,13 @@ Visualization Manager:
           Color: 255; 255; 255
           Color Transformer: Intensity
           Decay Time: 0
-          Enabled: true
+          Enabled: false
           Invert Rainbow: false
           Max Color: 255; 255; 255
           Max Intensity: 1
           Min Color: 0; 0; 0
           Min Intensity: 0
-          Name: esdf_pointcloud2
+          Name: esdf_local
           Position Transformer: XYZ
           Queue Size: 10
           Selectable: true
@@ -266,6 +266,36 @@ Visualization Manager:
           Size (m): 0.009999999776482582
           Style: Points
           Topic: /sdf_map/esdf
+          Unreliable: false
+          Use Fixed Frame: true
+          Use rainbow: true
+          Value: false
+        - Alpha: 0.10000000149011612
+          Autocompute Intensity Bounds: true
+          Autocompute Value Bounds:
+            Max Value: 7.825000286102295
+            Min Value: -5.574999809265137
+            Value: true
+          Axis: X
+          Channel Name: intensity
+          Class: rviz/PointCloud2
+          Color: 255; 255; 255
+          Color Transformer: Intensity
+          Decay Time: 0
+          Enabled: true
+          Invert Rainbow: false
+          Max Color: 255; 255; 255
+          Max Intensity: 1
+          Min Color: 0; 0; 0
+          Min Intensity: 0
+          Name: esdf_static
+          Position Transformer: XYZ
+          Queue Size: 10
+          Selectable: true
+          Size (Pixels): 3
+          Size (m): 0.009999999776482582
+          Style: Points
+          Topic: /sdf_map/esdf_static
           Unreliable: false
           Use Fixed Frame: true
           Use rainbow: true
@@ -308,7 +338,7 @@ Visualization Manager:
           Use Fixed Frame: true
           Use rainbow: true
           Value: false
-      Enabled: false
+      Enabled: true
       Name: Maps
     - Class: rviz/Group
       Displays:
@@ -1058,7 +1088,7 @@ Visualization Manager:
   Value: true
   Views:
     Current:
-      Angle: -5.080002307891846
+      Angle: -4.945002555847168
       Class: rviz/TopDownOrtho
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
@@ -1068,11 +1098,11 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Scale: 17.8739013671875
+      Scale: 21.779945373535156
       Target Frame: <Fixed Frame>
       Value: TopDownOrtho (rviz)
-      X: 24.47783851623535
-      Y: 15.85766887664795
+      X: 17.050588607788086
+      Y: 9.425007820129395
     Saved: ~
 Window Geometry:
   Displays:

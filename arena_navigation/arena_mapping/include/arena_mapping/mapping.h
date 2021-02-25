@@ -83,15 +83,17 @@ struct MappingParameters {
 
 struct MappingData {
   // main map data, occupancy of each voxel and Euclidean distance
+  int buffer_size_;
   std::vector<double> occupancy_buffer_;
   std::vector<char>   occupancy_buffer_inflate_;
   std::vector<char>   occupancy_buffer_static_inflate_;
 
-  std::vector<char>   occupancy_buffer_neg;             // for esdf
+  std::vector<char>   occupancy_buffer_neg_;             // for esdf
   std::vector<double> distance_buffer_;
   std::vector<double> distance_buffer_neg_;
   std::vector<double> distance_buffer_all_;
   std::vector<double> tmp_buffer1_;                     // for esdf
+  std::vector<double> distance_buffer_static_all_;
   
   // laser  position and pose data
   Eigen::Vector2d laser_pos_, last_laser_pos_;
@@ -181,6 +183,8 @@ class GridMap{
         // get distance
         inline double getDistance(const Eigen::Vector2d& pos);
         inline double getDistance(const Eigen::Vector2i& id);
+        inline double getDistanceStatic(const Eigen::Vector2d& pos);
+        
         double evaluateCoarseEDT(Eigen::Vector2d& pos);
         
         // get distance gradient
@@ -198,6 +202,7 @@ class GridMap{
         void publishMap();
         void publishStaticMap();
         void publishESDF();
+        void publishStaticESDF();
         void publishDepth();
         void publishUpdateRange();
         void publishUnknown();
@@ -228,7 +233,7 @@ class GridMap{
 
         // publiser
         ros::Publisher map_pub_,static_map_pub_;
-        ros::Publisher esdf_pub_;
+        ros::Publisher esdf_pub_,esdf_static_pub_;
         ros::Publisher depth_pub_; //laser pointcloud2
         ros::Publisher update_range_pub_;
         ros::Publisher unknown_pub_;
@@ -265,6 +270,7 @@ class GridMap{
 
         /* ESDF map update */
         void updateESDF2d();
+        void updateESDF2d_static(std::vector<char> & occ_buffer_inflate, std::vector<double> &dist_buffer_all );
 
         template <typename F_get_val, typename F_set_val>
         void fillESDF(F_get_val f_get_val, F_set_val f_set_val, int start, int end, int dim);
@@ -446,15 +452,22 @@ inline double GridMap::getDistance(const Eigen::Vector2d& pos) {
   posToIndex(pos, id);
   boundIndex(id);
 
-  return md_.distance_buffer_all_[toAddress(id)];
+  return std::min(md_.distance_buffer_all_[toAddress(id)],md_.distance_buffer_static_all_[toAddress(id)]);
 }
 
 inline double GridMap::getDistance(const Eigen::Vector2i& id) {
   Eigen::Vector2i id1 = id;
   boundIndex(id1);
-  return md_.distance_buffer_all_[toAddress(id1)];
+  return std::min(md_.distance_buffer_all_[toAddress(id)],md_.distance_buffer_static_all_[toAddress(id)]);
 }
 
+inline double GridMap::getDistanceStatic(const Eigen::Vector2d& pos) {
+  Eigen::Vector2i id;
+  posToIndex(pos, id);
+  boundIndex(id);
+
+  return md_.distance_buffer_static_all_[toAddress(id)];
+}
 
 
 #endif

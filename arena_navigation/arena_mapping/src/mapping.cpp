@@ -101,28 +101,32 @@ void GridMap::initMap(ros::NodeHandle& nh){
 
     /* initialize data buffers*/
     // global map buffer size
-    int buffer_size = mp_.map_pixel_num_(0) * mp_.map_pixel_num_(1) ;           // buffer size
+    md_.buffer_size_ = mp_.map_pixel_num_(0) * mp_.map_pixel_num_(1) ;           // buffer size
 
     // global occupancy map buffer
-    md_.occupancy_buffer_ = std::vector<double>(buffer_size, mp_.clamp_min_log_ - mp_.unknown_flag_); // save state_occu probability [mp_.clamp_min_log_,mp_.clamp_max_log_]
-    md_.occupancy_buffer_neg = std::vector<char>(buffer_size, 0);
-    md_.occupancy_buffer_inflate_ = std::vector<char>(buffer_size, 0);                                // save is_occ {0,1}, 0 free, 1 occ 
-    md_.occupancy_buffer_static_inflate_=std::vector<char>(buffer_size, 0);                           // static map buffer
-    get_static_buffer(md_.occupancy_buffer_static_inflate_);
+    md_.occupancy_buffer_ = std::vector<double>(md_.buffer_size_, mp_.clamp_min_log_ - mp_.unknown_flag_); // save state_occu probability [mp_.clamp_min_log_,mp_.clamp_max_log_]
+    md_.occupancy_buffer_neg_ = std::vector<char>(md_.buffer_size_, 0);
+    md_.occupancy_buffer_inflate_ = std::vector<char>(md_.buffer_size_, 0);                                // save is_occ {0,1}, 0 free, 1 occ 
+    md_.occupancy_buffer_static_inflate_=std::vector<char>(md_.buffer_size_, 0);                           // static map buffer
+    
 
     // global distance map buffer
-    md_.distance_buffer_      = std::vector<double>(buffer_size, 10000);
-    md_.distance_buffer_neg_  = std::vector<double>(buffer_size, 10000);
-    md_.distance_buffer_all_  = std::vector<double>(buffer_size, 10000);
+    md_.distance_buffer_      = std::vector<double>(md_.buffer_size_, 10000);
+    md_.distance_buffer_neg_  = std::vector<double>(md_.buffer_size_, 10000);
+    md_.distance_buffer_all_  = std::vector<double>(md_.buffer_size_, 10000);
+    md_.tmp_buffer1_          = std::vector<double>(md_.buffer_size_, 0);
+    md_.distance_buffer_static_all_=std::vector<double>(md_.buffer_size_, 10000);
 
-    // global occ buffer
-    md_.count_hit_and_miss_ = std::vector<short>(buffer_size, 0);
-    md_.count_hit_          = std::vector<short>(buffer_size, 0);
-    md_.flag_rayend_        = std::vector<char>(buffer_size, -1);
-    md_.flag_traverse_      = std::vector<char>(buffer_size, -1);
+    // init static occ & ESDF buffers
+    get_static_buffer(md_.occupancy_buffer_static_inflate_);
+    updateESDF2d_static(md_.occupancy_buffer_static_inflate_,md_.distance_buffer_static_all_);
 
-    // global temp buffer
-    md_.tmp_buffer1_ = std::vector<double>(buffer_size, 0);
+    // global occ log probabilty buffer
+    md_.count_hit_and_miss_ = std::vector<short>(md_.buffer_size_, 0);
+    md_.count_hit_          = std::vector<short>(md_.buffer_size_, 0);
+    md_.flag_rayend_        = std::vector<char>(md_.buffer_size_, -1);
+    md_.flag_traverse_      = std::vector<char>(md_.buffer_size_, -1);
+    
     
     /* some counter */
     md_.raycast_num_ = 0;                   // just count how many raycast is done [not much use]
@@ -175,6 +179,7 @@ void GridMap::initMap(ros::NodeHandle& nh){
     //map_inf_pub_ = node_.advertise<sensor_msgs::PointCloud2>("/sdf_map/occupancy_inflate", 10);
     
     esdf_pub_ = public_nh.advertise<sensor_msgs::PointCloud2>("sdf_map/esdf", 10);
+    esdf_static_pub_ = public_nh.advertise<sensor_msgs::PointCloud2>("sdf_map/esdf_static", 10);
     update_range_pub_ = public_nh.advertise<visualization_msgs::Marker>("sdf_map/update_range", 10);
     unknown_pub_ = public_nh.advertise<sensor_msgs::PointCloud2>("sdf_map/unknown", 10);
     depth_pub_ = public_nh.advertise<sensor_msgs::PointCloud2>("sdf_map/depth_cloud", 10);
@@ -275,6 +280,76 @@ void GridMap::get_static_buffer(std::vector<char> & static_buffer_inflate){
       }   
 
      
+}
+
+void GridMap::updateESDF2d_static(std::vector<char> & occ_buffer_inflate, std::vector<double> &dist_buffer_all ) {
+  Eigen::Vector2i min_esdf=mp_.map_min_idx_;
+  Eigen::Vector2i max_esdf=mp_.map_max_idx_;
+
+  std::vector<char>   occ_buffer_neg=std::vector<char>(md_.buffer_size_, 0);
+  std::vector<double>   tmp_buffer=std::vector<double>(md_.buffer_size_, 0);
+  std::vector<double> dist_buffer=std::vector<double>(md_.buffer_size_, 10000);
+  std::vector<double> dist_buffer_neg=std::vector<double>(md_.buffer_size_, 10000);
+
+
+  /* ========== compute positive DT ========== */
+  for (int x = min_esdf[0]; x <= max_esdf[0]; x++) {
+    fillESDF( [&](int y) { return occ_buffer_inflate[toAddress(x, y)] == 1 ?0 :std::numeric_limits<double>::max(); },
+              [&](int y, double val) { tmp_buffer[toAddress(x, y)] = val; }, 
+              min_esdf[1],
+              max_esdf[1], 
+              1);
+  }
+
+  for (int y = min_esdf[1]; y <= max_esdf[1]; y++) {
+      fillESDF([&](int x) { return tmp_buffer[toAddress(x, y)]; },
+               [&](int x, double val) {  dist_buffer[toAddress(x, y)] = mp_.resolution_ * std::sqrt(val);},
+               min_esdf[0], 
+               max_esdf[0], 
+               0);
+  }
+
+  /* ========== compute negative distance ========== */
+  for (int x = min_esdf(0); x <= max_esdf(0); ++x)
+    for (int y = min_esdf(1); y <= max_esdf(1); ++y) {
+        int idx = toAddress(x, y);
+        if (occ_buffer_inflate[idx] == 0) {
+          occ_buffer_neg[idx] = 1;
+
+        } else if (occ_buffer_inflate[idx] == 1) {
+          occ_buffer_neg[idx] = 0;
+        } else {
+          ROS_ERROR("what?");
+        }
+    }
+
+
+  for (int x = min_esdf[0]; x <= max_esdf[0]; x++) {
+      fillESDF([&](int y) { return occ_buffer_neg[x * mp_.map_pixel_num_(1) +y] == 1 ?0 :std::numeric_limits<double>::max(); },
+               [&](int y, double val) { tmp_buffer[toAddress(x, y)] = val; }, 
+               min_esdf[1],
+               max_esdf[1], 
+               1);
+  }
+
+  for (int y = min_esdf[1]; y <= max_esdf[1]; y++) {
+      fillESDF([&](int x) { return tmp_buffer[toAddress(x, y)]; },
+               [&](int x, double val) {dist_buffer_neg[toAddress(x, y)] = mp_.resolution_ * std::sqrt(val);},
+               min_esdf[0], 
+               max_esdf[0], 
+               0);
+  }
+
+  /* ========== combine pos and neg DT ========== */
+  for (int x = min_esdf(0); x <= max_esdf(0); ++x)
+    for (int y = min_esdf(1); y <= max_esdf(1); ++y){
+
+        int idx = toAddress(x, y);
+        dist_buffer_all[idx] = dist_buffer[idx];
+
+        if (dist_buffer_neg[idx] > 0.0)
+          dist_buffer_all[idx] += (-dist_buffer_neg[idx] + mp_.resolution_);
+    }
 }
 
 /* sensor callback */
@@ -443,7 +518,7 @@ void GridMap::scanCallback(const sensor_msgs::LaserScanConstPtr& scan) {
     }
   }
 
-  // make local boundary only look forward
+  // make sure min_xy < laser_pos_, max_xy>laser_pos_
   min_x = std::min(min_x, md_.laser_pos_(0));
   min_y = std::min(min_y, md_.laser_pos_(1));
   
@@ -462,6 +537,7 @@ void GridMap::scanCallback(const sensor_msgs::LaserScanConstPtr& scan) {
 }
 
 void GridMap::resetBuffer() {
+  // reset all map grid occ value in occupancy_buffer_inflate_ & distance_buffer_
   Eigen::Vector2d min_pos = mp_.map_min_boundary_;
   Eigen::Vector2d max_pos = mp_.map_max_boundary_;
 
@@ -762,7 +838,7 @@ void GridMap::clearAndInflateLocalMap() {
   boundIndex(max_cut_m);
 
 
-  /* clear data outside the local range */
+  /* clear data outside the local range ( with margin vec_margin) */
   for (int x = min_cut_m(0); x <= max_cut_m(0); ++x) {
     for (int y = min_cut_m(1); y < min_cut(1); ++y) {
       int idx = toAddress(x, y);
@@ -777,6 +853,21 @@ void GridMap::clearAndInflateLocalMap() {
     }
   }
 
+  for (int y = min_cut_m(1); y <= max_cut_m(1); ++y)
+  {
+      for (int x = min_cut_m(0); x < min_cut(0); ++x) {
+        int idx = toAddress(x, y);
+        md_.occupancy_buffer_[idx] = mp_.clamp_min_log_ - mp_.unknown_flag_;
+        md_.distance_buffer_all_[idx] = 10000;
+      }
+
+      for (int x = max_cut(0) + 1; x <= max_cut_m(0); ++x) {
+        int idx = toAddress(x, y);
+        md_.occupancy_buffer_[idx] = mp_.clamp_min_log_ - mp_.unknown_flag_;
+        md_.distance_buffer_all_[idx] = 10000;
+      }
+  }
+
   /* inflated occupied pixels inside the local range */
   // inflate occupied voxels to compensate robot size
   int inf_step = ceil(mp_.obstacles_inflation_ / mp_.resolution_);
@@ -785,7 +876,7 @@ void GridMap::clearAndInflateLocalMap() {
   // inf_pts.resize(4 * inf_step + 3);
   Eigen::Vector2i inf_pt;
 
-  // clear outdated data
+  // clear outdated data inside local bound (indexs)
   for (int x = md_.local_bound_min_(0); x <= md_.local_bound_max_(0); ++x)
     for (int y = md_.local_bound_min_(1); y <= md_.local_bound_max_(1); ++y){
         md_.occupancy_buffer_inflate_[toAddress(x, y)] = 0;
@@ -940,7 +1031,6 @@ void GridMap::updateESDF2d() {
                min_esdf[0], 
                max_esdf[0], 
                0);
-
   }
 
   /* ========== compute negative distance ========== */
@@ -948,10 +1038,10 @@ void GridMap::updateESDF2d() {
     for (int y = min_esdf(1); y <= max_esdf(1); ++y) {
         int idx = toAddress(x, y);
         if (md_.occupancy_buffer_inflate_[idx] == 0) {
-          md_.occupancy_buffer_neg[idx] = 1;
+          md_.occupancy_buffer_neg_[idx] = 1;
 
         } else if (md_.occupancy_buffer_inflate_[idx] == 1) {
-          md_.occupancy_buffer_neg[idx] = 0;
+          md_.occupancy_buffer_neg_[idx] = 0;
         } else {
           ROS_ERROR("what?");
         }
@@ -960,7 +1050,7 @@ void GridMap::updateESDF2d() {
   ros::Time t1, t2;
 
   for (int x = min_esdf[0]; x <= max_esdf[0]; x++) {
-      fillESDF([&](int y) { return md_.occupancy_buffer_neg[x * mp_.map_pixel_num_(1) +y] == 1 ?0 :std::numeric_limits<double>::max(); },
+      fillESDF([&](int y) { return md_.occupancy_buffer_neg_[x * mp_.map_pixel_num_(1) +y] == 1 ?0 :std::numeric_limits<double>::max(); },
                [&](int y, double val) { md_.tmp_buffer1_[toAddress(x, y)] = val; }, 
                min_esdf[1],
                max_esdf[1], 
@@ -1060,16 +1150,12 @@ void GridMap::evaluateEDTWithGrad(  const Eigen::Vector2d& pos,double& dist,Eige
 }
 
 
-
-
 /* Map utils */
 void GridMap::getRegion(Eigen::Vector2d& ori, Eigen::Vector2d& size) {
   ori = mp_.map_origin_, size = mp_.map_size_;
 }
 
 double GridMap::getResolution() { return mp_.resolution_; }
-
-
 
 
 /* Visualization Publishers*/
@@ -1186,6 +1272,48 @@ void GridMap::publishESDF() {
   // ROS_INFO("pub esdf");
 }
 
+void GridMap::publishStaticESDF(){
+  double dist;
+  pcl::PointCloud<pcl::PointXYZI> cloud;
+  pcl::PointXYZI pt;
+
+  const double min_dist = 0.0;
+  const double max_dist = 3.0;
+
+  Eigen::Vector2i min_cut = mp_.map_min_idx_; //md_.local_bound_min_ - Eigen::Vector2i(mp_.local_map_margin_, mp_.local_map_margin_);
+  Eigen::Vector2i max_cut = mp_.map_max_idx_;//md_.local_bound_max_ + Eigen::Vector2i(mp_.local_map_margin_, mp_.local_map_margin_);
+  boundIndex(min_cut);
+  boundIndex(max_cut);
+
+  for (int x = min_cut(0); x <= max_cut(0); ++x)
+    for (int y = min_cut(1); y <= max_cut(1); ++y) {
+
+      Eigen::Vector2d pos;
+      indexToPos(Eigen::Vector2i(x, y), pos);
+      //pos(2) = mp_.esdf_slice_height_;
+
+      dist = getDistance(pos);
+      dist = std::min(dist, max_dist);
+      dist = std::max(dist, min_dist);
+
+      pt.x = pos(0);
+      pt.y = pos(1);
+      pt.z = 0.0;
+      pt.intensity = (dist - min_dist) / (max_dist - min_dist);
+      cloud.push_back(pt);
+    }
+
+  cloud.width = cloud.points.size();
+  cloud.height = 1;
+  cloud.is_dense = true;
+  cloud.header.frame_id = mp_.frame_id_;
+  sensor_msgs::PointCloud2 cloud_msg;
+  pcl::toROSMsg(cloud, cloud_msg);
+
+  esdf_static_pub_.publish(cloud_msg);
+
+}
+
 void GridMap::publishDepth() {
   pcl::PointXYZ pt;
   pcl::PointCloud<pcl::PointXYZ> cloud;
@@ -1286,6 +1414,7 @@ void GridMap::visCallback(const ros::TimerEvent& /*event*/) {
   //publishMapInflate(false);
   if(mp_.use_occ_esdf_){
     publishESDF();
+    publishStaticESDF();
   }
   publishDepth();
   publishUnknown();
