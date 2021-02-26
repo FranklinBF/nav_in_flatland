@@ -18,10 +18,12 @@ struct LandmarkPoint{
   int id;
   Eigen::Vector2d pos;
 
+
   LandmarkPoint(Eigen::Vector2d pos,int id){
     this->pos=pos;
     this->id=id;
     this->is_visited=false;
+
   }
 
   ~LandmarkPoint(){};
@@ -97,7 +99,8 @@ private:
         //angle_sum=0.0; //(done by condition2 now)
 
         if((pos_t-last_landmark).norm()>dist_thresh)
-        {
+        { 
+          
           landmark_points_.push_back(LandmarkPoint(pos_t,id));
           last_landmark=pos_t;
           id++;
@@ -217,8 +220,29 @@ public:
     }
   }
 
+  Eigen::Vector2d getCurrentLandmark(){
+    return landmark_points_[id_last_landmark_].pos;
+  }
+
+  Eigen::Vector2d getPreviousLandmark(){
+    if(id_last_landmark_>0){
+      return landmark_points_[id_last_landmark_-1].pos;
+    }else{
+      return landmark_points_[0].pos;
+    }
+  }
+
+  Eigen::Vector2d getNextLandmark(){
+    if(id_last_landmark_<(int)landmark_points_.size()-1){
+      return landmark_points_[id_last_landmark_+1].pos;
+    }else{
+      return landmark_points_[(int)landmark_points_.size()-1].pos;
+    }
+  }
 
   Eigen::Vector2d getLocalTarget(const Eigen::Vector2d &current_pt)
+
+
   {
     Eigen::Vector2d target_pt;
     Eigen::Vector2d landmark_pt;
@@ -281,6 +305,12 @@ public:
 struct MidData{
   UniformBspline subgoal_traj_;
   Eigen::Vector2d subgoal_;
+
+  Eigen::Vector2d getSubgoal(){
+    return subgoal_;
+  }
+  MidData(){}
+  ~MidData(){}
 };
 
 

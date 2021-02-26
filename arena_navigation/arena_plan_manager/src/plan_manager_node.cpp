@@ -3,17 +3,18 @@
 
 
 
-int main(int argc, char** argv) {
+int main(int argc, char** argv) 
+{
     std::cout<<"Plan manager node start"<<std::endl;
     ros::init(argc, argv, "plan_manager");
-    
+
     //ros::NodeHandle node_handle("~"); every topic will be with namespace
-    ros::NodeHandle node_handle("");
-    //ros::WallRate r(100);
-    ROS_INFO("abcd");
+    ros::NodeHandle nh("");
     PlanManager plan_manager;
-    plan_manager.init(node_handle);
-    ROS_INFO("abcd111");
+    plan_manager.init(nh);
+
+    std::string ns = ros::this_node::getNamespace();
+    ROS_INFO_STREAM(":\tPlan manager successfully loaded for namespace\t"<<ns);
     
     ros::spin();
 }

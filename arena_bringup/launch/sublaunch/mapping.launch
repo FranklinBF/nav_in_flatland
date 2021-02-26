@@ -1,15 +1,19 @@
 <launch>
-    <arg name="ns"              value=""/>
-    <arg name="max_vel"         value="3.0" />
-    <arg name="max_acc"         value="2.0" />
-    <arg name="max_jerk"        value="4.0" />
-    <arg name="lambda_heu"      value="0.1" />
+    <arg name="ns"                      value=""/>
+    <arg name="max_vel"                 value="3.0" />
+    <arg name="max_acc"                 value="2.0" />
+    <arg name="max_jerk"                value="4.0" />
+    <arg name="lambda_heu"              value="0.1" />
+    <arg name="dist_lookahead"          value="3.0" />
+
     
     <arg name="plan_horizon"    value=""/>
     
 
     <!-- arena_plan_manager ns="$(arg ns)" -->
-    <node pkg="arena_intermediate_planner"  name="inter_planner" type="arena_intermediate_planner" output="screen">
+    <!-- <node pkg="arena_intermediate_planner"  name="inter_planner" type="arena_intermediate_planner" output="screen"> -->
+    
+    <node pkg="arena_plan_manager"  name="plan_manager_node" type="plan_manager_node" output="screen">
         <!-- <param name="$(arg plan_horizon)/train_mode" value="$(arg train_mode)"/> -->
          <!-- Global plan: flags -->
         <param name="$(arg plan_horizon)/global_planner/use_astar"              value="true"/>
@@ -23,7 +27,7 @@
 
         <!-- Global plan: Subgoal and landmark -->
         <param name="$(arg plan_horizon)/subgoal/dist_tolerance"                value="1.0" />
-        <param name="$(arg plan_horizon)/subgoal/dist_lookahead"                value="3.0" />
+        <param name="$(arg plan_horizon)/subgoal/dist_lookahead"                value="$(arg dist_lookahead)" />
        
         
         <!-- b-spline -->

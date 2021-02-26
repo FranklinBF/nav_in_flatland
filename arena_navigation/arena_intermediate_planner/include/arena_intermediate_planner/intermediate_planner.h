@@ -63,12 +63,6 @@ private:
     GridMap::Ptr grid_map_;
     PlanParameters pp_;  
 
-    // global plan data                                               
-    GlobalData global_data_;
-
-    // subgoal traj
-    MidData mid_data_;
-    
     
     // flags
     bool have_odom_;
@@ -105,6 +99,12 @@ public:
     InterPlanner(){};
     ~InterPlanner(){};
 
+    // global plan data                                               
+    GlobalData global_data_;
+
+    // subgoal traj
+    MidData mid_data_;
+
     //enum class PlanState { REACH_HORIZON = 1, REACH_END = 2, NO_PATH = 3, NEAR_END = 4 };
     enum class OptimizerType { GRADIENT_ASTAR = 1, GRADIENT_ESDF = 2};
 
@@ -124,7 +124,7 @@ public:
     bool makeOneshotPlan(const Eigen::Vector2d &start_pos, const Eigen::Vector2d &start_vel, const Eigen::Vector2d &start_acc,
                                 const Eigen::Vector2d &end_pos, const Eigen::Vector2d &end_vel, const Eigen::Vector2d &end_acc);
 
-    bool makeSubgoal();
+    bool makeSubgoal(Eigen::Vector2d curr_pos, Eigen::Vector2d curr_vel, double T_subgoal=3.0);
 
     /* global plan method */
     bool planGlobalTraj(const Eigen::Vector2d &start_pos, const Eigen::Vector2d &start_vel, const Eigen::Vector2d &start_acc,

@@ -19,8 +19,9 @@ void InterPlanner::init(ros::NodeHandle & nh){
   node_.param("global_planner/time_alloc_coefficient", pp_.time_alloc_coefficient_, 0.5);
   
   node_.param("subgoal/dist_lookahead", pp_.dist_lookahead_, 3.0);
-  node_.param("subgoal/dist_tolerance", pp_.dist_tolerance_, 1.0);
-
+  node_.param("subgoal/dist_tolerance", pp_.dist_tolerance_, 0.5);
+  
+  std::cout<<"dist_tolerance:"<<pp_.dist_tolerance_<<std::endl;
 
   node_.param("b_spline/max_vel",  pp_.max_vel_, 3.0);
   node_.param("b_spline/max_acc",  pp_.max_acc_, 2.0);
@@ -931,7 +932,7 @@ bool InterPlanner::makeGlobalPlan(Eigen::Vector2d start_pos,Eigen::Vector2d end_
   
   if(success){
     visualizePath(global_data_.getGlobalPath() ,vis_global_path_pub_);
-    makeSubgoal();
+    //makeSubgoal(odom_pos_,odom_vel_);
     return true;
   }else{
     return false;
@@ -1037,10 +1038,10 @@ bool InterPlanner::makeOneshotPlan(const Eigen::Vector2d &start_pos, const Eigen
 
 }
 
-bool InterPlanner::makeSubgoal(){
+bool InterPlanner::makeSubgoal(Eigen::Vector2d curr_pos, Eigen::Vector2d curr_vel, double T_subgoal ){
   bool success;
   // get initial local target
-  Eigen::Vector2d local_target=global_data_.getLocalTarget(odom_pos_);
+  Eigen::Vector2d local_target=global_data_.getLocalTarget(curr_pos);
 
   // std::vector<Eigen::Vector2d> landmarks=global_data_.getLandmarks();
   // for(size_t i=0;i<landmarks.size();++i){
@@ -1050,11 +1051,11 @@ bool InterPlanner::makeSubgoal(){
   //std::cout<<"local odom:"<<odom_pos_<<std::endl;
   //std::cout<<"local target:"<<local_target<<std::endl;
   // make oneshot plan
-  success=makeOneshotPlan(odom_pos_,odom_vel_,Eigen::Vector2d::Zero(),local_target,Eigen::Vector2d::Zero(),Eigen::Vector2d::Zero());
+  success=makeOneshotPlan(curr_pos,curr_vel,Eigen::Vector2d::Zero(),local_target,Eigen::Vector2d::Zero(),Eigen::Vector2d::Zero());
   
   // select subgoal
   if(success){
-    double T_subgoal=3.0;
+    //double T_subgoal=3.0;
     // select the pt at 3s on the traj
     mid_data_.subgoal_=mid_data_.subgoal_traj_.evaluateDeBoorT(T_subgoal);
 

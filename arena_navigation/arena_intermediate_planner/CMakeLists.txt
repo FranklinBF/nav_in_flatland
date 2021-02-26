@@ -42,8 +42,12 @@ include_directories(
   ${PCL_INCLUDE_DIRS}
 )
 
-add_executable(arena_intermediate_planner 
-              src/intermediate_planner.cpp
+# add_executable(arena_intermediate_planner 
+#               src/intermediate_planner.cpp
+# )
+
+add_library(arena_intermediate_planner 
+src/intermediate_planner.cpp
 )
 
 target_link_libraries(arena_intermediate_planner
