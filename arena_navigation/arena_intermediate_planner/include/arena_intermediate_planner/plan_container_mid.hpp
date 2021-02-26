@@ -25,6 +25,7 @@ struct LandmarkPoint{
   }
 
   ~LandmarkPoint(){};
+
   void setVisited(bool is_visited){
     this->is_visited=is_visited;
   }
@@ -34,12 +35,13 @@ struct LandmarkPoint{
 
 class GlobalData{
 private:
-  double dist_next_wp_;
-  double dist_tolerance_;
-  double rou_thresh_;
-  int id_last_landmark_;
+  
+  double dist_lookahead_;     // look ahead distance
+  double dist_tolerance_;     // torlerance for reaching the local target
+  int id_last_landmark_;      // save last landmark id
 
-  void resetLandmarks2()
+
+  void resetLandmarks()
   {
     global_path_.clear();
     landmark_points_.clear();
@@ -50,18 +52,20 @@ private:
     
     double delta_t=0.01;
 
-    double angle_thresh=8*3.14/180;
-    double dist_thresh=2.0;
+    double angle_thresh=20*3.14/180;
+    double dist_thresh=dist_lookahead_;
     double min_angle_vel=5*3.14/180;
     double max_angle_vel=360*3.14/180;
 
+
+    // init last_landmark pos
     Eigen::Vector2d last_landmark=start_pos_;
 
     int id=0;
     int iter=0;
     int iter_sum=round((tm_end_-tm_start_)/delta_t);
 
-    for (double t = tm_start_+delta_t; t <= tm_end_; t += delta_t) 
+    for (double t = tm_start_+delta_t; t < tm_end_; t += delta_t) 
     {
       iter++;
       // get pos
@@ -70,7 +74,7 @@ private:
 
       // get angular vel
       angle_vel=calculateRotationVelocity(getVelocity(t),getAcceleration(t));
-      printf("\033[32miter(+1)=%d,sum=%d: angle vel=%5.3f, angle_sum=%5.3f\n\033[0m", iter, iter_sum,angle_vel*180/3.14,angle_sum*180/3.14);
+      //printf("\033[32miter(+1)=%d,sum=%d: angle vel=%5.3f, angle_sum=%5.3f\n\033[0m", iter, iter_sum,angle_vel*180/3.14,angle_sum*180/3.14);
 
       // pre-process angular vel( for condition1: to delay add landmark under condition1)  
       if(std::abs(angle_vel)<min_angle_vel){
@@ -80,19 +84,19 @@ private:
       }
 
       // check if near goal
-      if((pos_t-end_pos_).squaredNorm()<dist_thresh){
+      if((pos_t-end_pos_).norm()<dist_thresh){
         // near end
-        std::cout<<"near="<<std::endl;
+        //std::cout<<"near="<<std::endl;
         continue;
       }
 
       /* condition1 : angular velocity direction change condition(calulation using modified angular_vel)*/
       if(angle_vel_last*angle_vel<0){
-        std::cout<<"^^^^^^^^^^^^^^^^^^^^^^^id="<<id<<std::endl;
-        std::cout<<"condition 1: change direction="<<angle_sum*180/3.14<<std::endl;
+        //std::cout<<"^^^^^^^^^^^^^^^^^^^^^^^id="<<id<<std::endl;
+        //std::cout<<"condition 1: change direction="<<angle_sum*180/3.14<<std::endl;
         //angle_sum=0.0; //(done by condition2 now)
 
-        if((pos_t-last_landmark).squaredNorm()>dist_thresh)
+        if((pos_t-last_landmark).norm()>dist_thresh)
         {
           landmark_points_.push_back(LandmarkPoint(pos_t,id));
           last_landmark=pos_t;
@@ -105,8 +109,6 @@ private:
         angle_vel_last=angle_vel;
       } 
       
-
-
       /* condition2: angular integral condition (calulation using real angular_vel) */
       if(calculateRotationVelocity(getVelocity(t),getAcceleration(t))*calculateRotationVelocity(getVelocity(t-delta_t),getAcceleration(t-delta_t))<0)
       {
@@ -116,10 +118,10 @@ private:
       angle_delta=calculateRotationVelocity(getVelocity(t),getAcceleration(t))*delta_t; // integral with original angular vel
       angle_sum=angle_sum+angle_delta;
       if(std::abs(angle_sum)>angle_thresh){
-        std::cout<<"^^^^^^^^^^^^^^^^^^^^^^^id="<<id<<std::endl;
-        std::cout<<"condition 2: angle_sum="<<angle_sum*180/3.14<<std::endl;
+        //std::cout<<"^^^^^^^^^^^^^^^^^^^^^^^id="<<id<<std::endl;
+        //std::cout<<"condition 2: angle_sum="<<angle_sum*180/3.14<<std::endl;
         
-        if((pos_t-last_landmark).squaredNorm()>dist_thresh)
+        if((pos_t-last_landmark).norm()>dist_thresh)
         {
           landmark_points_.push_back(LandmarkPoint(pos_t,id));
           last_landmark=pos_t;
@@ -127,12 +129,9 @@ private:
           angle_sum=0.0;
         }
       } 
-
       
-        
     }
 
-  
     // add end_pos to global path
     landmark_points_.push_back(LandmarkPoint(end_pos_,id));
 
@@ -140,86 +139,6 @@ private:
     // reset landmark counter
     id_last_landmark_=0;
   }
-
-  void resetLandmarks(){
-    /* init */
-    global_path_.clear();
-    landmark_points_.clear();
-    double rou_t, rou_last=-1;
-    double gradient_t,gradient_last=1000;
-    Eigen::Vector2d last_landmark=start_pos_;
-    int id=0;
-    bool flag_landmark_search_done=false;
-
-    int continue_descent_counter=0;
-    
-    /* search landmark pt according to curvature radius */
-    for (double t = tm_start_; t <= tm_end_; t += 0.01) {
-      // get pos
-      Eigen::Vector2d pos_t = getPosition(t);
-      global_path_.push_back(pos_t);
-      if(flag_landmark_search_done){
-        continue;
-      }
-      // calculate curvature radius
-      rou_t=calculateCurveRadius(getVelocity(t),getAcceleration(t));
-      //std::cout<<"********************* rou="<<rou_t<<std::endl;
-      // calculate gradient
-      gradient_t=rou_t-rou_last;
-      
-      // set continue_descent_counter
-      if(gradient_t<-20.0){
-        continue_descent_counter++;
-      }else{
-        continue_descent_counter=0;
-      }
-
-      if(std::abs(gradient_t)<0.2){
-        gradient_t=gradient_last;
-        rou_t=rou_last;
-      }
-
-      /* minimum vaule of the curvature radius || curvature radius is so small */
-      if((gradient_t>0 && gradient_last<0)|| rou_t<rou_thresh_|| continue_descent_counter>20){ //  //gradient_t*gradient_last<0
-        //std::cout<<"in1************ rou="<<rou_t<<std::endl;
-        // negelect the start points 
-        if((pos_t-start_pos_).squaredNorm()<=dist_next_wp_ && rou_t>rou_thresh_){
-          rou_last=rou_t;
-          gradient_last=gradient_t;
-          continue;
-        }
-        // reset continue_descent_counter
-        
-        if(continue_descent_counter>20){
-          //std::cout<<"in counter************ rou="<<rou_t<<std::endl;
-        }
-
-        //std::cout<<"in2************ rou="<<rou_t<<std::endl;
-        // make sure two landmarks are not too close
-        if((pos_t-last_landmark).squaredNorm()>2.0)
-        { 
-          
-          landmark_points_.push_back(LandmarkPoint(pos_t,id));
-          last_landmark=pos_t;
-          id++;
-          continue_descent_counter=0;
-          //std::cout<<"add************ rou="<<rou_t<<std::endl;
-        }
-        
-      }else if((pos_t-end_pos_).squaredNorm()<=dist_next_wp_){
-        // add end point as last landmark
-        landmark_points_.push_back(LandmarkPoint(end_pos_,id));
-        flag_landmark_search_done=true;
-      }
-      rou_last=rou_t;
-      gradient_last=gradient_t;
-    }
-
-    // add end_pos to global path
-    global_path_.push_back(end_pos_);
-    // reset landmark counter
-    id_last_landmark_=0;
-  } 
 
   Eigen::Vector2d getPosition(double t){
       return global_pos_traj_.evaluateDeBoor(t);
@@ -234,13 +153,13 @@ private:
   }
 
   double calculateCurveRadius(Eigen::Vector2d vel,Eigen::Vector2d acc){
-    double rou=std::pow(vel.squaredNorm(),3)/(vel(0)*acc(1)-vel(1)*acc(0));
+    double rou=std::pow(vel.norm(),3)/(vel(0)*acc(1)-vel(1)*acc(0));
     return std::abs(rou);
   }
 
   double calculateRotationVelocity(Eigen::Vector2d vel,Eigen::Vector2d acc){
-    double a_norm=(vel(0)*acc(1)-vel(1)*acc(0))/vel.squaredNorm();
-    double w=a_norm/vel.squaredNorm();
+    double a_norm=(vel(0)*acc(1)-vel(1)*acc(0))/vel.norm();
+    double w=a_norm/vel.norm();
     return w;
   }
 
@@ -255,29 +174,25 @@ public:
   GlobalData(){};
   ~GlobalData(){};
   
-  void setGlobalDataParam(double dist_next_wp, double dist_tolerance, double rou_thresh){
-    dist_next_wp_=dist_next_wp;
+  void setGlobalDataParam(double dist_lookahead, double dist_tolerance){
+    dist_lookahead_=dist_lookahead;
     dist_tolerance_=dist_tolerance;
-    rou_thresh_=rou_thresh;
+
   }
 
-  void resetGlobalData(const UniformBspline & traj){
-    global_pos_traj_= traj;
+  void resetGlobalData(const UniformBspline & pos_traj){
+    global_pos_traj_= pos_traj;
     global_vel_traj_=global_pos_traj_.getDerivative();
     global_acc_traj_=global_vel_traj_.getDerivative();
     global_pos_traj_.getTimeSpan(tm_start_, tm_end_);
     start_pos_=getPosition(tm_start_);
     end_pos_=getPosition(tm_end_);
-    resetLandmarks2();
+    resetLandmarks();
   }
 
-  bool getGlobalPath(std::vector<Eigen::Vector2d> &global_path){
-     if(!global_path_.empty()){
-       global_path=global_path_;
-       return true;
-     }else{
-       return false;
-     }
+  std::vector<Eigen::Vector2d> getGlobalPath()
+  {
+    return global_path_;   
   }
 
   std::vector<Eigen::Vector2d> getControlPoints(){
@@ -290,30 +205,50 @@ public:
     return ctrl_pts;
   }
   
-  bool getLandmarks(std::vector<Eigen::Vector2d> & landmark_pts){
+  std::vector<Eigen::Vector2d> getLandmarks(){
+    std::vector<Eigen::Vector2d> landmark_pts;
     if(!landmark_points_.empty()){
-      for(int i=0;i<landmark_points_.size();i++){
+      for(unsigned int i=0;i<landmark_points_.size();i++){
           landmark_pts.push_back(landmark_points_[i].pos);
       }
-      return true;
+      return landmark_pts;
     }else{
-      return false;
+      return landmark_pts;
     }
   }
 
-  Eigen::Vector2d getLocalTarget(Eigen::Vector2d &current_pt){
+
+  Eigen::Vector2d getLocalTarget(const Eigen::Vector2d &current_pt)
+  {
     Eigen::Vector2d target_pt;
     Eigen::Vector2d landmark_pt;
     
     double dist_to_last_landmark;
-    dist_to_last_landmark=(landmark_points_[id_last_landmark_].pos-current_pt).squaredNorm();
+    dist_to_last_landmark=(landmark_points_[id_last_landmark_].pos-current_pt).norm();
 
-    // check if landmark point is arrived, and update target landmark id
-    if(dist_to_last_landmark<dist_tolerance_){
-      id_last_landmark_++;
+    Eigen::Vector2d vec_two_landmark;
+    Eigen::Vector2d vec_to_last_landmark;
+    Eigen::Vector2d vec_to_next_landmark;
 
-      if(id_last_landmark_>=landmark_points_.size()){
-        id_last_landmark_=landmark_points_.size()-1;
+    if(id_last_landmark_<(int)landmark_points_.size()-1)
+    {
+      // check if landmark point is arrived, and update target landmark id
+      if(dist_to_last_landmark<dist_tolerance_)
+      {
+        // if near to last landmark
+        id_last_landmark_++;
+      }else{
+        // if arrived at same horizon as next landmark &&  off the track to last landmark
+        vec_two_landmark=landmark_points_[id_last_landmark_+1].pos-landmark_points_[id_last_landmark_].pos;
+        vec_to_last_landmark=landmark_points_[id_last_landmark_].pos-current_pt;
+        vec_to_next_landmark=landmark_points_[id_last_landmark_+1].pos-current_pt;
+        double cos_theta_last=vec_two_landmark.dot(vec_to_last_landmark)/(vec_to_last_landmark.norm()*vec_two_landmark.norm());
+        double cos_theta_next=vec_two_landmark.dot(vec_to_next_landmark)/(vec_to_next_landmark.norm()*vec_two_landmark.norm());
+        
+        if(cos_theta_next>0.995 && cos_theta_last<0) // 0.995 means value of cos(5 degree ) 
+        {
+          id_last_landmark_++;
+        }
       }
     }
 
@@ -322,15 +257,31 @@ public:
 
     // calculate the target_pt at the direction of landmark pos
     double a;
-    a=dist_next_wp_/(current_pt-landmark_pt).squaredNorm();
-    target_pt=current_pt+a*(landmark_pt-current_pt);
+    double further_factor=1.5;  //further_factor<2
+    a=(further_factor*dist_lookahead_)/(current_pt-landmark_pt).norm(); // select a point a little further
+    
+    //std::cout<<"dist_lookahead_:"<<dist_lookahead_<<std::endl;
+    //std::cout<<"dist current & landmark:"<<(current_pt-landmark_pt).norm()<<std::endl;
+    //std::cout<<"a:"<<a<<std::endl;
+    //std::cout<<"landmark_pt-current_pt="<<landmark_pt-current_pt<<std::endl;
+    //std::cout<<"a*(landmark_pt-current_pt)="<<a*(landmark_pt-current_pt)<<std::endl;
+    
+    if(a<1.0){//further_factor
+      // normally a=[0,1]
+      target_pt=current_pt+a*(landmark_pt-current_pt);
+    }else{
+      // if a>1 or further_factor
+      target_pt=landmark_pt;
+    }
 
     return target_pt;
-  }
-
-  
+  }  
 };
 
+struct MidData{
+  UniformBspline subgoal_traj_;
+  Eigen::Vector2d subgoal_;
+};
 
 
 
@@ -515,17 +466,19 @@ struct PlanParameters
     double max_vel_, max_acc_, max_jerk_; // physical limits
     double ctrl_pt_dist_;                  // distance between adjacient B-spline control points
     double feasibility_tolerance_;        // permitted ratio of vel/acc exceeding limits
-    double planning_horizen_;
 
-    /* global data param */
-    double dist_next_wp_;           // distance from current location to next waypoint
+    /* global data param: subgoal   */
+    double dist_lookahead_;           // distance from current location to next waypoint
     double dist_tolerance_;         // distance tolerance for arriving
-    double rou_thresh_;             // thresh hold of curature radius for determin landmark points
+  
 
-    /* flags */
+    /* global plan param */
     bool use_astar_, use_kino_astar_, use_oneshot_;
     bool use_optimization_esdf_, use_optimization_astar_;
     double time_alloc_coefficient_;
+
+    /* performance compare flag */
+    bool show_plan_time_;
 
     /* processing time */
     //double time_search_ = 0.0;

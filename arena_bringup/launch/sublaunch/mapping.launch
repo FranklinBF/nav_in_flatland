@@ -15,25 +15,23 @@
         <param name="$(arg plan_horizon)/global_planner/use_astar"              value="true"/>
         <param name="$(arg plan_horizon)/global_planner/use_kino_astar"         value="true" />
         <param name="$(arg plan_horizon)/global_planner/use_oneshot"            value="true" />
+
         <param name="$(arg plan_horizon)/global_planner/use_optimization_esdf"  value="true" />
         <param name="$(arg plan_horizon)/global_planner/use_optimization_astar" value="true" />
         <param name="$(arg plan_horizon)/global_planner/time_alloc_coefficient" value="0.5" />
         
 
-        <!-- Global plan: Landmark -->
-        <param name="$(arg plan_horizon)/global_planner/rou_thresh"             value="5.0" />
-        <param name="$(arg plan_horizon)/global_planner/dist_tolerance"         value="1.0" />
-        <param name="$(arg plan_horizon)/global_planner/dist_next_wp"           value="3.0" />
+        <!-- Global plan: Subgoal and landmark -->
+        <param name="$(arg plan_horizon)/subgoal/dist_tolerance"                value="1.0" />
+        <param name="$(arg plan_horizon)/subgoal/dist_lookahead"                value="3.0" />
        
         
         <!-- b-spline -->
         <param name="$(arg plan_horizon)/b_spline/max_vel"                      value="$(arg max_vel)"/>
         <param name="$(arg plan_horizon)/b_spline/max_acc"                      value="$(arg max_acc)"/>
         <param name="$(arg plan_horizon)/b_spline/max_jerk"                     value="$(arg max_jerk)"/>
-        <param name="$(arg plan_horizon)/b_spline/control_points_distance"      value="0.5"             type="double"/>
-        <param name="$(arg plan_horizon)/b_spline/feasibility_tolerance"        value="0.05"             type="double"/>
-        <param name="$(arg plan_horizon)/b_spline/planning_horizon"             value="7.5"             type="double"/>
-
+        <param name="$(arg plan_horizon)/b_spline/control_points_distance"      value="0.5"           type="double"/>
+        <param name="$(arg plan_horizon)/b_spline/feasibility_tolerance"        value="0.05"          type="double"/>
 
          <!-- trajectory optimization: bspline Astar -->
         <param name="$(arg plan_horizon)/optimization_astar/max_rebound_times"        value="20" type="int"/> <!-- 1.0   -->
@@ -89,7 +87,7 @@
         <param name="$(arg plan_horizon)/kino_astar/max_acc"                    value="$(arg max_acc)"/>
         <param name="$(arg plan_horizon)/kino_astar/w_time"                     value="10.0"/>
         
-        <param name="$(arg plan_horizon)/kino_astar/horizon"                    value="30" />
+        <param name="$(arg plan_horizon)/kino_astar/horizon"                    value="100" />
         <param name="$(arg plan_horizon)/kino_astar/resolution_astar"           value="0.1"/>
         <param name="$(arg plan_horizon)/kino_astar/time_resolution"            value="0.8" />
         <param name="$(arg plan_horizon)/kino_astar/lambda_heu"                 value="$(arg lambda_heu)" />

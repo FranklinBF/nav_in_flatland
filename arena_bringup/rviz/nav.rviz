@@ -338,39 +338,54 @@ Visualization Manager:
           Use Fixed Frame: true
           Use rainbow: true
           Value: false
-      Enabled: true
+      Enabled: false
       Name: Maps
     - Class: rviz/Group
       Displays:
+        - Alpha: 1
+          Buffer Length: 1
+          Class: rviz/Path
+          Color: 25; 255; 0
+          Enabled: true
+          Head Diameter: 0.30000001192092896
+          Head Length: 0.20000000298023224
+          Length: 0.30000001192092896
+          Line Style: Lines
+          Line Width: 0.029999999329447746
+          Name: Global_Path
+          Offset:
+            X: 0
+            Y: 0
+            Z: 0
+          Pose Color: 255; 85; 255
+          Pose Style: None
+          Radius: 0.029999999329447746
+          Shaft Diameter: 0.10000000149011612
+          Shaft Length: 0.10000000149011612
+          Topic: /vis_global_path_pub_
+          Unreliable: false
+          Value: true
         - Class: rviz/Marker
-          Enabled: false
-          Marker Topic: /planning_vis/global_path
-          Name: global_path
-          Namespaces:
-            {}
-          Queue Size: 100
-          Value: false
-        - Class: rviz/Marker
-          Enabled: false
-          Marker Topic: /planning_vis/subgoal
+          Enabled: true
+          Marker Topic: /vis_subgoal
           Name: subgoal
           Namespaces:
-            {}
+            "": true
           Queue Size: 100
-          Value: false
+          Value: true
         - Class: rviz/Marker
-          Enabled: false
-          Marker Topic: /Goal
+          Enabled: true
+          Marker Topic: /vis_goal
           Name: goal
           Namespaces:
-            {}
+            "": true
           Queue Size: 100
-          Value: false
+          Value: true
         - Alpha: 1
           Buffer Length: 1
           Class: rviz/Path
           Color: 255; 17; 212
-          Enabled: true
+          Enabled: false
           Head Diameter: 0.30000001192092896
           Head Length: 0.20000000298023224
           Length: 0.30000001192092896
@@ -388,12 +403,12 @@ Visualization Manager:
           Shaft Length: 0.10000000149011612
           Topic: /astar_path
           Unreliable: false
-          Value: true
+          Value: false
         - Alpha: 1
           Buffer Length: 1
           Class: rviz/Path
           Color: 255; 247; 11
-          Enabled: true
+          Enabled: false
           Head Diameter: 0.30000001192092896
           Head Length: 0.20000000298023224
           Length: 0.30000001192092896
@@ -411,20 +426,20 @@ Visualization Manager:
           Shaft Length: 0.10000000149011612
           Topic: /astar_traj
           Unreliable: false
-          Value: true
+          Value: false
         - Class: rviz/Marker
-          Enabled: true
+          Enabled: false
           Marker Topic: /astar_wps
           Name: astar_wp
           Namespaces:
             {}
           Queue Size: 100
-          Value: true
+          Value: false
         - Alpha: 1
           Buffer Length: 1
           Class: rviz/Path
           Color: 85; 170; 255
-          Enabled: true
+          Enabled: false
           Head Diameter: 0.30000001192092896
           Head Length: 0.20000000298023224
           Length: 0.30000001192092896
@@ -442,12 +457,12 @@ Visualization Manager:
           Shaft Length: 0.10000000149011612
           Topic: /jps_path
           Unreliable: false
-          Value: true
+          Value: false
         - Alpha: 1
           Buffer Length: 1
           Class: rviz/Path
           Color: 255; 247; 11
-          Enabled: true
+          Enabled: false
           Head Diameter: 0.30000001192092896
           Head Length: 0.20000000298023224
           Length: 0.30000001192092896
@@ -465,20 +480,20 @@ Visualization Manager:
           Shaft Length: 0.10000000149011612
           Topic: /jps_traj
           Unreliable: false
-          Value: true
+          Value: false
         - Class: rviz/Marker
-          Enabled: true
+          Enabled: false
           Marker Topic: /jps_wps
           Name: jps_wp
           Namespaces:
             {}
           Queue Size: 100
-          Value: true
+          Value: false
         - Alpha: 1
           Buffer Length: 1
           Class: rviz/Path
           Color: 0; 135; 99
-          Enabled: true
+          Enabled: false
           Head Diameter: 0.30000001192092896
           Head Length: 0.20000000298023224
           Length: 0.30000001192092896
@@ -496,12 +511,12 @@ Visualization Manager:
           Shaft Length: 0.10000000149011612
           Topic: /kino_astar_path
           Unreliable: false
-          Value: true
+          Value: false
         - Alpha: 1
           Buffer Length: 1
           Class: rviz/Path
           Color: 122; 221; 29
-          Enabled: true
+          Enabled: false
           Head Diameter: 0.30000001192092896
           Head Length: 0.20000000298023224
           Length: 0.30000001192092896
@@ -519,13 +534,13 @@ Visualization Manager:
           Shaft Length: 0.10000000149011612
           Topic: /kino_astar_traj
           Unreliable: false
-          Value: true
+          Value: false
         - Class: rviz/Marker
           Enabled: true
           Marker Topic: /kino_astar_wps
           Name: kino_astar_wp
           Namespaces:
-            {}
+            "": true
           Queue Size: 100
           Value: true
         - Alpha: 1
@@ -555,7 +570,7 @@ Visualization Manager:
           Buffer Length: 1
           Class: rviz/Path
           Color: 35; 233; 255
-          Enabled: true
+          Enabled: false
           Head Diameter: 0.30000001192092896
           Head Length: 0.20000000298023224
           Length: 0.30000001192092896
@@ -573,7 +588,7 @@ Visualization Manager:
           Shaft Length: 0.10000000149011612
           Topic: /oneshot_traj
           Unreliable: false
-          Value: true
+          Value: false
         - Class: rviz/Marker
           Enabled: false
           Marker Topic: /oneshot_wps
@@ -1088,7 +1103,7 @@ Visualization Manager:
   Value: true
   Views:
     Current:
-      Angle: -4.945002555847168
+      Angle: -4.74000358581543
       Class: rviz/TopDownOrtho
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
@@ -1098,11 +1113,11 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Scale: 21.779945373535156
+      Scale: 26.421573638916016
       Target Frame: <Fixed Frame>
       Value: TopDownOrtho (rviz)
-      X: 17.050588607788086
-      Y: 9.425007820129395
+      X: 16.49697494506836
+      Y: 19.027427673339844
     Saved: ~
 Window Geometry:
   Displays:

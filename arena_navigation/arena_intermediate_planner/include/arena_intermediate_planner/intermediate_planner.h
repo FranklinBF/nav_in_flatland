@@ -50,36 +50,37 @@ private:
     ros::Publisher astar_path_pub_,         astar_traj_pub_,        astar_waypoints_pub_;
     ros::Publisher jps_path_pub_,           jps_traj_pub_,          jps_waypoints_pub_;
     ros::Publisher oneshot_path_pub_,       oneshot_traj_pub_,      oneshot_waypoints_pub_;
-    ros::Publisher vis_goal_pub_,vis_subgoal_pub_;
-
+    
     ros::Publisher vis_control_pts_pub_,vis_control_pts_optimized_pub_;
     ros::Publisher vis_control_pts_astar_pub_,vis_control_pts_oneshot_pub_,vis_control_pts_kino_pub_;
     ros::Publisher vis_control_pts_astar_optimized_pub_,vis_control_pts_oneshot_optimized_pub_,vis_control_pts_kino_optimized_pub_;
-    
-    
 
-
-    
+    ros::Publisher vis_goal_pub_,vis_subgoal_pub_,vis_global_path_pub_;
     // service server
     ros::ServiceServer global_plan_service_server_;
 
-
     // map & enviornment
     GridMap::Ptr grid_map_;
-    PlanParameters pp_; //double ctrl_pt_dist_; double max_vel_; double max_acc_;
+    PlanParameters pp_;  
+
+    // global plan data                                               
     GlobalData global_data_;
+
+    // subgoal traj
+    MidData mid_data_;
+    
     
     // flags
     bool have_odom_;
 
     // planner variables
-    Eigen::Vector2d odom_pos_, odom_vel_;                           // odometry state
-    Eigen::Quaterniond odom_orient_;                                // orient
+    Eigen::Vector2d odom_pos_, odom_vel_;                               // odometry state
+    Eigen::Quaterniond odom_orient_;                                    // orient
 
-    //Eigen::Vector2d current_pt_,current_vel_,current_acc_;          // current state
+    //Eigen::Vector2d current_pt_,current_vel_,current_acc_;            // current state
 
-    Eigen::Vector2d start_pt_, start_vel_, start_acc_, start_yaw_;  // start state
-    Eigen::Vector2d end_pt_, end_vel_, end_acc_;                              // target state
+    Eigen::Vector2d start_pt_, start_vel_, start_acc_, start_yaw_;      // start state
+    Eigen::Vector2d end_pt_, end_vel_, end_acc_;                        // target state
 
     // global planners
     //Astar::Ptr global_planner_astar_;
@@ -90,10 +91,6 @@ private:
     // bspline optimizer
     BsplineOptimizerESDF::Ptr bspline_optimizer_esdf_;
     BsplineOptimizerAstar::Ptr bspline_optimizer_rebound_; 
-
-    
-    // visualization
-    //PlanningVisualization::Ptr visualization_;
 
     // performance time
     double dur_;
@@ -113,13 +110,23 @@ public:
 
     void init(ros::NodeHandle & nh);
 
+    /* subscribe callbacks */
     void goalCallback(const geometry_msgs::PoseStampedPtr& msg);
 
     void odomCallback(const nav_msgs::OdometryConstPtr& msg);
 
-    bool makeGlobalPlan(arena_plan_msgs::MakeGlobalPlan::Request  &req, arena_plan_msgs::MakeGlobalPlan::Response &res);
+    /* global plan service */
+    bool makeGlobalPlanService(arena_plan_msgs::MakeGlobalPlan::Request  &req, arena_plan_msgs::MakeGlobalPlan::Response &res);
 
+    bool makeGlobalPlan(Eigen::Vector2d start_pos,Eigen::Vector2d end_pos);
 
+    /* subgoal service */
+    bool makeOneshotPlan(const Eigen::Vector2d &start_pos, const Eigen::Vector2d &start_vel, const Eigen::Vector2d &start_acc,
+                                const Eigen::Vector2d &end_pos, const Eigen::Vector2d &end_vel, const Eigen::Vector2d &end_acc);
+
+    bool makeSubgoal();
+
+    /* global plan method */
     bool planGlobalTraj(const Eigen::Vector2d &start_pos, const Eigen::Vector2d &start_vel, const Eigen::Vector2d &start_acc,
                       const Eigen::Vector2d &end_pos, const Eigen::Vector2d &end_vel, const Eigen::Vector2d &end_acc, OptimizerType type_optimizer=OptimizerType::GRADIENT_ASTAR);
 
@@ -128,17 +135,19 @@ public:
     bool planOneshotTraj(const Eigen::Vector2d &start_pos, const Eigen::Vector2d &start_vel, const Eigen::Vector2d &start_acc,
                       const Eigen::Vector2d &end_pos, const Eigen::Vector2d &end_vel, const Eigen::Vector2d &end_acc,OptimizerType type_optimizer=OptimizerType::GRADIENT_ASTAR);
 
-    bool planKinoAstarTraj(const Eigen::Vector2d &start_pos, const Eigen::Vector2d &start_vel, const Eigen::Vector2d &start_acc, const Eigen::Vector2d &end_pos, const Eigen::Vector2d &end_vel, OptimizerType type_optimizer=OptimizerType::GRADIENT_ASTAR);
+    bool planKinoAstarTraj(const Eigen::Vector2d &start_pos, const Eigen::Vector2d &start_vel, const Eigen::Vector2d &start_acc, const Eigen::Vector2d &end_pos, const Eigen::Vector2d &end_vel, OptimizerType type_optimizer=OptimizerType::GRADIENT_ESDF);
 
     bool planAstarTraj(Eigen::Vector2d &start_pos,Eigen::Vector2d &end_pos, OptimizerType type_optimizer=OptimizerType::GRADIENT_ASTAR);
 
+    /* optimization */
     bool optimizePath(double ts,vector<Eigen::Vector2d> point_set, vector<Eigen::Vector2d> start_end_derivatives, UniformBspline &bspline_traj, OptimizerType type_optimizer=OptimizerType::GRADIENT_ASTAR);
 
+    /* visualization */
     void visualizePath(const vector<Eigen::Vector2d> path, const ros::Publisher & pub);
 
     void visualizePoints(const vector<Eigen::Vector2d>& point_set, double pt_size, const Eigen::Vector4d& color, const ros::Publisher & pub);
 
-
+    /* helper */
     bool checkCollision(const Eigen::Vector2d &pos);
 
     bool findCollisionWithinSegment(const Eigen::Vector2d &pt1,const Eigen::Vector2d &pt2,vector<Eigen::Vector2d> &inter_points);

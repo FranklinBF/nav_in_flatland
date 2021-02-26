@@ -136,7 +136,7 @@ void UniformBspline::parameterizeToBspline(const double &ts, const vector<Eigen:
 {
     if (ts <= 0)
     {
-      cout << "[B-spline]:time step error." << endl;
+      cout << "[B-spline]:time step error. ts="<< ts << endl;
       return;
     }
 
