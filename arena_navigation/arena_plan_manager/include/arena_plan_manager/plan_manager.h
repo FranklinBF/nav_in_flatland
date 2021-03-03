@@ -44,7 +44,7 @@ private:
     int mode_;  // 1 train , 2 test
     double timeout_goal_;
     double timeout_subgoal_;
-    double tolerance_approach_;
+    double dist_tolerance_;
     double dist_lookahead_;
     
     /* planning data */
