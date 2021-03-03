@@ -73,34 +73,35 @@ void InterPlanner::init(ros::NodeHandle & nh){
   odom_sub_ = public_nh.subscribe("odometry/ground_truth", 1, &InterPlanner::odomCallback, this);
 
   // publisher
-  kino_astar_path_pub_ =public_nh.advertise<nav_msgs::Path>("kino_astar_path", 1);
-  kino_astar_traj_pub_ =public_nh.advertise<nav_msgs::Path>("kino_astar_traj", 1);
-  kino_astar_waypoints_pub_ = public_nh.advertise<visualization_msgs::Marker>("kino_astar_wps", 20);
+  // kino_astar_path_pub_ =public_nh.advertise<nav_msgs::Path>("kino_astar_path", 1);
+  // kino_astar_traj_pub_ =public_nh.advertise<nav_msgs::Path>("kino_astar_traj", 1);
+  // kino_astar_waypoints_pub_ = public_nh.advertise<visualization_msgs::Marker>("kino_astar_wps", 20);
 
-  astar_path_pub_ =public_nh.advertise<nav_msgs::Path>("astar_path", 1);
-  astar_traj_pub_ =public_nh.advertise<nav_msgs::Path>("astar_traj", 1);
-  astar_waypoints_pub_ = public_nh.advertise<visualization_msgs::Marker>("astar_wps", 20);
+  // astar_path_pub_ =public_nh.advertise<nav_msgs::Path>("astar_path", 1);
+  // astar_traj_pub_ =public_nh.advertise<nav_msgs::Path>("astar_traj", 1);
+  // astar_waypoints_pub_ = public_nh.advertise<visualization_msgs::Marker>("astar_wps", 20);
 
-  jps_path_pub_ =public_nh.advertise<nav_msgs::Path>("jps_path", 1);
-  jps_traj_pub_ =public_nh.advertise<nav_msgs::Path>("jps_traj", 1);
-  jps_waypoints_pub_ = public_nh.advertise<visualization_msgs::Marker>("jps_wps", 20);
+  // jps_path_pub_ =public_nh.advertise<nav_msgs::Path>("jps_path", 1);
+  // jps_traj_pub_ =public_nh.advertise<nav_msgs::Path>("jps_traj", 1);
+  // jps_waypoints_pub_ = public_nh.advertise<visualization_msgs::Marker>("jps_wps", 20);
 
-  oneshot_path_pub_ =public_nh.advertise<nav_msgs::Path>("oneshot_path", 1);
-  oneshot_traj_pub_ =public_nh.advertise<nav_msgs::Path>("oneshot_traj", 1);
-  oneshot_waypoints_pub_=public_nh.advertise<visualization_msgs::Marker>("oneshot_wps", 20);
+  // oneshot_path_pub_ =public_nh.advertise<nav_msgs::Path>("oneshot_path", 1);
+  // oneshot_traj_pub_ =public_nh.advertise<nav_msgs::Path>("oneshot_traj", 1);
+  // oneshot_waypoints_pub_=public_nh.advertise<visualization_msgs::Marker>("oneshot_wps", 20);
 
-  vis_control_pts_astar_pub_=public_nh.advertise<visualization_msgs::Marker>("ControlPoints_astar", 20);
-  vis_control_pts_oneshot_pub_=public_nh.advertise<visualization_msgs::Marker>("ControlPoints_oneshot", 20);
-  vis_control_pts_kino_pub_=public_nh.advertise<visualization_msgs::Marker>("ControlPoints_kino", 20);
+  // vis_control_pts_astar_pub_=public_nh.advertise<visualization_msgs::Marker>("ControlPoints_astar", 20);
+  // vis_control_pts_oneshot_pub_=public_nh.advertise<visualization_msgs::Marker>("ControlPoints_oneshot", 20);
+  // vis_control_pts_kino_pub_=public_nh.advertise<visualization_msgs::Marker>("ControlPoints_kino", 20);
 
-  vis_control_pts_astar_optimized_pub_=public_nh.advertise<visualization_msgs::Marker>("ControlPoints_astar_opt", 20);
-  vis_control_pts_oneshot_optimized_pub_=public_nh.advertise<visualization_msgs::Marker>("ControlPoints_oneshot_opt", 20);
-  vis_control_pts_kino_optimized_pub_=public_nh.advertise<visualization_msgs::Marker>("ControlPoints_kino_opt", 20);
+  // vis_control_pts_astar_optimized_pub_=public_nh.advertise<visualization_msgs::Marker>("ControlPoints_astar_opt", 20);
+  // vis_control_pts_oneshot_optimized_pub_=public_nh.advertise<visualization_msgs::Marker>("ControlPoints_oneshot_opt", 20);
+  // vis_control_pts_kino_optimized_pub_=public_nh.advertise<visualization_msgs::Marker>("ControlPoints_kino_opt", 20);
   
-  vis_goal_pub_ = public_nh.advertise<visualization_msgs::Marker>("vis_goal", 20);
-  vis_subgoal_pub_ = public_nh.advertise<visualization_msgs::Marker>("vis_subgoal", 20);
-  vis_global_path_pub_=public_nh.advertise<nav_msgs::Path>("vis_global_path_pub_", 1);
-
+  vis_goal_pub_ = node_.advertise<visualization_msgs::Marker>("vis_goal", 20);
+  vis_subgoal_pub_ = node_.advertise<visualization_msgs::Marker>("vis_subgoal", 20);
+  vis_global_path_pub_=node_.advertise<nav_msgs::Path>("vis_global_path_pub_", 1);
+  kino_astar_waypoints_pub_ = node_.advertise<visualization_msgs::Marker>("vis_landmarks_", 20);
+  vis_local_traj_pub_=node_.advertise<nav_msgs::Path>("vis_local_traj", 1);
 
   /* service server */
   global_plan_service_server_=public_nh.advertiseService("global_kino_make_plan", &InterPlanner::makeGlobalPlanService, this);
@@ -513,7 +514,7 @@ bool InterPlanner::optimizePath(double ts,std::vector<Eigen::Vector2d> point_set
       
       trial_num++;
       ts=trial_num*ts0;
-      std::cout<<"Optimizing time:"<<trial_num<<"ts="<<ts<<"**********************"<<std::endl;
+      //std::cout<<"Optimizing time:"<<trial_num<<"ts="<<ts<<"**********************"<<std::endl;
       // init B-spline control points
       Eigen::MatrixXd ctrl_pts;
       UniformBspline::parameterizeToBspline(ts, point_set, start_end_derivatives, ctrl_pts);
@@ -547,7 +548,7 @@ bool InterPlanner::optimizePath(double ts,std::vector<Eigen::Vector2d> point_set
 
         if (!pos.checkFeasibility(ratio, false))
         {
-            std::cout << "Need to reallocate time." << std::endl;
+            //std::cout << "Need to reallocate time." << std::endl;
             Eigen::MatrixXd optimal_control_points;
             flag_step_2_success = refineTrajAlgo(pos, start_end_derivatives, ratio, ts, optimal_control_points);
             if (flag_step_2_success){
@@ -588,7 +589,7 @@ bool InterPlanner::optimizePath(double ts,std::vector<Eigen::Vector2d> point_set
           double tn = pos.getTimeSum();
 
           
-          std::cout << "[kino replan]: Reallocate ratio: " << tn / to << std::endl;
+          //std::cout << "[kino replan]: Reallocate ratio: " << tn / to << std::endl;
           if (tn / to > 3.0) ROS_ERROR("reallocate error.");
 
           bspline_traj=pos;
@@ -709,6 +710,22 @@ void InterPlanner::visualizePoints(const vector<Eigen::Vector2d>& point_set, dou
 bool InterPlanner::checkCollision(const Eigen::Vector2d &pos){
   bool is_occ= grid_map_->getFusedInflateOccupancy(pos);
   return is_occ;
+}
+
+bool InterPlanner::checkColiisionSegment(Eigen::Vector2d pt1, Eigen::Vector2d pt2){
+    double dist=(pt1-pt2).norm();                            // distance start pt to end pt
+    double dist_step=grid_map_->getResolution()*2;           // collision check step distance
+    int id_num = floor(dist / dist_step) + 1;
+
+    Eigen::Vector2d inter_pt;
+    for (int j = 1; j < id_num; ++j)
+    {
+      inter_pt = pt1 * (1.0 - double(j) / id_num) + pt2 * double(j) / id_num;
+      if(checkCollision(inter_pt)){
+        return true;
+      }    
+    }
+    return false;
 }
 
 bool InterPlanner::findCollisionWithinSegment(const Eigen::Vector2d &pt1,const Eigen::Vector2d &pt2,vector<Eigen::Vector2d> & inter_points){
@@ -928,6 +945,9 @@ bool InterPlanner::makeGlobalPlan(Eigen::Vector2d start_pos,Eigen::Vector2d end_
   // get plan
   OptimizerType type_optimizer=InterPlanner::OptimizerType::GRADIENT_ESDF;
   bool success;
+  // adjust start and target pt to be in free space
+  adjustStartAndTargetPoint(start_pos,end_pos);
+
   success=planKinoAstarTraj(start_pos, Eigen::Vector2d::Zero(), Eigen::Vector2d::Zero(), end_pos, Eigen::Vector2d::Zero(),type_optimizer);
   
   if(success){
@@ -1042,7 +1062,11 @@ bool InterPlanner::makeSubgoal(Eigen::Vector2d curr_pos, Eigen::Vector2d curr_ve
   bool success;
   // get initial local target
   Eigen::Vector2d local_target=global_data_.getLocalTarget(curr_pos);
-
+  
+  // make the local target not on obstacle
+  if(!adjustStartAndTargetPoint(local_target,curr_pos)){
+    return false;
+  }
   // std::vector<Eigen::Vector2d> landmarks=global_data_.getLandmarks();
   // for(size_t i=0;i<landmarks.size();++i){
   //   std::cout<<"landmarks:"<<landmarks[i]<<std::endl;
@@ -1057,17 +1081,50 @@ bool InterPlanner::makeSubgoal(Eigen::Vector2d curr_pos, Eigen::Vector2d curr_ve
   if(success){
     //double T_subgoal=3.0;
     // select the pt at 3s on the traj
-    mid_data_.subgoal_=mid_data_.subgoal_traj_.evaluateDeBoorT(T_subgoal);
-
+    double tm_start,tm_end;
+    mid_data_.subgoal_traj_.getTimeSpan(tm_start, tm_end);
+    mid_data_.subgoal_=mid_data_.subgoal_traj_.evaluateDeBoor(tm_start+0.5*(tm_end-tm_start));
+    mid_data_.subgoal_traj_end_=mid_data_.subgoal_traj_.evaluateDeBoor(tm_end);
+    
     // visualize subgoal
     std::vector<Eigen::Vector2d> point_set;
     point_set.push_back(mid_data_.subgoal_);
     visualizePoints(point_set,0.8,Eigen::Vector4d(0.5, 0.5, 1, 1.0),vis_subgoal_pub_);
+    visualizePath(mid_data_.getTraj(),vis_local_traj_pub_);
     return true;
   }
 
   return false;
 }
+
+bool InterPlanner::adjustStartAndTargetPoint( Eigen::Vector2d &target_pt, Eigen::Vector2d &start_pt)
+{   
+    double step_size=0.1;
+
+    if(checkCollision(start_pt)){
+      ROS_WARN("This start point is insdide an obstacle.");
+      do
+        {
+            start_pt = (start_pt - target_pt).normalized() * step_size + start_pt;
+            if (!grid_map_->isInMap(start_pt))
+                return false;
+        } while (checkCollision(start_pt));
+    }
+
+    if(checkCollision(target_pt)){
+      ROS_WARN("This target point is insdide an obstacle.");
+      do
+        {
+            target_pt = (target_pt - start_pt).normalized() * step_size + target_pt;
+            if (!grid_map_->isInMap(target_pt))
+                return false;
+        } while (checkCollision(target_pt));
+    }
+
+    return true;
+}
+
+
 
 
 int main(int argc, char **argv){

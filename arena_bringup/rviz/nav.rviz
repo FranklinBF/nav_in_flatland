@@ -6,9 +6,6 @@ Panels:
       Expanded:
         - /Global Options1
         - /my_robot1/Namespaces1
-        - /plan_manager1
-        - /Move_base1
-        - /static_layer1
       Splitter Ratio: 0.6515986919403076
     Tree Height: 797
   - Class: rviz/Selection
@@ -29,7 +26,7 @@ Panels:
     Experimental: false
     Name: Time
     SyncMode: 0
-    SyncSource: LaserScan
+    SyncSource: ""
 Preferences:
   PromptSaveOnExit: true
 Toolbars:
@@ -352,7 +349,7 @@ Visualization Manager:
           Length: 0.30000001192092896
           Line Style: Billboards
           Line Width: 0.20000000298023224
-          Name: Global_Path
+          Name: global path
           Offset:
             X: 0
             Y: 0
@@ -362,12 +359,20 @@ Visualization Manager:
           Radius: 0.029999999329447746
           Shaft Diameter: 0.10000000149011612
           Shaft Length: 0.10000000149011612
-          Topic: /vis_global_path_pub_
+          Topic: /globalPlan
           Unreliable: false
           Value: true
         - Class: rviz/Marker
           Enabled: true
-          Marker Topic: /vis_subgoal
+          Marker Topic: /plan_manager/vis_goal
+          Name: landmarks
+          Namespaces:
+            "": true
+          Queue Size: 100
+          Value: true
+        - Class: rviz/Marker
+          Enabled: true
+          Marker Topic: /plan_manager/vis_subgoal
           Name: subgoal
           Namespaces:
             "": true
@@ -375,11 +380,34 @@ Visualization Manager:
           Value: true
         - Class: rviz/Marker
           Enabled: true
-          Marker Topic: /vis_goal
+          Marker Topic: /plan_manager/vis_goal
           Name: goal
           Namespaces:
             "": true
           Queue Size: 100
+          Value: true
+        - Alpha: 1
+          Buffer Length: 1
+          Class: rviz/Path
+          Color: 85; 170; 255
+          Enabled: true
+          Head Diameter: 0.30000001192092896
+          Head Length: 0.20000000298023224
+          Length: 0.30000001192092896
+          Line Style: Billboards
+          Line Width: 0.10000000149011612
+          Name: local_traj
+          Offset:
+            X: 0
+            Y: 0
+            Z: 0
+          Pose Color: 255; 85; 255
+          Pose Style: None
+          Radius: 0.029999999329447746
+          Shaft Diameter: 0.10000000149011612
+          Shaft Length: 0.10000000149011612
+          Topic: /plan_manager/vis_local_traj
+          Unreliable: false
           Value: true
         - Alpha: 1
           Buffer Length: 1
@@ -536,13 +564,13 @@ Visualization Manager:
           Unreliable: false
           Value: false
         - Class: rviz/Marker
-          Enabled: true
-          Marker Topic: /kino_astar_wps
+          Enabled: false
+          Marker Topic: /plan_manager/vis_landmarks_
           Name: kino_astar_wp
           Namespaces:
-            "": true
+            {}
           Queue Size: 100
-          Value: true
+          Value: false
         - Alpha: 1
           Buffer Length: 1
           Class: rviz/Path
@@ -605,12 +633,12 @@ Visualization Manager:
           Class: rviz/Map
           Color Scheme: map
           Draw Behind: false
-          Enabled: false
+          Enabled: true
           Name: Global_costmap
           Topic: /move_base/global_costmap/costmap
           Unreliable: false
           Use Timestamp: false
-          Value: false
+          Value: true
         - Alpha: 0.699999988079071
           Class: rviz/Map
           Color Scheme: costmap
@@ -837,7 +865,7 @@ Visualization Manager:
           Marker Topic: /flatland_server/debug/model/obstacles_static_random_01
           Name: MarkerArray
           Namespaces:
-            {}
+            "": true
           Queue Size: 100
           Value: true
         - Class: rviz/MarkerArray
@@ -845,7 +873,7 @@ Visualization Manager:
           Marker Topic: /flatland_server/debug/model/obstacles_static_random_02
           Name: MarkerArray
           Namespaces:
-            {}
+            "": true
           Queue Size: 100
           Value: true
         - Class: rviz/MarkerArray
@@ -925,7 +953,7 @@ Visualization Manager:
           Marker Topic: /flatland_server/debug/model/obstacles_dynamic_random_00
           Name: MarkerArray
           Namespaces:
-            {}
+            "": true
           Queue Size: 100
           Value: true
         - Class: rviz/MarkerArray
@@ -973,7 +1001,7 @@ Visualization Manager:
           Marker Topic: /flatland_server/debug/model/obstacles_static_random_01
           Name: MarkerArray
           Namespaces:
-            {}
+            "": true
           Queue Size: 100
           Value: true
         - Class: rviz/MarkerArray
@@ -981,7 +1009,7 @@ Visualization Manager:
           Marker Topic: /flatland_server/debug/model/obstacles_static_random_00
           Name: MarkerArray
           Namespaces:
-            {}
+            "": true
           Queue Size: 100
           Value: true
         - Class: rviz/MarkerArray
@@ -997,7 +1025,7 @@ Visualization Manager:
           Marker Topic: /flatland_server/debug/model/obstacles_dynamic_random_01
           Name: MarkerArray
           Namespaces:
-            {}
+            "": true
           Queue Size: 100
           Value: true
         - Class: rviz/MarkerArray
@@ -1005,10 +1033,10 @@ Visualization Manager:
           Marker Topic: /flatland_server/debug/model/obstacles_static_random_00
           Name: MarkerArray
           Namespaces:
-            {}
+            "": true
           Queue Size: 100
           Value: true
-      Enabled: false
+      Enabled: true
       Name: Obstacles
     - Class: rviz/MarkerArray
       Enabled: false
@@ -1076,7 +1104,7 @@ Visualization Manager:
       Value: false
   Enabled: true
   Global Options:
-    Background Color: 255; 255; 255
+    Background Color: 0; 0; 0
     Default Light: true
     Fixed Frame: map
     Frame Rate: 30
@@ -1103,7 +1131,7 @@ Visualization Manager:
   Value: true
   Views:
     Current:
-      Angle: -4.7150044441223145
+      Angle: -4.720004081726074
       Class: rviz/TopDownOrtho
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
@@ -1113,11 +1141,11 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Scale: 34.0264778137207
+      Scale: 80.95745849609375
       Target Frame: <Fixed Frame>
       Value: TopDownOrtho (rviz)
-      X: -3.288964033126831
-      Y: 8.231810569763184
+      X: 8.861045837402344
+      Y: 16.44664192199707
     Saved: ~
 Window Geometry:
   Displays:
@@ -1125,7 +1153,7 @@ Window Geometry:
   Height: 1020
   Hide Left Dock: false
   Hide Right Dock: false
-  QMainWindow State: 000000ff00000000fd000000040000000000000387000003a6fc0200000005fb0000001200530065006c0065006300740069006f006e000000003b0000009b0000005c00fffffffb0000001e0054006f006f006c002000500072006f007000650072007400690065007302000001ed000001df00000198000000a3fb000000120056006900650077007300200054006f006f02000001df000002110000018500000122fb000000200054006f006f006c002000500072006f0070006500720074006900650073003203000002880000011d000002210000017afb000000100044006900730070006c006100790073010000003b000003a6000000c700ffffff000000010000010f00000270fc0200000003fb0000001e0054006f006f006c002000500072006f00700065007200740069006500730100000041000000780000000000000000fb0000000a00560069006500770073000000002800000270000000a000fffffffb0000001200530065006c0065006300740069006f006e010000025a000000b200000000000000000000000200000490000000a9fc0100000001fb0000000a00560069006500770073030000004e00000080000002e10000019700000003000004a00000003efc0100000002fb0000000800540069006d00650000000000000004a00000024400fffffffb0000000800540069006d00650100000000000004500000000000000000000003f3000003a600000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
+  QMainWindow State: 000000ff00000000fd0000000400000000000001cc000003a6fc0200000005fb0000001200530065006c0065006300740069006f006e000000003b0000009b0000005c00fffffffb0000001e0054006f006f006c002000500072006f007000650072007400690065007302000001ed000001df00000198000000a3fb000000120056006900650077007300200054006f006f02000001df000002110000018500000122fb000000200054006f006f006c002000500072006f0070006500720074006900650073003203000002880000011d000002210000017afb000000100044006900730070006c006100790073010000003b000003a6000000c700ffffff000000010000010f00000270fc0200000003fb0000001e0054006f006f006c002000500072006f00700065007200740069006500730100000041000000780000000000000000fb0000000a00560069006500770073000000002800000270000000a000fffffffb0000001200530065006c0065006300740069006f006e010000025a000000b200000000000000000000000200000490000000a9fc0100000001fb0000000a00560069006500770073030000004e00000080000002e10000019700000003000004a00000003efc0100000002fb0000000800540069006d00650000000000000004a00000024400fffffffb0000000800540069006d00650100000000000004500000000000000000000005ae000003a600000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
   Selection:
     collapsed: false
   Time:

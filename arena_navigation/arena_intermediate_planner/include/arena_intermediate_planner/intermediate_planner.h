@@ -55,7 +55,7 @@ private:
     ros::Publisher vis_control_pts_astar_pub_,vis_control_pts_oneshot_pub_,vis_control_pts_kino_pub_;
     ros::Publisher vis_control_pts_astar_optimized_pub_,vis_control_pts_oneshot_optimized_pub_,vis_control_pts_kino_optimized_pub_;
 
-    ros::Publisher vis_goal_pub_,vis_subgoal_pub_,vis_global_path_pub_;
+    ros::Publisher vis_goal_pub_,vis_subgoal_pub_,vis_global_path_pub_,vis_local_traj_pub_;
     // service server
     ros::ServiceServer global_plan_service_server_;
 
@@ -95,6 +95,7 @@ private:
 
     bool refineTrajAlgo(UniformBspline &traj, vector<Eigen::Vector2d> &start_end_derivative, double ratio, double &ts, Eigen::MatrixXd &optimal_control_points);
 
+    bool adjustStartAndTargetPoint( Eigen::Vector2d &target_pt, Eigen::Vector2d &start_pt);
 public:
     InterPlanner(){};
     ~InterPlanner(){};
@@ -149,6 +150,8 @@ public:
 
     /* helper */
     bool checkCollision(const Eigen::Vector2d &pos);
+
+    bool checkColiisionSegment(Eigen::Vector2d pt2, Eigen::Vector2d pt1);
 
     bool findCollisionWithinSegment(const Eigen::Vector2d &pt1,const Eigen::Vector2d &pt2,vector<Eigen::Vector2d> &inter_points);
 

@@ -46,13 +46,16 @@
   <!-- start task_generator node-->
   <include file="$(find arena_bringup)/launch/sublaunch/task_generator.launch"/>
 
-  <!-- start plan manager-->
+  <!-- move_base plan manager: which provide basic global planner and cost map -->
+  <include file="$(find arena_bringup)/launch/sublaunch/move_base.launch"/>
+
+  <!-- start plan manager
   <include file="$(find arena_bringup)/launch/sublaunch/plan_manager.launch">
     <arg name="train_mode"        value="$(arg train_mode)"/>
     <arg name="global_frame_id"   value="$(arg global_frame_id)"/>
     <arg name="odom_frame_id"     value="$(arg odom_frame_id)"/>
     <arg name="base_frame_id"     value="$(arg base_frame_id)"/>
-  </include>
+  </include> -->
 
   
     
