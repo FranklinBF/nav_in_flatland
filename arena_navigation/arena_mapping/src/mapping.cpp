@@ -948,7 +948,8 @@ void GridMap::fuseOccupancyBuffer(){
 
 /*Time event callback: ESDF update*/
 void GridMap::updateESDFCallback(const ros::TimerEvent& /*event*/) {
-  //if (!md_.esdf_need_update_) return;  // because of dynamic env, we need to update more often
+  // this is important otherwise will be neicun error
+  if (!md_.esdf_need_update_) return;  // because of dynamic env, we need to update more often
 
   /* esdf */
   ros::WallTime t1, t2;
