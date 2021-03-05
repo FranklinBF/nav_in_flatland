@@ -22,7 +22,14 @@
 #include <sstream>
 #include <iomanip>
 
+#include <nav_msgs/Odometry.h>
+#include <geometry_msgs/PoseStamped.h>
+
+
 #include "arena_dynamic_channel/someTools.h"
+#include "arena_dynamic_channel/obstacle_collector.h"
+#include "arena_mapping/mapping.h"
+
 using namespace GEOM_FADE2D;
 using namespace std;
 
@@ -138,23 +145,91 @@ typedef DualNode *DualNodePtr;
 
 
 
+struct ObstacleState{
+
+    Eigen::Vector2d pos;    // current pos
+    Eigen::Vector2d vel;
+    
+    Eigen::Vector2d pos_t;  // future pos at time t
+    Point2 point2_pos_t;
+    double t;
+
+    ObstacleState(Eigen::Vector2d obs_position, Eigen::Vector2d obs_velocity, double time){
+        pos=obs_position;
+        vel=obs_velocity;
+        t=time;         //(obs_position-robot_position).norm()/robot_avg_velocity;
+        pos_t=pos+vel*t;
+        point2_pos_t=Point2(pos_t(0),pos_t(1));
+    }
+
+    ~ObstacleState(){}
+
+    typedef std::shared_ptr<ObstacleState> Ptr;
+};
+
+
+
 class DualGraph{
 private:
     std::unique_ptr<Fade_2D> dt_;
     std::vector<Eigen::Vector2d> input_points_set_;
 
+    // map
+    GridMap::Ptr grid_map_;
+    Eigen::Vector2d occ_map_origin_,occ_map_size_2d_;
+    Point2 point2_corner1_,point2_corner2_,point2_corner3_,point2_corner4_;
 
 
-    Eigen::Vector2d start_pt_;
+    //obstacle
+    ros::NodeHandle node_;
+    std::vector<ObstacleNode::Ptr> obs_provider_nodes_;
+    std::vector<ObstacleState::Ptr> obs_state_set_;
+    
+    // robot state variables
+    bool have_odom_;
+    Eigen::Vector2d odom_pos_, odom_vel_;                               // odometry state
+    Eigen::Quaterniond odom_orient_;                                    // orient
+    
+    //robot params
+    double robot_avg_vel_;                                              // robot avg velocity
+    double robot_max_vel_;                                              // robot max velocity
+
+    // plan variables
+    Eigen::Vector2d start_pt_,start_vel_;
     Eigen::Vector2d end_pt_;
 
+    // subscriber
+    ros::Subscriber goal_sub_, odom_sub_;
+
+    // publisher
+    ros::Publisher vis_triangle_pub_, vis_goal_pub_;
+
+    /* timer */
+    ros::Timer update_timer_; 
+    ros::Timer vis_timer_; 
+
+    void odomCallback(const nav_msgs::OdometryConstPtr& msg);
+
+    void goalCallback(const geometry_msgs::PoseStampedPtr& msg);
 
 public:
     DualGraph(){}
     ~DualGraph();
     typedef std::shared_ptr<DualGraph> Ptr;
 
-    void init();
+    void init(ros::NodeHandle & nh);
+
+    /* reset graph */
+    void resetGraph();
+
+    void UpdateCallback(const ros::TimerEvent&);
+
+    /* visualization */
+    void visualizePoints(const vector<Eigen::Vector2d>& point_set, double pt_size, const Eigen::Vector4d& color, const ros::Publisher & pub);
+
+    void visualizeLines(const std::vector<std::pair<Eigen::Vector2d,Eigen::Vector2d>> & ptr_pair_sets, double pt_size, const Eigen::Vector4d& color, const ros::Publisher & pub);
+
+    void publishVisGraph();
 
     /* reset graph for each time */
     void resetCDT(const std::vector<Eigen::Vector2d> &pt_set , const double thresh);
@@ -168,6 +243,8 @@ public:
     void getStartGoal(const Eigen::Vector2d &start_pt, const Eigen::Vector2d &end_pt);
 
     void visualize_vertices(Visualizer2 * vis);
+
+    
 };
 
 

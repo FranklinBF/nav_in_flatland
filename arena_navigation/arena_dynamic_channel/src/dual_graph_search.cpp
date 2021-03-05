@@ -6,145 +6,417 @@ DualGraph::~DualGraph()
 
 }
 
-void DualGraph::init(){
-    dt_.reset(new Fade_2D);
-}
+void DualGraph::init(ros::NodeHandle & nh){
+	/* init obstacle provider nodes */
+	node_=nh;
+    ros::master::V_TopicInfo topic_infos;
+    ros::master::getTopics(topic_infos);
+    std::string str1="obs_dynamic";//"odom_walker";//
 
-void DualGraph::resetCDT(const std::vector<Eigen::Vector2d> &pt_set, const double thresh ){
-    /* init a new Fade2D ptr */
-    Fade_2D *dt_temp=new Fade_2D();
-    // Insert 4 bounding box points
-    dt_temp->insert(Point2(0,0));
-	dt_temp->insert(Point2(+100,0));
-	dt_temp->insert(Point2(100,50));
-	dt_temp->insert(Point2(0,50));
-   
-    /* add pts to dt_temp */
-    input_points_set_.clear();
-    input_points_set_=pt_set;
+	// init vector size
+	obs_provider_nodes_.reserve(100);
 
-    for(unsigned int i=0; i<pt_set.size();++i)
-    {   
-        dt_temp->insert(Point2(pt_set[i](0),pt_set[i](1)));
-        //input_points_set_.push_back(pt_set[i]);
-    }
-    
-
-    /* select constraint seg from tiangles */
-    std::vector<Segment2> constrained_segments;
-    // check all existed DTs 
-    std::vector<Triangle2*> vAllDelaunayTriangles;
-	dt_temp->getTrianglePointers(vAllDelaunayTriangles);
-	for(std::vector<Triangle2*>::iterator it=vAllDelaunayTriangles.begin();it!=vAllDelaunayTriangles.end();++it)
-	{
-		Triangle2* pT(*it);
-
-        for(int j=0;j<2;++j)
-        {   
-            int first=j, second=(j+1)>2?0:(j+1);
-            
-            Segment2 s=Segment2(*pT->getCorner(first),*pT->getCorner(second)); // Point2 * 	getCorner (const int ith) const
-            cout<<"edge length:"<<s.getSqLen2D()<<endl;
-            // if Segment length < thresh, then seen it as constrained segment
-            if(s.getSqLen2D()<thresh)
-            {
-                constrained_segments.push_back(s);
-            }
-        }
-	}
-    // set constained edge
-    if(!constrained_segments.empty())
+	// add obs_provider_node to vector
+    for (ros::master::V_TopicInfo::iterator it = topic_infos.begin() ; it != topic_infos.end(); it++)
     {
-        ConstraintGraph2* pCG=dt_temp->createConstraint(constrained_segments,CIS_CONSTRAINED_DELAUNAY);
+        const ros::master::TopicInfo& info = *it;
         
-        double minLen(0.1);
-	    pCG->makeDelaunay(minLen);
+        if (info.name.find(str1) != std::string::npos) 
+        {
+            std::cout << "topic_" << it - topic_infos.begin() << ": " << info.name << std::endl;
+			obs_provider_nodes_.emplace_back(std::make_shared<ObstacleNode>(node_,info.name));
+        }
+
     }
 
-    // reset dt_
-    dt_.reset(dt_temp);
-    cout<<"-----------show"<<endl;
-    Visualizer2 * pvis=new Visualizer2("MyExample.ps") ;
-    dt_->show(pvis);
-    visualize_vertices(pvis);//dt_->show("My_example_makeDelaunay_1.ps",true);
-    pvis->writeFile();
-    cout<<"-----------finished"<<endl;
+	/* init delaunay triangulation */
+	dt_.reset(new Fade_2D);
+
+	/* init param */
+	robot_avg_vel_=1.0; 		//avg_vel of robot m/s
+	robot_max_vel_=3.0; 		//avg_vel of robot m/s
+	have_odom_=false;
+
+	/* map */
+	grid_map_.reset(new GridMap);
+  	grid_map_->initMap(node_);
+	grid_map_->getRegion(occ_map_origin_, occ_map_size_2d_);
+
+	point2_corner1_=Point2(occ_map_origin_(0),occ_map_origin_(1));
+	point2_corner2_=Point2(occ_map_origin_(0),occ_map_size_2d_(1));
+	point2_corner3_=Point2(occ_map_size_2d_(0),occ_map_origin_(1));
+	point2_corner4_=Point2(occ_map_size_2d_(0),occ_map_size_2d_(1));
+
+	/* ros communication */
+	ros::NodeHandle public_nh;
+
+  	// subscriber
+  	goal_sub_ =public_nh.subscribe("goal", 1, &DualGraph::goalCallback,this);
+  	odom_sub_ = public_nh.subscribe("odometry/ground_truth", 1, &DualGraph::odomCallback, this);
+
+	// publisher
+	vis_triangle_pub_= public_nh.advertise<visualization_msgs::Marker>("vis_triangle", 20);
+	vis_goal_pub_ =	public_nh.advertise<visualization_msgs::Marker>("vis_goal", 20);
+	
+	std::cout<<"debug4---------------------"<<std::endl;
+	/* init time event timer */
+	update_timer_=node_.createTimer(ros::Duration(0.01), &DualGraph::UpdateCallback, this);  // shouldn't use different ros::NodeHandle inside the callback as timer's node handler
+
 }
 
-void DualGraph::visualize_vertices( Visualizer2 * vis){
-    // init vis 
-    //Visualizer2 vis(draw_name.c_str());
-    
-    // define colors
-	Color cBlack(CBLACK);
-	Color cBlue(CBLUE);
-	Color cRed(CRED);
-	Color cPurple(CPURPLE);
-    Color cGreenFill(CGREEN,.001f,true);
-    // vertice circle radius
-    double sqRadius(1*1);
+void DualGraph::odomCallback(const nav_msgs::OdometryConstPtr& msg){
+  odom_pos_(0) = msg->pose.pose.position.x;
+  odom_pos_(1) = msg->pose.pose.position.y;
 
-	// * 2 *   Get and draw the vertices with their custom index
-	/* std::vector<Point2*> vAllPoints;
-	dt_->getVertexPointers(vAllPoints);
-	std::cout<<"vAllPoints.size()="<<vAllPoints.size()<<std::endl;
-	for(std::vector<Point2*>::iterator it(vAllPoints.begin());it!=vAllPoints.end();++it)
-	{
-		Point2* currentPoint(*it);
+  odom_vel_(0) = msg->twist.twist.linear.x;
+  odom_vel_(1) = msg->twist.twist.linear.y;
 
-        // add label
-		int customIndex(currentPoint->getCustomIndex());
-        cout<<"idx="<<Point2(currentPoint->x(),currentPoint->y())<<endl;
-		std::string text=toString(customIndex);
-		vis.addObject(Label(*currentPoint,text.c_str(),true,12),cPurple);
-        // add circle
-        Circle2 circ0(currentPoint->x(),currentPoint->y(),sqRadius);
-        vis.addObject(circ0,cGreenFill);
-	} */
-    for( unsigned int i=0;i<input_points_set_.size();++i)
+  odom_orient_.w() = msg->pose.pose.orientation.w;
+  odom_orient_.x() = msg->pose.pose.orientation.x;
+  odom_orient_.y() = msg->pose.pose.orientation.y;
+  odom_orient_.z() = msg->pose.pose.orientation.z;
+
+  have_odom_ = true;
+}
+
+void DualGraph::goalCallback(const geometry_msgs::PoseStampedPtr& msg){
+  if(have_odom_==false) return;
+
+  // end pt
+  end_pt_(0) = msg->pose.position.x;    
+  end_pt_(1) = msg->pose.position.y;
+  
+  // vis goal
+  std::cout << "Goal set!" << std::endl;
+  vector<Eigen::Vector2d> point_set;
+  point_set.push_back(end_pt_);
+  visualizePoints(point_set,0.5,Eigen::Vector4d(1, 1, 1, 1.0),vis_goal_pub_);
+
+}
+
+void DualGraph::resetGraph(){
+	/* init a new Fade2D ptr */
+    Fade_2D *dt_temp=new Fade_2D();
+	start_pt_=odom_pos_;
+	start_vel_=odom_vel_;
+
+	/* insert Points */
+	//dt_temp->insert(Point2(start_pt_(0),start_pt_(1)));
+	dt_temp->insert(point2_corner1_);
+	dt_temp->insert(point2_corner2_);
+	dt_temp->insert(point2_corner3_);
+	dt_temp->insert(point2_corner4_);
+
+	/* reset obs_state_set_*/
+	obs_state_set_.clear();
+
+	for (std::vector<ObstacleNode::Ptr>::iterator it = obs_provider_nodes_.begin() ; it != obs_provider_nodes_.end(); it++)
     {
-        Circle2 circ0(input_points_set_[i](0),input_points_set_[i](1),sqRadius);
-        vis->addObject(circ0,cGreenFill);
+        const ObstacleNode::Ptr & obs_info = *it;
+		double arriving_time=(obs_info->getPosition()-start_pt_).norm()/(robot_avg_vel_+obs_info->getVelocity().norm());
+		if(arriving_time>3.0)
+		{
+			continue;
+		}
+		ObstacleState::Ptr obs_state_ptr = std::make_shared<ObstacleState>(obs_info->getPosition(),obs_info->getVelocity(),arriving_time);
+		obs_state_set_.push_back(obs_state_ptr);
+		dt_temp->insert(obs_state_ptr->point2_pos_t);
+	}
+
+	//std::cout << "a---------------------------------" << std::endl;
+	//std::cout<<"size="<<obs_state_set_.size()<<std::endl;
+    //printf("%d\n", obs_state_set_.back().use_count());
+	//std::cout<<"debug54---------------------"<<std::endl;
+
+	/* reset dt_ */
+	dt_.reset(dt_temp);
+	//std::cout<<"debug55---------------------"<<std::endl;
+}
+
+void DualGraph::UpdateCallback(const ros::TimerEvent&){
+	
+	resetGraph();
+
+	publishVisGraph();
+
+}
+
+
+
+/* --------------------visualization---------------------------- */
+void DualGraph::visualizePoints(const vector<Eigen::Vector2d>& point_set, double pt_size, const Eigen::Vector4d& color, const ros::Publisher & pub) {
+  
+  visualization_msgs::Marker mk;
+  mk.header.frame_id = "map";
+  mk.header.stamp    = {};//ros::Time::now();
+  mk.type            = visualization_msgs::Marker::SPHERE_LIST;
+  mk.action          = visualization_msgs::Marker::DELETE;
+  //mk.id              = id;
+
+  mk.action             = visualization_msgs::Marker::ADD;
+  mk.pose.orientation.x = 0.0;
+  mk.pose.orientation.y = 0.0;
+  mk.pose.orientation.z = 0.0;
+  mk.pose.orientation.w = 1.0;
+
+  mk.color.r = color(0);
+  mk.color.g = color(1);
+  mk.color.b = color(2);
+  mk.color.a = color(3);
+
+  mk.scale.x = pt_size;
+  mk.scale.y = pt_size;
+  mk.scale.z = pt_size;
+
+  geometry_msgs::Point pt;
+  for (unsigned int i = 0; i < point_set.size(); i++) {
+    pt.x = point_set[i](0);
+    pt.y = point_set[i](1);
+    pt.z = 0.0;
+    mk.points.push_back(pt);
+  }
+  pub.publish(mk);
+  ros::Duration(0.001).sleep();
+}
+
+void DualGraph::visualizeLines(const std::vector<std::pair<Eigen::Vector2d,Eigen::Vector2d>> & ptr_pair_sets, double pt_size, const Eigen::Vector4d& color, const ros::Publisher & pub){
+    visualization_msgs::Marker line_list;
+    line_list.header.frame_id = "/map";
+    line_list.header.stamp = ros::Time::now();
+    line_list.ns = "lines";
+    line_list.action = visualization_msgs::Marker::ADD;
+    line_list.pose.orientation.w = 1.0;
+    line_list.id = 2;
+    line_list.type = visualization_msgs::Marker::LINE_LIST;
+    line_list.scale.x = pt_size;
+    line_list.color.r = color(0);
+    line_list.color.g = color(1);
+    line_list.color.b = color(2);
+    line_list.color.a = color(3);
+
+    geometry_msgs::Point pt1,pt2;
+    for (unsigned int i = 0; i < ptr_pair_sets.size(); i++) {
+        pt1.x=ptr_pair_sets[i].first(0);
+        pt1.y=ptr_pair_sets[i].first(1);
+        pt1.z=0.0;
+
+        pt2.x=ptr_pair_sets[i].second(0);
+        pt2.y=ptr_pair_sets[i].second(1);
+        pt2.z=0.0;
+
+        line_list.points.push_back(pt1);
+        line_list.points.push_back(pt2);
     }
 
+    pub.publish(line_list);
+    //ROS_INFO("vis once");
+}
 
-    // * 3 *   Get and draw the triangles
-	/* std::vector<Triangle2*> vAllDelaunayTriangles;
+void DualGraph::publishVisGraph(){
+
+	std::vector<std::pair<Eigen::Vector2d,Eigen::Vector2d>> line_sets;
+
+	std::vector<Triangle2*> vAllDelaunayTriangles;
 	dt_->getTrianglePointers(vAllDelaunayTriangles);
 	for(std::vector<Triangle2*>::iterator it=vAllDelaunayTriangles.begin();it!=vAllDelaunayTriangles.end();++it)
 	{
 		Triangle2* pT(*it);
-		vis->addObject(*pT,cBlack);
-
 		// An alternative (just to show how to access the vertices) would be:
-		//Point2* p0=pT->getCorner(0);
-		//Point2* p1=pT->getCorner(1);
-		//Point2* p2=pT->getCorner(2);
-		//vis.addObject(Segment2(*p0,*p1),cBlack);
-		//vis.addObject(Segment2(*p1,*p2),cBlack);
-		//vis.addObject(Segment2(*p2,*p0),cBlack);
-	} */
+		Point2* p0=pT->getCorner(0);
+		Point2* p1=pT->getCorner(1);
+		Point2* p2=pT->getCorner(2);
+
+		std::pair<Eigen::Vector2d,Eigen::Vector2d> line1(Eigen::Vector2d(p0->x(),p0->y()),Eigen::Vector2d(p1->x(),p1->y()));
+		std::pair<Eigen::Vector2d,Eigen::Vector2d> line2(Eigen::Vector2d(p0->x(),p0->y()),Eigen::Vector2d(p2->x(),p2->y()));
+		std::pair<Eigen::Vector2d,Eigen::Vector2d> line3(Eigen::Vector2d(p2->x(),p2->y()),Eigen::Vector2d(p1->x(),p1->y()));
+		line_sets.push_back(line1);
+		line_sets.push_back(line2);
+		line_sets.push_back(line3);
+	} 
+
+	visualizeLines(line_sets,0.2,Eigen::Vector4d(0, 1, 1, 1.0),vis_triangle_pub_);
 }
 
-int main()
+
+/* --------------------main---------------------------- */
+int main(int argc, char** argv)
 {
-    DualGraph::Ptr gp;
 
-    gp.reset(new DualGraph);
-    gp->init();
+	ros::init(argc, argv, "obstacle2");
+    ros::NodeHandle nh("");
+    DualGraph::Ptr dual_graph;
 
-    std::vector<Eigen::Vector2d> pt_set;
-    pt_set.push_back(Eigen::Vector2d(-10,-10));
-    pt_set.push_back(Eigen::Vector2d(+10,+10));
-    pt_set.push_back(Eigen::Vector2d(-5,-7));
-    pt_set.push_back(Eigen::Vector2d(-5,-3));
-    pt_set.push_back(Eigen::Vector2d(5,7));
-    pt_set.push_back(Eigen::Vector2d(5,3));
+    dual_graph.reset(new DualGraph);
+    dual_graph->init(nh);
+	ros::spin();
 
-    gp->resetCDT(pt_set,30.0);
-    cout<<"abc"<<endl;
+	/* ros::Rate r=ros::Rate(10);
+	while(ros::ok()){
+		//dual_graph->resetGraph();
+		//dual_graph->publishVisGraph();
+		ros::spinOnce();
+		r.sleep();
+	} */
+
+
+
+
+    // std::vector<Eigen::Vector2d> pt_set;
+    // pt_set.push_back(Eigen::Vector2d(-10,-10));
+    // pt_set.push_back(Eigen::Vector2d(+10,+10));
+    // pt_set.push_back(Eigen::Vector2d(-5,-7));
+    // pt_set.push_back(Eigen::Vector2d(-5,-3));
+    // pt_set.push_back(Eigen::Vector2d(5,7));
+    // pt_set.push_back(Eigen::Vector2d(5,3));
+
+    // gp->resetCDT(pt_set,30.0);
+    // cout<<"abc"<<endl;
 
 }
+
+
+
+
+
+
+
+
+// void DualGraph::resetCDT(const std::vector<Eigen::Vector2d> &pt_set, const double thresh ){
+//     /* init a new Fade2D ptr */
+//     Fade_2D *dt_temp=new Fade_2D();
+    
+
+// 	/* add pts to dt_temp */
+// 	// Insert 4 bounding box points
+//     dt_temp->insert(Point2(0,0));
+// 	dt_temp->insert(Point2(+100,0));
+// 	dt_temp->insert(Point2(100,50));
+// 	dt_temp->insert(Point2(0,50));
+
+//     input_points_set_.clear();
+//     input_points_set_=pt_set; //save new input points
+
+//     for(unsigned int i=0; i<pt_set.size();++i)
+//     {   
+//         dt_temp->insert(Point2(pt_set[i](0),pt_set[i](1)));
+//     }
+    
+
+//     /* select constraint seg from tiangles */
+//     std::vector<Segment2> constrained_segments;
+//     // check all existed DTs 
+//     std::vector<Triangle2*> vAllDelaunayTriangles;
+// 	dt_temp->getTrianglePointers(vAllDelaunayTriangles);
+// 	for(std::vector<Triangle2*>::iterator it=vAllDelaunayTriangles.begin();it!=vAllDelaunayTriangles.end();++it)
+// 	{
+// 		Triangle2* pT(*it);
+
+//         for(int j=0;j<2;++j)
+//         {   
+//             int first=j, second=(j+1)>2?0:(j+1);
+            
+//             Segment2 s=Segment2(*pT->getCorner(first),*pT->getCorner(second)); // Point2 * 	getCorner (const int ith) const
+//             cout<<"edge length:"<<s.getSqLen2D()<<endl;
+//             // if Segment length < thresh, then seen it as constrained segment
+//             if(s.getSqLen2D()<thresh)
+//             {
+//                 constrained_segments.push_back(s);
+//             }
+//         }
+// 	}
+//     // set constained edge
+//     if(!constrained_segments.empty())
+//     {
+//         ConstraintGraph2* pCG=dt_temp->createConstraint(constrained_segments,CIS_CONSTRAINED_DELAUNAY);
+        
+//         double minLen(0.1);
+// 	    pCG->makeDelaunay(minLen);
+//     }
+
+//     // reset dt_
+//     dt_.reset(dt_temp);
+//     cout<<"-----------show"<<endl;
+//     Visualizer2 * pvis=new Visualizer2("MyExample.ps") ;
+//     dt_->show(pvis);
+//     visualize_vertices(pvis);//dt_->show("My_example_makeDelaunay_1.ps",true);
+//     pvis->writeFile();
+//     cout<<"-----------finished"<<endl;
+// }
+
+// void DualGraph::visualize_vertices( Visualizer2 * vis){
+//     // init vis 
+//     //Visualizer2 vis(draw_name.c_str());
+    
+//     // define colors
+// 	Color cBlack(CBLACK);
+// 	Color cBlue(CBLUE);
+// 	Color cRed(CRED);
+// 	Color cPurple(CPURPLE);
+//     Color cGreenFill(CGREEN,.001f,true);
+//     // vertice circle radius
+//     double sqRadius(1*1);
+
+// 	// * 2 *   Get and draw the vertices with their custom index
+// 	/* std::vector<Point2*> vAllPoints;
+// 	dt_->getVertexPointers(vAllPoints);
+// 	std::cout<<"vAllPoints.size()="<<vAllPoints.size()<<std::endl;
+// 	for(std::vector<Point2*>::iterator it(vAllPoints.begin());it!=vAllPoints.end();++it)
+// 	{
+// 		Point2* currentPoint(*it);
+
+//         // add label
+// 		int customIndex(currentPoint->getCustomIndex());
+//         cout<<"idx="<<Point2(currentPoint->x(),currentPoint->y())<<endl;
+// 		std::string text=toString(customIndex);
+// 		vis.addObject(Label(*currentPoint,text.c_str(),true,12),cPurple);
+//         // add circle
+//         Circle2 circ0(currentPoint->x(),currentPoint->y(),sqRadius);
+//         vis.addObject(circ0,cGreenFill);
+// 	} */
+//     for( unsigned int i=0;i<input_points_set_.size();++i)
+//     {
+//         Circle2 circ0(input_points_set_[i](0),input_points_set_[i](1),sqRadius);
+//         vis->addObject(circ0,cGreenFill);
+//     }
+
+
+//     // * 3 *   Get and draw the triangles
+// 	/* std::vector<Triangle2*> vAllDelaunayTriangles;
+// 	dt_->getTrianglePointers(vAllDelaunayTriangles);
+// 	for(std::vector<Triangle2*>::iterator it=vAllDelaunayTriangles.begin();it!=vAllDelaunayTriangles.end();++it)
+// 	{
+// 		Triangle2* pT(*it);
+// 		vis->addObject(*pT,cBlack);
+
+// 		// An alternative (just to show how to access the vertices) would be:
+// 		//Point2* p0=pT->getCorner(0);
+// 		//Point2* p1=pT->getCorner(1);
+// 		//Point2* p2=pT->getCorner(2);
+// 		//vis.addObject(Segment2(*p0,*p1),cBlack);
+// 		//vis.addObject(Segment2(*p1,*p2),cBlack);
+// 		//vis.addObject(Segment2(*p2,*p0),cBlack);
+// 	} */
+// }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 /*

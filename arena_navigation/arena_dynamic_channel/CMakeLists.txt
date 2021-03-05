@@ -12,10 +12,14 @@ find_package(catkin REQUIRED
   nav_msgs
   geometry_msgs
   visualization_msgs
+  arena_mapping
 )
 
 find_package(Eigen3 REQUIRED)
 find_package(PCL 1.7 REQUIRED)
+
+find_package(Boost REQUIRED COMPONENTS system)
+#find_package（Boost REQUIRED)# COMPONENTS thread）
 
 
 
@@ -31,7 +35,7 @@ find_package(PCL 1.7 REQUIRED)
 catkin_package(
   INCLUDE_DIRS include
   LIBRARIES arena_dynamic_channel
-  CATKIN_DEPENDS roscpp rospy std_msgs nav_msgs geometry_msgs
+  CATKIN_DEPENDS roscpp rospy std_msgs nav_msgs geometry_msgs arena_mapping
   #DEPENDS system_lib
 )
 ###########
@@ -46,7 +50,9 @@ include_directories(
   ${catkin_INCLUDE_DIRS}
   ${Eigen3_INCLUDE_DIRS} 
   ${PCL_INCLUDE_DIRS}
+  ${Boost_INCLUDE_DIRS}
 )
+
 
 # this is important to add 3rd party lib
 link_directories(
@@ -76,6 +82,17 @@ target_link_libraries(arena_dynamic_channel
   ${PCL_LIBRARIES}
   libfade2d.so
   libfade25d.so
+)
+
+# add executable 2 or library
+add_executable(obstacle_collector 
+              src/obstacle_collector.cpp
+)
+
+target_link_libraries(obstacle_collector
+  ${catkin_LIBRARIES}
+  ${PCL_LIBRARIES}
+  ${Boost_LIBRARIES}
 )
 
 
