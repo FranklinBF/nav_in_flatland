@@ -29,7 +29,6 @@
 
 // visulization
 #include <visualization_msgs/Marker.h>
-#include "plan_visualization/planning_visualization.h"
 
 // arena plan msg
 #include <arena_plan_msgs/MakeGlobalPlan.h>

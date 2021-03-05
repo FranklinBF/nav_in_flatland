@@ -6,7 +6,7 @@
   <param name="train_mode" value="$(arg train_mode)"/>
 
   
-  <arg name="map_file" default="map1"/>
+  <arg name="map_file" default="map_empty"/>
   <arg name="map_path"        default="$(find simulator_setup)/maps/$(arg map_file)/map.yaml"/>
   <arg name="world_path"      default="$(find simulator_setup)/maps/$(arg map_file)/map.world.yaml"/>
 
@@ -22,9 +22,9 @@
   <include file="$(find arena_bringup)/launch/sublaunch/flatland_simulator.launch">
     <arg name="world_path"      value="$(arg world_path)"/>
     <arg name="update_rate"     default="1000.0"/>
-    <arg name="step_size"       default="0.01"/>
+    <arg name="step_size"       default="0.001"/>
     <arg name="show_viz"        default="true"/>
-    <arg name="viz_pub_rate"    default="30.0"/>
+    <arg name="viz_pub_rate"    default="100.0"/>
     <arg name="use_rviz"        default="true"/>  
     <arg name="train_mode"      value="$(arg train_mode)"/>
   </include>

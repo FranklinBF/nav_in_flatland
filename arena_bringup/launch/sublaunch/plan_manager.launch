@@ -112,7 +112,7 @@
         
         <param name="$(arg plan_horizon)/sdf_map/local_update_range_x"          value="10.0" />    <!-- update range -->
         <param name="$(arg plan_horizon)/sdf_map/local_update_range_y"          value="10.0" />    <!-- update range -->
-        <param name="$(arg plan_horizon)/sdf_map/local_map_margin"              value="0.0"/>     <!-- Keep in history range -->
+        <param name="$(arg plan_horizon)/sdf_map/local_map_margin"              value="0"/>     <!-- Keep in history range -->
 
         <param name="$(arg plan_horizon)/sdf_map/obstacles_inflation"           value="$(arg obstacles_inflation)" /> 
         <param name="$(arg plan_horizon)/sdf_map/local_bound_inflate"           value="0.0"/>

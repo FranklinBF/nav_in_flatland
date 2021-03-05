@@ -6,6 +6,11 @@ Panels:
       Expanded:
         - /Global Options1
         - /my_robot1/Namespaces1
+        - /Maps1
+        - /Move_base1
+        - /Move_base1/Local plan dwa1
+        - /Pose & Odoms1
+        - /vis_triangle1
       Splitter Ratio: 0.6515986919403076
     Tree Height: 797
   - Class: rviz/Selection
@@ -26,7 +31,7 @@ Panels:
     Experimental: false
     Name: Time
     SyncMode: 0
-    SyncSource: ""
+    SyncSource: LaserScan
 Preferences:
   PromptSaveOnExit: true
 Toolbars:
@@ -88,6 +93,8 @@ Visualization Manager:
           Value: true
         odom:
           Value: true
+        walker0:
+          Value: true
       Marker Scale: 1
       Name: TF
       Show Arrows: true
@@ -99,6 +106,8 @@ Visualization Manager:
             base_footprint:
               laser_link:
                 {}
+          walker0:
+            {}
       Update Interval: 0
       Value: true
     - Class: rviz/Group
@@ -115,7 +124,7 @@ Visualization Manager:
           Color: 255; 0; 0
           Color Transformer: FlatColor
           Decay Time: 0
-          Enabled: false
+          Enabled: true
           Invert Rainbow: false
           Max Color: 255; 255; 255
           Max Intensity: 4096
@@ -132,7 +141,7 @@ Visualization Manager:
           Unreliable: false
           Use Fixed Frame: true
           Use rainbow: true
-          Value: false
+          Value: true
         - Alpha: 0.5
           Autocompute Intensity Bounds: true
           Autocompute Value Bounds:
@@ -249,7 +258,7 @@ Visualization Manager:
           Color: 255; 255; 255
           Color Transformer: Intensity
           Decay Time: 0
-          Enabled: false
+          Enabled: true
           Invert Rainbow: false
           Max Color: 255; 255; 255
           Max Intensity: 1
@@ -266,7 +275,7 @@ Visualization Manager:
           Unreliable: false
           Use Fixed Frame: true
           Use rainbow: true
-          Value: false
+          Value: true
         - Alpha: 0.10000000149011612
           Autocompute Intensity Bounds: true
           Autocompute Value Bounds:
@@ -367,7 +376,7 @@ Visualization Manager:
           Marker Topic: /plan_manager/vis_goal
           Name: landmarks
           Namespaces:
-            "": true
+            {}
           Queue Size: 100
           Value: true
         - Class: rviz/Marker
@@ -375,7 +384,7 @@ Visualization Manager:
           Marker Topic: /plan_manager/vis_subgoal
           Name: subgoal
           Namespaces:
-            "": true
+            {}
           Queue Size: 100
           Value: true
         - Class: rviz/Marker
@@ -383,7 +392,7 @@ Visualization Manager:
           Marker Topic: /plan_manager/vis_goal
           Name: goal
           Namespaces:
-            "": true
+            {}
           Queue Size: 100
           Value: true
         - Alpha: 1
@@ -673,7 +682,7 @@ Visualization Manager:
           Unreliable: false
           Value: true
         - Alpha: 1
-          Buffer Length: 3
+          Buffer Length: 1
           Class: rviz/Path
           Color: 164; 0; 0
           Enabled: true
@@ -739,7 +748,7 @@ Visualization Manager:
               Scale: 1
               Value: true
             Value: true
-          Enabled: true
+          Enabled: false
           Keep: 1
           Name: Odometry
           Position Tolerance: 0.10000000149011612
@@ -755,7 +764,7 @@ Visualization Manager:
             Value: Arrow
           Topic: /odom
           Unreliable: false
-          Value: true
+          Value: false
         - Angle Tolerance: 0.10000000149011612
           Class: rviz/Odometry
           Covariance:
@@ -865,7 +874,7 @@ Visualization Manager:
           Marker Topic: /flatland_server/debug/model/obstacles_static_random_01
           Name: MarkerArray
           Namespaces:
-            "": true
+            {}
           Queue Size: 100
           Value: true
         - Class: rviz/MarkerArray
@@ -873,7 +882,7 @@ Visualization Manager:
           Marker Topic: /flatland_server/debug/model/obstacles_static_random_02
           Name: MarkerArray
           Namespaces:
-            "": true
+            {}
           Queue Size: 100
           Value: true
         - Class: rviz/MarkerArray
@@ -1001,7 +1010,7 @@ Visualization Manager:
           Marker Topic: /flatland_server/debug/model/obstacles_static_random_01
           Name: MarkerArray
           Namespaces:
-            "": true
+            {}
           Queue Size: 100
           Value: true
         - Class: rviz/MarkerArray
@@ -1017,7 +1026,7 @@ Visualization Manager:
           Marker Topic: /flatland_server/debug/model/obstacles_dynamic_random_02
           Name: MarkerArray
           Namespaces:
-            {}
+            "": true
           Queue Size: 100
           Value: true
         - Class: rviz/MarkerArray
@@ -1102,6 +1111,58 @@ Visualization Manager:
         {}
       Queue Size: 100
       Value: false
+    - Class: rviz/Group
+      Displays:
+        - Class: rviz/MarkerArray
+          Enabled: true
+          Marker Topic: /flatland_server/debug/model/obs_dynamic1
+          Name: obs_dynamic
+          Namespaces:
+            "": true
+          Queue Size: 100
+          Value: true
+        - Class: rviz/MarkerArray
+          Enabled: true
+          Marker Topic: /flatland_server/debug/model/obs_dynamic2
+          Name: obs_dynamic
+          Namespaces:
+            "": true
+          Queue Size: 100
+          Value: true
+        - Class: rviz/MarkerArray
+          Enabled: true
+          Marker Topic: /flatland_server/debug/model/obs_dynamic3
+          Name: obs_dynamic
+          Namespaces:
+            "": true
+          Queue Size: 100
+          Value: true
+        - Class: rviz/MarkerArray
+          Enabled: true
+          Marker Topic: /flatland_server/debug/model/obs_dynamic4
+          Name: obs_dynamic
+          Namespaces:
+            "": true
+          Queue Size: 100
+          Value: true
+        - Class: rviz/MarkerArray
+          Enabled: true
+          Marker Topic: /flatland_server/debug/model/obs_dynamic5
+          Name: obs_dynamic
+          Namespaces:
+            "": true
+          Queue Size: 100
+          Value: true
+      Enabled: true
+      Name: Dynamic Obstacles
+    - Class: rviz/Marker
+      Enabled: true
+      Marker Topic: /vis_triangle
+      Name: vis_triangle
+      Namespaces:
+        lines: true
+      Queue Size: 100
+      Value: true
   Enabled: true
   Global Options:
     Background Color: 0; 0; 0
@@ -1131,7 +1192,7 @@ Visualization Manager:
   Value: true
   Views:
     Current:
-      Angle: -4.720004081726074
+      Angle: -4.695007801055908
       Class: rviz/TopDownOrtho
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
@@ -1141,11 +1202,11 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Scale: 80.95745849609375
+      Scale: 27.97782325744629
       Target Frame: <Fixed Frame>
       Value: TopDownOrtho (rviz)
-      X: 8.861045837402344
-      Y: 16.44664192199707
+      X: 2.578059196472168
+      Y: 2.8034493923187256
     Saved: ~
 Window Geometry:
   Displays:
@@ -1163,5 +1224,5 @@ Window Geometry:
   Views:
     collapsed: false
   Width: 1920
-  X: 0
-  Y: 31
+  X: 161
+  Y: 44
