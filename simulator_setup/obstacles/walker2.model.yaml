@@ -24,9 +24,9 @@ plugins:
   #   publish_tf_world: false
     # exclude: ["approx_footprint"]
 
-  - type: DiffDrive 
-    name: diff_drive 
-    body: walker2
-    odom_frame_id: map
-    odom_pub: odom_walker2  # topic odom is published on
-    pub_rate: 100
+  #- type: DiffDrive 
+  #  name: diff_drive 
+  #  body: walker2
+  #  odom_frame_id: map
+  #  odom_pub: odom_walker2  # topic odom is published on
+  #  pub_rate: 100
