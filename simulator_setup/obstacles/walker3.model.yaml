@@ -1,6 +1,6 @@
 # A cylindar that walks back and forth
 bodies:
-  - name: walker
+  - name: walker3
     pose: [0, 0, 0] 
     type: dynamic  
     color: [1, 1, 1, 0.75] 
@@ -13,7 +13,7 @@ bodies:
 plugins:
   - type: Tween
     name: Tween 
-    body: walker
+    body: walker3
     delta: [5, 3, 3.141592]
     duration: 4.0
     mode: yoyo
@@ -24,9 +24,9 @@ plugins:
   #   publish_tf_world: false
     # exclude: ["approx_footprint"]
 
-  # - type: DiffDrive 
-  #   name: diff_drive 
-  #   body: walker
-  #   odom_frame_id: map
-  #   odom_pub: odom_walker  # topic odom is published on
-  #   pub_rate: 100
+  - type: DiffDrive 
+    name: diff_drive 
+    body: walker3
+    odom_frame_id: map
+    odom_pub: odom_walker3  # topic odom is published on
+    pub_rate: 100
