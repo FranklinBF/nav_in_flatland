@@ -37,116 +37,98 @@ using namespace std;
 struct DualNode;
 typedef DualNode *DualNodePtr;
 
-// struct DualNode
-// {   
-//     // state
-// 	enum enum_state
-// 	{
-// 		OPENSET = 1,
-// 		CLOSEDSET = 2,
-// 		UNDEFINED = 3
-// 	};
-// 	enum enum_state state
-// 	{UNDEFINED};
+/* DualNode definition ------------------------------------- */
+struct DualNode
+{   
+    // state
+	enum enum_state
+	{
+		OPENSET = 1,
+		CLOSEDSET = 2,
+		UNDEFINED = 3
+	};
     
-//     // index
-// 	Eigen::Vector2i index;
-
-//     // score
-// 	double gScore{inf}, fScore{inf};
-
-//     // cameFrom
-// 	DualNodePtr cameFrom{NULL};
-
-//     // direction of expanding( for jps only )
-//     Eigen::Vector2i dir; 
-
-//     int rounds{0}; // Distinguish every call
+	enum enum_state state{UNDEFINED};
     
-//     DualNodePtr(Eigen::Vector2i _index){  
-// 		state = enum_state::UNDEFINED;
-// 		index = _index;
-// 		dir   = Eigen::Vector2i::Zero();
-// 		gScore = inf;
-// 		fScore = inf;
-// 		cameFrom = NULL;
-//     }
+    // pos
+    Eigen::Vector2d pos;
+    Eigen::Vector2d vel; // input vel
 
-//     DualNodePtr(){};
-//     ~DualNodePtr(){};
-// };
+    // time
+    double time;
+    double duration;
 
-// /* Node comparator */
-// class DualNodeComparator {
-// public:
-//   bool operator()(DualNodePtr node1, DualNodePtr node2) {
-//     return node1->f_score > node2->f_score;
-//   }
-// };
+    // index
+	Eigen::Vector2i index;
+    int time_index;
 
+    // score
+	double g_score, f_score;
 
-// /* define Hashtable */
-// template <typename T>
-// struct matrix_hash0 : std::unary_function<T, size_t> {
-//   std::size_t operator()(T const& matrix) const {
-//     size_t seed = 0;
-//     for (size_t i = 0; i < (size_t)matrix.size(); ++i) {
-//       auto elem = *(matrix.data() + i);
-//       seed ^= std::hash<typename T::Scalar>()(elem) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
-//     }
-//     return seed;
-//   }
-// };
+    // parent
+	DualNodePtr parent;
 
+    DualNode(){  
+		state = enum_state::UNDEFINED;
+		g_score = inf;
+		f_score = inf;
+		parent = NULL;
+    }
 
-// class DualNodeHashTable {
-// private:
-//   /* data */
-//   std::unordered_map<Eigen::Vector2i, DualNodePtr, matrix_hash0<Eigen::Vector2i>> data_2d_;
-//   std::unordered_map<Eigen::Vector3i, DualNodePtr, matrix_hash0<Eigen::Vector3i>> data_3d_;
+    ~DualNode(){};
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+};
 
-// public:
-//   DualNodeHashTable(/* args */) {
-//   }
-//   ~DualNodeHashTable() {
-//   }
-//   void insert(Eigen::Vector2i idx, DualNodePtr node) {
-//     data_2d_.insert(std::make_pair(idx, node));
-//   }
-//   void insert(Eigen::Vector2i idx, int time_idx, DualNodePtr node) {
-//     data_3d_.insert(std::make_pair(Eigen::Vector3i(idx(0), idx(1), time_idx), node));
-//   }
-
-//   DualNodePtr find(Eigen::Vector2i idx) {
-//     auto iter = data_2d_.find(idx);
-//     return iter == data_2d_.end() ? NULL : iter->second;
-//   }
-//   DualNodePtr find(Eigen::Vector2i idx, int time_idx) {
-//     auto iter = data_3d_.find(Eigen::Vector3i(idx(0), idx(1), time_idx));
-//     return iter == data_3d_.end() ? NULL : iter->second;
-//   }
-
-//   void clear() {
-//     data_2d_.clear();
-//     data_3d_.clear();
-//   }
-// };
+/* Node comparator */
+class DualNodeComparator {
+public:
+  bool operator()(DualNodePtr node1, DualNodePtr node2) {
+    return node1->f_score > node2->f_score;
+  }
+};
 
 
+/* define Hashtable */
+template <typename T>
+struct matrix_hash_dual : std::unary_function<T, size_t> {
+  std::size_t operator()(T const& matrix) const {
+    size_t seed = 0;
+    for (size_t i = 0; i < (size_t)matrix.size(); ++i) {
+      auto elem = *(matrix.data() + i);
+      seed ^= std::hash<typename T::Scalar>()(elem) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+    }
+    return seed;
+  }
+};
 
+class DualNodeHashTable {
+private:
+  /* data: Eigen::Vector2i index, int time_index */ 
+  std::unordered_map<Eigen::Vector3i, DualNodePtr, matrix_hash_dual<Eigen::Vector3i>> data_3d_;
 
+public:
+  DualNodeHashTable(/* args */) {
+  }
+  ~DualNodeHashTable() {
+  }
 
+  void insert(Eigen::Vector2i idx, int time_idx, DualNodePtr node) {
+    data_3d_.insert(std::make_pair(Eigen::Vector3i(idx(0), idx(1), time_idx), node));
+  }
 
+  DualNodePtr find(Eigen::Vector2i idx, int time_idx) {
+    auto iter = data_3d_.find(Eigen::Vector3i(idx(0), idx(1), time_idx));
+    return iter == data_3d_.end() ? NULL : iter->second;
+  }
 
+  void clear() {
+    data_3d_.clear();
+  }
+};
 
-
-
-
-
-
-
+/* Obstacle state ------------------------------------- */
 struct ObstacleState{
-
+    int custom_id;
     Eigen::Vector2d pos;    // current pos
     Eigen::Vector2d vel;
     
@@ -154,7 +136,8 @@ struct ObstacleState{
     Point2 point2_pos_t;
     double t;
 
-    ObstacleState(Eigen::Vector2d obs_position, Eigen::Vector2d obs_velocity, double time){
+    ObstacleState(Eigen::Vector2d obs_position, Eigen::Vector2d obs_velocity, double time,int custom_index=-1){
+        custom_id=custom_index;
         pos=obs_position;
         vel=obs_velocity;
         t=time;         //(obs_position-robot_position).norm()/robot_avg_velocity;
@@ -167,17 +150,33 @@ struct ObstacleState{
     typedef std::shared_ptr<ObstacleState> Ptr;
 };
 
-
-
+/* DualGraphSearch ------------------------------------- */
 class DualGraph{
 private:
+    /* ---------- main data structure ---------- */
+    std::vector<DualNodePtr> dual_node_pool_;
+    DualNodeHashTable expanded_nodes_;
+    std::priority_queue<DualNodePtr, std::vector<DualNodePtr>, DualNodeComparator> open_set_;
+    std::vector<DualNodePtr> dual_nodes_;
+
+    int use_node_num_, iter_num_;
+
+    int allocate_num_, check_num_;
+
+    double tie_breaker_;
+
+    bool has_path_ = false;
+
+    /* ---------- main DT structure ---------- */
+    // Delaunay Triangle Fade2D
     std::unique_ptr<Fade_2D> dt_;
-    std::vector<Eigen::Vector2d> input_points_set_;
 
     // map
     GridMap::Ptr grid_map_;
     Eigen::Vector2d occ_map_origin_,occ_map_size_2d_;
-    Point2 point2_corner1_,point2_corner2_,point2_corner3_,point2_corner4_;
+    double resolution_, inv_resolution_;
+    double time_resolution_, inv_time_resolution_;
+    double time_origin_;
 
 
     //obstacle
@@ -193,7 +192,8 @@ private:
     //robot params
     double robot_avg_vel_;                                              // robot avg velocity
     double robot_max_vel_;                                              // robot max velocity
-
+    double radius_robot_;
+    double radius_obs_;
     // plan variables
     Eigen::Vector2d start_pt_,start_vel_;
     Eigen::Vector2d end_pt_;
@@ -211,7 +211,32 @@ private:
     void odomCallback(const nav_msgs::OdometryConstPtr& msg);
 
     void goalCallback(const geometry_msgs::PoseStampedPtr& msg);
+    
+    // time computation
+    double computeArrivingTime(Eigen::Vector2d curr_pos,Eigen::Vector2d curr_vel,Eigen::Vector2d next_pos,Eigen::Vector2d next_vel);
 
+    std::pair<double, double> computeCollisionTime(Eigen::Vector2d pos1,Eigen::Vector2d vel1, Eigen::Vector2d pos2, Eigen::Vector2d vel2,double dist_thresh);
+
+    // safety check
+    bool isDynamicSafe(DualNodePtr curr_node, Eigen::Vector2d next_pos, double & min_to_collide_time);
+
+    bool isGateFeasible(ObstacleState::Ptr obs1, ObstacleState::Ptr obs2, double t_arrive);
+
+    
+    double getHeuristic(Eigen::Vector2d curr_pos,Eigen::Vector2d end_pos);
+
+    /* helper functions */
+    inline void boundPosition(Eigen::Vector2d& pos);
+
+    inline Eigen::Vector2i posToIndex(Eigen::Vector2d pt);
+    
+    inline int timeToIndex(double time);
+    
+    void retrievePath(DualNodePtr end_node);
+
+    /* performance check */
+    double dc_time_, max_dc_time_;
+    int dc_update_num_;
 public:
     DualGraph(){}
     ~DualGraph();
@@ -222,7 +247,13 @@ public:
     /* reset graph */
     void resetGraph();
 
+    void searchChannel();
+
     void UpdateCallback(const ros::TimerEvent&);
+
+    /* Search */
+    enum { REACH_HORIZON = 1, REACH_END = 2, NO_PATH = 3, NEAR_END = 4 };
+    std::vector<DualNodePtr> getVisitedNodes();
 
     /* visualization */
     void visualizePoints(const vector<Eigen::Vector2d>& point_set, double pt_size, const Eigen::Vector4d& color, const ros::Publisher & pub);
@@ -247,8 +278,24 @@ public:
     
 };
 
+inline void DualGraph::boundPosition(Eigen::Vector2d& pos) {
 
+  pos(0) = std::max(std::min(pos(0), occ_map_size_2d_(0)), occ_map_origin_(0));
+  pos(1) = std::max(std::min(pos(1), occ_map_size_2d_(1)), occ_map_origin_(1));
 
+}
+
+inline Eigen::Vector2i DualGraph::posToIndex(Eigen::Vector2d pos)
+{
+  Eigen::Vector2i idx = ((pos - occ_map_origin_) * inv_resolution_).array().floor().cast<int>();
+  return idx;
+}
+
+inline int DualGraph::timeToIndex(double time)
+{
+  int time_idx = floor((time - time_origin_) * inv_time_resolution_);
+  return time_idx;
+}
 
 
 

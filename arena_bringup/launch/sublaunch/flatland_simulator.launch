@@ -59,7 +59,7 @@
   <node name="spawn_model1" pkg="rosservice" type="rosservice"
     args="
       call --wait /spawn_model &quot;{
-      yaml_path: '$(find simulator_setup)/obstacles/walker0.model.yaml',
+      yaml_path: '$(find simulator_setup)/obstacles/walker.model.yaml',
       name: 'obs_dynamic1',
       ns: '',
       pose: {x: $(arg obs1_pose_x), y: $(arg obs1_pose_y), theta: $(arg obs1_pose_a)}}&quot;

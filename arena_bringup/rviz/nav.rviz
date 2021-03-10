@@ -7,10 +7,9 @@ Panels:
         - /Global Options1
         - /my_robot1/Namespaces1
         - /Maps1
-        - /Move_base1
+        - /plan_manager1
         - /Move_base1/Local plan dwa1
         - /Pose & Odoms1
-        - /vis_triangle1
       Splitter Ratio: 0.6515986919403076
     Tree Height: 797
   - Class: rviz/Selection
@@ -93,8 +92,6 @@ Visualization Manager:
           Value: true
         odom:
           Value: true
-        walker0:
-          Value: true
       Marker Scale: 1
       Name: TF
       Show Arrows: true
@@ -106,8 +103,6 @@ Visualization Manager:
             base_footprint:
               laser_link:
                 {}
-          walker0:
-            {}
       Update Interval: 0
       Value: true
     - Class: rviz/Group
@@ -373,7 +368,7 @@ Visualization Manager:
           Value: true
         - Class: rviz/Marker
           Enabled: true
-          Marker Topic: /plan_manager/vis_goal
+          Marker Topic: /plan_manager/vis_landmarks_
           Name: landmarks
           Namespaces:
             {}
@@ -395,11 +390,27 @@ Visualization Manager:
             {}
           Queue Size: 100
           Value: true
+        - Class: rviz/Marker
+          Enabled: true
+          Marker Topic: /vis_triangle
+          Name: vis_triangle
+          Namespaces:
+            lines: true
+          Queue Size: 100
+          Value: true
+        - Class: rviz/Marker
+          Enabled: true
+          Marker Topic: /vis_wps_timed_astar
+          Name: timed_astar_wp
+          Namespaces:
+            {}
+          Queue Size: 100
+          Value: true
         - Alpha: 1
           Buffer Length: 1
           Class: rviz/Path
           Color: 85; 170; 255
-          Enabled: true
+          Enabled: false
           Head Diameter: 0.30000001192092896
           Head Length: 0.20000000298023224
           Length: 0.30000001192092896
@@ -417,7 +428,7 @@ Visualization Manager:
           Shaft Length: 0.10000000149011612
           Topic: /plan_manager/vis_local_traj
           Unreliable: false
-          Value: true
+          Value: false
         - Alpha: 1
           Buffer Length: 1
           Class: rviz/Path
@@ -874,7 +885,7 @@ Visualization Manager:
           Marker Topic: /flatland_server/debug/model/obstacles_static_random_01
           Name: MarkerArray
           Namespaces:
-            {}
+            "": true
           Queue Size: 100
           Value: true
         - Class: rviz/MarkerArray
@@ -1010,7 +1021,7 @@ Visualization Manager:
           Marker Topic: /flatland_server/debug/model/obstacles_static_random_01
           Name: MarkerArray
           Namespaces:
-            {}
+            "": true
           Queue Size: 100
           Value: true
         - Class: rviz/MarkerArray
@@ -1155,14 +1166,6 @@ Visualization Manager:
           Value: true
       Enabled: true
       Name: Dynamic Obstacles
-    - Class: rviz/Marker
-      Enabled: true
-      Marker Topic: /vis_triangle
-      Name: vis_triangle
-      Namespaces:
-        lines: true
-      Queue Size: 100
-      Value: true
   Enabled: true
   Global Options:
     Background Color: 0; 0; 0
@@ -1189,10 +1192,11 @@ Visualization Manager:
     - Class: rviz/PublishPoint
       Single click: true
       Topic: /clicked_point
+    - Class: flatland_viz/PauseSim
   Value: true
   Views:
     Current:
-      Angle: -4.695007801055908
+      Angle: -4.7150068283081055
       Class: rviz/TopDownOrtho
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
@@ -1202,11 +1206,11 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Scale: 27.97782325744629
+      Scale: 13.19551944732666
       Target Frame: <Fixed Frame>
       Value: TopDownOrtho (rviz)
-      X: 2.578059196472168
-      Y: 2.8034493923187256
+      X: 11.09702205657959
+      Y: 16.943876266479492
     Saved: ~
 Window Geometry:
   Displays:
@@ -1224,5 +1228,5 @@ Window Geometry:
   Views:
     collapsed: false
   Width: 1920
-  X: 161
-  Y: 44
+  X: 0
+  Y: 31

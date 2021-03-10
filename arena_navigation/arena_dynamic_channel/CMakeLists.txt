@@ -47,6 +47,8 @@ catkin_package(
 include_directories(
   include
   include/thirdparty/fade2d
+  include/astar
+  include/graph
   ${catkin_INCLUDE_DIRS}
   ${Eigen3_INCLUDE_DIRS} 
   ${PCL_INCLUDE_DIRS}
@@ -95,6 +97,17 @@ target_link_libraries(obstacle_collector
   ${Boost_LIBRARIES}
 )
 
+
+# add executable 2 or library
+add_executable(timed_astar 
+              src/timed_astar.cpp
+)
+
+target_link_libraries(timed_astar
+  ${catkin_LIBRARIES}
+  ${PCL_LIBRARIES}
+  ${Boost_LIBRARIES}
+)
 
 
 

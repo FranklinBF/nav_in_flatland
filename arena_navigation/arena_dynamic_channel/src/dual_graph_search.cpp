@@ -2,6 +2,10 @@
 
 DualGraph::~DualGraph()
 {
+	for (int i = 0; i < allocate_num_; i++)
+  	{
+    	delete dual_node_pool_[i];
+  	}
     cout<<"DELETE"<<endl;
 
 }
@@ -35,24 +39,41 @@ void DualGraph::init(ros::NodeHandle & nh){
 	/* init param */
 	robot_avg_vel_=1.0; 		//avg_vel of robot m/s
 	robot_max_vel_=3.0; 		//avg_vel of robot m/s
+	radius_robot_=0.5;
+	radius_obs_=0.5;
 	have_odom_=false;
 
 	/* map */
 	grid_map_.reset(new GridMap);
   	grid_map_->initMap(node_);
 	grid_map_->getRegion(occ_map_origin_, occ_map_size_2d_);
+	
+	resolution_=0.1;								// 0.1 meter/cell
+	inv_resolution_=1.0/resolution_;
 
-	point2_corner1_=Point2(occ_map_origin_(0),occ_map_origin_(1));
-	point2_corner2_=Point2(occ_map_origin_(0),occ_map_size_2d_(1));
-	point2_corner3_=Point2(occ_map_size_2d_(0),occ_map_origin_(1));
-	point2_corner4_=Point2(occ_map_size_2d_(0),occ_map_size_2d_(1));
+	time_resolution_=0.1;  							// 0.1 sec
+	inv_time_resolution_ = 1.0 / time_resolution_;
+
+	/* search */
+	tie_breaker_ = 1.0 + 1.0 / 10000;
+	check_num_=20;
+	use_node_num_ = 0;
+  	iter_num_ = 0;
+
+	// pre-allocated node
+	allocate_num_=10000;
+	dual_node_pool_.resize(allocate_num_);
+  	for (int i = 0; i < allocate_num_; i++)
+  	{
+    	dual_node_pool_[i] = new DualNode;
+  	}
 
 	/* ros communication */
 	ros::NodeHandle public_nh;
 
   	// subscriber
   	goal_sub_ =public_nh.subscribe("goal", 1, &DualGraph::goalCallback,this);
-  	odom_sub_ = public_nh.subscribe("odometry/ground_truth", 1, &DualGraph::odomCallback, this);
+  	odom_sub_ = public_nh.subscribe("odom", 1, &DualGraph::odomCallback, this);
 
 	// publisher
 	vis_triangle_pub_= public_nh.advertise<visualization_msgs::Marker>("vis_triangle", 20);
@@ -62,6 +83,7 @@ void DualGraph::init(ros::NodeHandle & nh){
 	/* init time event timer */
 	update_timer_=node_.createTimer(ros::Duration(0.01), &DualGraph::UpdateCallback, this);  // shouldn't use different ros::NodeHandle inside the callback as timer's node handler
 
+	
 }
 
 void DualGraph::odomCallback(const nav_msgs::OdometryConstPtr& msg){
@@ -102,25 +124,66 @@ void DualGraph::resetGraph(){
 
 	/* insert Points */
 	//dt_temp->insert(Point2(start_pt_(0),start_pt_(1)));
-	dt_temp->insert(point2_corner1_);
-	dt_temp->insert(point2_corner2_);
-	dt_temp->insert(point2_corner3_);
-	dt_temp->insert(point2_corner4_);
+	double local_bound_time=5.0; // 3 sec
+	Eigen::Vector2d corner_min=start_pt_-Eigen::Vector2d::Ones()*robot_avg_vel_*local_bound_time;
+	Eigen::Vector2d corner_max=start_pt_+Eigen::Vector2d::Ones()*robot_avg_vel_*local_bound_time;
+	boundPosition(corner_min);
+	boundPosition(corner_max);
+	Point2 c1=Point2(corner_min(0),corner_min(1));
+	Point2 c2=Point2(corner_min(0),corner_max(1));
+	Point2 c3=Point2(corner_max(0),corner_min(1));
+	Point2 c4=Point2(corner_max(0),corner_max(1));
+	//c1.setCustomIndex(100);
+	//c2.setCustomIndex(101);
+	//c3.setCustomIndex(102);
+	//c4.setCustomIndex(103);
+	dt_temp->insert(c1);
+	dt_temp->insert(c2);
+	dt_temp->insert(c3);
+	dt_temp->insert(c4);
+	
 
 	/* reset obs_state_set_*/
 	obs_state_set_.clear();
 
+	/* build a time-space trianglulation graph */
+	int custom_index=0;
 	for (std::vector<ObstacleNode::Ptr>::iterator it = obs_provider_nodes_.begin() ; it != obs_provider_nodes_.end(); it++)
     {
         const ObstacleNode::Ptr & obs_info = *it;
-		double arriving_time=(obs_info->getPosition()-start_pt_).norm()/(robot_avg_vel_+obs_info->getVelocity().norm());
+		// calculate arriving time according to relative velocity
+		Eigen::Vector2d obs_pos=obs_info->getPosition();
+		Eigen::Vector2d obs_vel=obs_info->getVelocity();
+		Eigen::Vector2d dist=obs_pos-start_pt_;  							// vec_Robot2Obstacle
+		dist(0)=dist(0)==0.0?0.0001:dist(0);
+		dist(1)=dist(1)==0.0?0.0001:dist(1);
+		double obs_vel_project=obs_vel.dot(-dist)/dist.norm();
+
+		double arriving_time=dist.norm()/(robot_avg_vel_+obs_vel_project); 	// assume robot_vel target at the obstacle pos at t=t0
+		arriving_time=std::max(arriving_time,0.0);							// if arriving_time<0, means can collid immediately
+
+		/*  */
+		//std::cout<<"*********************************"<<std::endl;
+		//std::pair<double, double> t_collide=computeCollisionTime(start_pt_,start_vel_,obs_pos,obs_vel,1.5);
+		//std::cout<<"t_collide"<<t_collide.first<<"   "<<t_collide.second<<std::endl;
+		
 		if(arriving_time>3.0)
 		{
 			continue;
 		}
-		ObstacleState::Ptr obs_state_ptr = std::make_shared<ObstacleState>(obs_info->getPosition(),obs_info->getVelocity(),arriving_time);
+		//std::cout<<"---------------------"<<std::endl;
+		//std::cout<<"obs_vel_project"<<obs_vel_project<<std::endl;
+		//std::cout<<"arriving_time"<<arriving_time<<std::endl;
+
+		// make an obs_state
+		ObstacleState::Ptr obs_state_ptr = std::make_shared<ObstacleState>(obs_info->getPosition(),obs_info->getVelocity(),arriving_time,custom_index);
+		
+		// push back obs_state
 		obs_state_set_.push_back(obs_state_ptr);
+
 		dt_temp->insert(obs_state_ptr->point2_pos_t);
+		custom_index++;
+		
 	}
 
 	//std::cout << "a---------------------------------" << std::endl;
@@ -133,10 +196,154 @@ void DualGraph::resetGraph(){
 	//std::cout<<"debug55---------------------"<<std::endl;
 }
 
+void DualGraph::searchChannel(){
+	// reset time origin
+	time_origin_=0.0;  //ros::Time::now().toSec();
+	
+	// reset start & end point
+	start_pt_=odom_pos_;
+	start_vel_=odom_vel_;
+
+	end_pt_=end_pt_;
+
+	DualNodePtr cur_node = dual_node_pool_[0];
+	cur_node->parent = NULL;
+	cur_node->pos = start_pt_;
+	cur_node->vel = start_vel_;
+	cur_node->index = posToIndex(start_pt_);
+	cur_node->g_score = 0.0;
+
+
+	// reset end node
+
+	// reset dualGraph
+	resetGraph(); 
+
+
+}
+
+
+
+double DualGraph::computeArrivingTime(Eigen::Vector2d curr_pos,Eigen::Vector2d curr_vel,Eigen::Vector2d next_pos,Eigen::Vector2d next_vel)
+{	// the time arriving the next_pos from curr_pos, regarding only robot itself
+	double t=(curr_pos-next_pos).norm()/robot_avg_vel_;
+	return t;
+}
+
+std::pair<double, double> DualGraph::computeCollisionTime(Eigen::Vector2d pos1,Eigen::Vector2d vel1, Eigen::Vector2d pos2, Eigen::Vector2d vel2, double dist_thresh){
+	// calculate polynomial 
+	Eigen::Vector2d dp=pos1-pos2;
+	Eigen::Vector2d dv=vel1-vel2;
+	double a2,a1,a0;
+	a2= dv.dot(dv);
+	a1=2*dp.dot(dv);
+	a0=dp.dot(dp)-dist_thresh*dist_thresh;
+
+	// calculate companion matrix of the polynomial
+	Eigen::Matrix2d Compan;
+    Compan<<-a1/a2	,	-a0/a2,
+			1.0		,  	0.0;
+
+	// solve the eigenvalue of companion matrix as root
+	Eigen::EigenSolver<Eigen::MatrixXd> solver(Compan);
+	auto T_vals=solver.eigenvalues();
+	
+	// select root
+	double t1, t2;
+	if(std::abs(T_vals(0).imag())>0.00001){
+		// if has imag value, then never collide
+		t1=t2=-1.0;
+	}else{
+		// have solution, between t1 and t2
+		if(T_vals(0).real()>0){
+			t1=std::max(T_vals(0).real(),0.0);
+			t2=std::max(T_vals(1).real(),0.0);
+		}else{
+			// if t1<0,t2<0 or t1=t2=nan
+			t1=t2=-1.0;
+		}
+		
+	}
+
+    return std::make_pair(t1, t2);
+}
+
+bool DualGraph::isDynamicSafe(DualNodePtr curr_node, Eigen::Vector2d next_pos, double & min_to_collide_time){
+	// compute jounney time range from t_curr
+	double t_curr=curr_node->time;
+	
+	// check collision for every obstacle node
+	double d_thresh=2*(radius_robot_+radius_obs_);
+
+	// robot pos & vel from t_curr
+	Eigen::Vector2d robot_pos_t=curr_node->pos;
+	Eigen::Vector2d robot_vel_t= (next_pos - curr_node->pos)/(next_pos - curr_node->pos).norm()*robot_avg_vel_;
+
+	// durations
+	double dur_arrive=(next_pos-curr_node->pos).norm()/robot_avg_vel_;
+	min_to_collide_time=10000;
+	for(size_t i=0;i<obs_state_set_.size();++i){
+		ObstacleState::Ptr obs;
+		// obs pos & vel from t_curr
+		Eigen::Vector2d obs_pos_t = t_curr * obs->vel + obs->pos;
+		Eigen::Vector2d obs_vel_t = obs->vel;
+		
+		std::pair<double, double> dur_collide=computeCollisionTime(obs_pos_t,obs_vel_t,robot_pos_t,robot_vel_t,d_thresh);
+		if(0.0>dur_collide.first || dur_arrive <dur_collide.second )
+		{
+			if(dur_collide.second>0.0){
+				min_to_collide_time=std::min(min_to_collide_time,(dur_collide.second-dur_arrive));
+			}
+		}else{
+			return false;
+		}
+	}
+	return true;
+}
+
+bool DualGraph::isGateFeasible(ObstacleState::Ptr obs1, ObstacleState::Ptr obs2, double t_arrive){
+	// calculate from t_origin
+	double d_thresh=(radius_obs_+radius_obs_)*2;
+	std::pair<double, double> t_collide=computeCollisionTime(obs1->pos,obs1->vel,obs2->pos,obs2->vel,d_thresh);
+	double t_collide_max=t_collide.first;
+	double t_collide_min=t_collide.second;
+	
+	// check if t_arrive is within colliding time range
+	if(t_arrive<t_collide_max && t_arrive>t_collide_min){
+		return false;
+	}else{
+		return true;
+	}
+}
+
+double DualGraph::getHeuristic(Eigen::Vector2d curr_pos,Eigen::Vector2d end_pos){
+	return (curr_pos-end_pos).norm()/robot_avg_vel_;
+}
+
 void DualGraph::UpdateCallback(const ros::TimerEvent&){
 	
+	ros::WallTime t1, t2;
+  	t1 = ros::WallTime::now();
+	
+	
 	resetGraph();
-
+	
+	t2 = ros::WallTime::now();
+	/* record time */
+	dc_time_ += (t2 - t1).toSec();
+	max_dc_time_ = std::max(max_dc_time_, (t2 - t1).toSec());
+  	dc_update_num_++;
+	
+	bool show_time=false;
+  	if (show_time)
+	{
+		ROS_WARN("DC: cur t = %lf, avg t = %lf, max t = %lf", 
+				(t2 - t1).toSec(),
+             	dc_time_/ dc_update_num_,
+				max_dc_time_);
+	}
+  	
+	/* publish Graph */
 	publishVisGraph();
 
 }
