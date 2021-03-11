@@ -74,6 +74,8 @@ void TimeAstarSearch::init(ros::NodeHandle & nh){
 	vis_triangle_pub_= public_nh.advertise<visualization_msgs::Marker>("vis_triangle", 20);
 	vis_goal_pub_ =	public_nh.advertise<visualization_msgs::Marker>("vis_goal", 20);
     vis_wp_pub_ =   public_nh.advertise<visualization_msgs::Marker>("vis_wps_timed_astar", 20);
+    vis_path_pub_= public_nh.advertise<nav_msgs::Path>("vis_path_timed_astar", 20);
+
 	/* init time event timer */
 	update_timer_=node_.createTimer(ros::Duration(0.01), &TimeAstarSearch::UpdateCallback, this);  // shouldn't use different ros::NodeHandle inside the callback as timer's node handler
     cout<<"........................debug4"<<endl;
@@ -227,8 +229,13 @@ void TimeAstarSearch::StateTimeAstarSearch(){
             {
                 //cout<<waypoints_[i].x<<", "<<waypoints_[i].y<<endl;
 
-                visualizePoints(waypoints_,0.5,Eigen::Vector4d(1, 0, 1, 1.0),vis_wp_pub_);
+                
             }
+            cout<<"num of wps:"<<waypoints_.size()<<endl;
+            visualizePoints(waypoints_,0.5,Eigen::Vector4d(1, 0, 1, 1.0),vis_wp_pub_);
+            visualizePath(waypoints_,vis_path_pub_);
+        
+        
 
         }
     }
@@ -343,6 +350,34 @@ void TimeAstarSearch::visualizeLines(const std::vector<std::pair<Vec2d,Vec2d>> &
 
     pub.publish(line_list);
     //ROS_INFO("vis once");
+}
+
+void TimeAstarSearch::visualizePath(const std::vector<Vec2d> path, const ros::Publisher & pub){
+
+  //create a path message
+  ros::Time plan_time = {};//ros::Time::now();
+  std::string global_frame="/map";
+  
+  nav_msgs::Path gui_path;
+  gui_path.poses.resize(path.size());
+  gui_path.header.frame_id = global_frame;
+  gui_path.header.stamp = plan_time;
+  
+  // Extract the plan in world co-ordinates, we assume the path is all in the same frame
+  for(unsigned int i=0; i < path.size(); i++){
+      geometry_msgs::PoseStamped pose;
+      pose.header.stamp = plan_time;
+      pose.header.frame_id = global_frame;
+      pose.pose.position.x = path[i].x;    //world_x;
+      pose.pose.position.y = path[i].y;    //world_y;
+      pose.pose.position.z = 0.0;
+      pose.pose.orientation.x = 0.0;
+      pose.pose.orientation.y = 0.0;
+      pose.pose.orientation.z = 0.0;
+      pose.pose.orientation.w = 1.0;
+      gui_path.poses[i]=pose;               //plan.push_back(pose);
+  }
+  pub.publish(gui_path);
 }
 
 void TimeAstarSearch::publishVisGraph(){

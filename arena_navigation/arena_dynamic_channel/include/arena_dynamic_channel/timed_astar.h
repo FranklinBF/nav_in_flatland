@@ -18,6 +18,7 @@
 
 #include <nav_msgs/Odometry.h>
 #include <geometry_msgs/PoseStamped.h>
+#include <nav_msgs/Path.h>
 #include <visualization_msgs/MarkerArray.h>
 
 
@@ -147,7 +148,7 @@ private:
     ros::Subscriber goal_sub_, odom_sub_;
 
     // publisher
-    ros::Publisher vis_triangle_pub_, vis_goal_pub_, vis_wp_pub_;
+    ros::Publisher vis_triangle_pub_, vis_goal_pub_, vis_wp_pub_,vis_path_pub_;
 
     /* timer */
     ros::Timer update_timer_; 
@@ -187,6 +188,8 @@ public:
     void visualizePoints(const std::vector<Vec2d>& point_set, double pt_size, const Eigen::Vector4d& color, const ros::Publisher & pub);
 
     void visualizeLines(const std::vector<std::pair<Vec2d,Vec2d>> & ptr_pair_sets, double pt_size, const Eigen::Vector4d& color, const ros::Publisher & pub);
+
+    void visualizePath(const std::vector<Vec2d> path, const ros::Publisher & pub);
 
     void publishVisGraph();
 

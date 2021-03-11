@@ -8,6 +8,7 @@ Panels:
         - /my_robot1/Namespaces1
         - /Maps1
         - /plan_manager1
+        - /plan_manager1/timed-astar_path1
         - /Move_base1/Local plan dwa1
         - /Pose & Odoms1
       Splitter Ratio: 0.6515986919403076
@@ -403,8 +404,31 @@ Visualization Manager:
           Marker Topic: /vis_wps_timed_astar
           Name: timed_astar_wp
           Namespaces:
-            {}
+            "": true
           Queue Size: 100
+          Value: true
+        - Alpha: 1
+          Buffer Length: 1
+          Class: rviz/Path
+          Color: 255; 170; 127
+          Enabled: true
+          Head Diameter: 0.30000001192092896
+          Head Length: 0.20000000298023224
+          Length: 0.30000001192092896
+          Line Style: Billboards
+          Line Width: 0.20000000298023224
+          Name: timed-astar_path
+          Offset:
+            X: 0
+            Y: 0
+            Z: 0
+          Pose Color: 255; 85; 255
+          Pose Style: None
+          Radius: 0.029999999329447746
+          Shaft Diameter: 0.10000000149011612
+          Shaft Length: 0.10000000149011612
+          Topic: /vis_path_timed_astar
+          Unreliable: false
           Value: true
         - Alpha: 1
           Buffer Length: 1
@@ -893,7 +917,7 @@ Visualization Manager:
           Marker Topic: /flatland_server/debug/model/obstacles_static_random_02
           Name: MarkerArray
           Namespaces:
-            {}
+            "": true
           Queue Size: 100
           Value: true
         - Class: rviz/MarkerArray
@@ -1037,7 +1061,7 @@ Visualization Manager:
           Marker Topic: /flatland_server/debug/model/obstacles_dynamic_random_02
           Name: MarkerArray
           Namespaces:
-            "": true
+            {}
           Queue Size: 100
           Value: true
         - Class: rviz/MarkerArray
@@ -1206,7 +1230,7 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Scale: 13.19551944732666
+      Scale: 22.264793395996094
       Target Frame: <Fixed Frame>
       Value: TopDownOrtho (rviz)
       X: 11.09702205657959
