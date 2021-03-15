@@ -48,7 +48,7 @@
 
 //#define DEBUG
 
-namespace astar
+namespace timed_astar
 {
 
 using namespace cv;

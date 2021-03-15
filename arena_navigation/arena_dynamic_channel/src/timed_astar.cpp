@@ -3,7 +3,7 @@
 using  std::cout; 
 using  std::endl;
 
-namespace astar
+namespace timed_astar
 {
 TimeAstarSearch::~TimeAstarSearch()
 {
@@ -63,6 +63,13 @@ void TimeAstarSearch::init(ros::NodeHandle & nh){
 	time_resolution_=0.1;  							// 0.1 sec
 	inv_time_resolution_ = 1.0 / time_resolution_;
 
+    /* init timed astar planner */
+
+    timed_astar_planner_.reset(new TimedAstar);
+
+    timed_astar_planner_->init(grid_map_);
+
+
 	/* ros communication */
 	ros::NodeHandle public_nh;
 
@@ -77,8 +84,8 @@ void TimeAstarSearch::init(ros::NodeHandle & nh){
     vis_path_pub_= public_nh.advertise<nav_msgs::Path>("vis_path_timed_astar", 20);
 
 	/* init time event timer */
-	update_timer_=node_.createTimer(ros::Duration(0.01), &TimeAstarSearch::UpdateCallback, this);  // shouldn't use different ros::NodeHandle inside the callback as timer's node handler
-    cout<<"........................debug4"<<endl;
+	update_timer_=node_.createTimer(ros::Duration(0.5), &TimeAstarSearch::UpdateCallback, this);  // shouldn't use different ros::NodeHandle inside the callback as timer's node handler
+
 	
 }
 
@@ -92,6 +99,9 @@ void TimeAstarSearch::odomCallback(const nav_msgs::OdometryConstPtr& msg){
     odom_orient_.y() = msg->pose.pose.orientation.y;
     odom_orient_.z() = msg->pose.pose.orientation.z;
 
+    auto euler = odom_orient_.toRotationMatrix().eulerAngles(0, 1, 2); // row,pitch,yaw
+    odom_dir_=euler(2); 
+    //cout<<"odom direction"<<odom_dir_*180/3.1415<<endl;
     have_odom_ = true;
 }
 
@@ -122,11 +132,16 @@ void TimeAstarSearch::resetGraph(){
     // start & end
     start_pt_=odom_pos_;
 	start_vel_=odom_vel_;
+    start_dir_ =odom_dir_;
 
     // boundary
 	//double local_bound_time=100.0; // 3 sec
-	Vec2d corner_min= occ_map_origin_;//start_pt_-Vec2d(1.0,1.0)*robot_avg_vel_*local_bound_time;
-	Vec2d corner_max=occ_map_size_2d_;//start_pt_+Vec2d(1.0,1.0)*robot_avg_vel_*local_bound_time;
+	//Vec2d corner_min= occ_map_origin_;//start_pt_-Vec2d(1.0,1.0)*robot_avg_vel_*local_bound_time;
+	//Vec2d corner_max=occ_map_size_2d_;//start_pt_+Vec2d(1.0,1.0)*robot_avg_vel_*local_bound_time;
+
+    double local_bound_time=5.0; // 3 sec
+	Vec2d corner_min=start_pt_-Vec2d(1.0,1.0)*robot_avg_vel_*local_bound_time;
+	Vec2d corner_max=start_pt_+Vec2d(1.0,1.0)*robot_avg_vel_*local_bound_time;
     boundPosition(corner_min);
 	boundPosition(corner_max);
 
@@ -207,7 +222,7 @@ void TimeAstarSearch::resetGraph(){
 	//std::cout<<"debug54---------------------"<<std::endl;
 
 	/* reset dt_ */
-    dt_graph_.reset(new Graph(coords_, speeds_, angles_) );
+    dt_graph_.reset(new Graph(coords_,speeds_,angles_));
 
 
 	//std::cout<<"debug55---------------------"<<std::endl;
@@ -217,14 +232,19 @@ void TimeAstarSearch::resetGraph(){
 void TimeAstarSearch::StateTimeAstarSearch(){
     
     bool success;
-    //cout<<"bebug search1---------------"<<endl;
+    cout<<"bebug search1---------------"<<endl;
     if(have_goal_){
         cout<<"goal:"<<end_pt_.x<<" , "<<end_pt_.y<<endl;
-        success=StateTimeAstar(coords_,speeds_,angles_,start_pt_,end_pt_,waypoints_);
-        
+        //success=StateTimeAstar(coords_,speeds_,angles_,start_pt_,end_pt_,waypoints_);
+
+        success=timed_astar_planner_->TimeAstarSearch(coords_,speeds_,angles_,start_pt_,end_pt_ ,start_dir_,0.0);
+
+        cout<<"bebug search2---------------"<<endl;
         if(success){
             //cout<<"waypoints---------------"<<endl;
-
+            waypoints_.clear();
+            waypoints_=timed_astar_planner_->getPath();
+            cout<<"bebug search3---------------"<<endl;
             for(size_t i=0;i<waypoints_.size();++i)
             {
                 //cout<<waypoints_[i].x<<", "<<waypoints_[i].y<<endl;
@@ -244,40 +264,40 @@ void TimeAstarSearch::StateTimeAstarSearch(){
 }
 
 void TimeAstarSearch::UpdateCallback(const ros::TimerEvent&){
+    if(have_goal_)
+    {
+	    ros::WallTime t1, t2;
+  	    t1 = ros::WallTime::now();
+	
+	
+	    resetGraph();
+        StateTimeAstarSearch();
 
-	ros::WallTime t1, t2;
-  	t1 = ros::WallTime::now();
+	    t2 = ros::WallTime::now();
+	    /* record time */
+	    dc_time_ += (t2 - t1).toSec();
+	    max_dc_time_ = std::max(max_dc_time_, (t2 - t1).toSec());
+  	    dc_update_num_++;
 	
-	
-	resetGraph();
-    StateTimeAstarSearch();
-
-	t2 = ros::WallTime::now();
-	/* record time */
-	dc_time_ += (t2 - t1).toSec();
-	max_dc_time_ = std::max(max_dc_time_, (t2 - t1).toSec());
-  	dc_update_num_++;
-	
-	bool show_time=false;
-  	if (show_time)
-	{
-		ROS_WARN("DC: cur t = %lf, avg t = %lf, max t = %lf", 
+	    bool show_time=true;
+  	    if (show_time)
+	    {
+		    ROS_WARN("DC: cur t = %lf, avg t = %lf, max t = %lf", 
 				(t2 - t1).toSec(),
              	dc_time_/ dc_update_num_,
 				max_dc_time_);
-	}
+	    }
     
     
 
-    if((odom_pos_-end_pt_).length()<0.5){
-        have_goal_=false;
+        if((odom_pos_-end_pt_).length()<0.5){
+            have_goal_=false;
+        }
+
+        /* publish Graph */
+        publishVisGraph();
+	
     }
-    
-
-	/* publish Graph */
-	publishVisGraph();
-
-   
 
 
 }
@@ -385,15 +405,18 @@ void TimeAstarSearch::publishVisGraph(){
 	std::vector<std::pair<Vec2d,Vec2d>> line_sets;
 
     using namespace delaunator;
-    for(size_t id=0;id<dt_graph_->triangles.size();id++){
-        auto ai = 2 * dt_graph_->triangles[id];
-        Vec2d p1=Vec2d( dt_graph_->coords[ai],dt_graph_->coords[ai+1]);
+    GraphPtr graph_t;
+    timed_astar_planner_->getGraph(graph_t,0.0);
 
-        ai = 2 * dt_graph_->triangles[nextHalfedge(id)];
-        Vec2d p2=Vec2d( dt_graph_->coords[ai],dt_graph_->coords[ai+1]);
+    for(size_t id=0;id<graph_t->triangles.size();id++){
+        auto ai = 2 * graph_t->triangles[id];
+        Vec2d p1=Vec2d( graph_t->coords[ai],graph_t->coords[ai+1]);
 
-        ai = 2 * dt_graph_->triangles[prevHalfedge(id)];
-        Vec2d p3=Vec2d( dt_graph_->coords[ai],dt_graph_->coords[ai+1]);
+        ai = 2 * graph_t->triangles[nextHalfedge(id)];
+        Vec2d p2=Vec2d( graph_t->coords[ai],graph_t->coords[ai+1]);
+
+        ai = 2 * graph_t->triangles[prevHalfedge(id)];
+        Vec2d p3=Vec2d( graph_t->coords[ai],graph_t->coords[ai+1]);
 
         std::pair<Vec2d,Vec2d> line1(p1,p2);
         std::pair<Vec2d,Vec2d> line2(p1,p3);
@@ -438,7 +461,7 @@ void TimeAstarSearch::publishVisGraph(){
 
 int main(int argc, char** argv)
 {
-    using namespace astar;
+    using namespace timed_astar;
 	ros::init(argc, argv, "obstacle2");
     ros::NodeHandle nh("");
     TimeAstarSearch::Ptr timed_astar;

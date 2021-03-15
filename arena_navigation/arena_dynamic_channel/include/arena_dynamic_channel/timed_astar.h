@@ -25,7 +25,7 @@
 #include "arena_mapping/mapping.h"
 
 
-
+#include <astar/astar_sample.hpp>
 #include <astar/astar.hpp>
 #include <astar/data.hpp>
 
@@ -33,7 +33,7 @@
 #include <graph/delaunator.hpp>
 
 
-namespace astar
+namespace timed_astar
 {
 
 //typedef std::shared_ptr<ObstacleInfo> ObstacleInfoPtr;
@@ -108,6 +108,7 @@ class TimeAstarSearch{
 private:
     // a instance of graph
     GraphPtr dt_graph_;
+    TimedAstar::Ptr timed_astar_planner_;
 
     // current states of nodes (init, goal, obstacles)
     std::vector<double> coords_;
@@ -124,7 +125,8 @@ private:
     // robot state variables
     Vec2d odom_pos_, odom_vel_;                               // odometry state
     Eigen::Quaterniond odom_orient_;                          // orient
-    
+    double odom_dir_;                                         // yaw angle 
+
     //robot params
     double robot_avg_vel_;                                              // robot avg velocity
     double robot_max_vel_;                                              // robot max velocity
@@ -133,10 +135,12 @@ private:
 
     // plan variable
     Vec2d start_pt_,start_vel_;
+    double start_dir_;
     Vec2d end_pt_;
     std::vector<Vec2d> waypoints_;
     bool have_odom_;
     bool have_goal_;
+     
 
     // obstacle info
     std::vector<ObstacleInfo::Ptr> obs_info_provider_;

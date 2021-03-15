@@ -2,12 +2,13 @@
 #ifndef _DUAL_GRAPH_SEARCH_H
 #define _DUAL_GRAPH_SEARCH_H
 
-#include <Eigen/Eigen>
+
 #include <iostream>
 #include <string>
 #include <ros/console.h>
 #include <ros/ros.h>
 
+#include <Eigen/Eigen>
 #include <memory>
 #include <map>
 #include <unordered_map>

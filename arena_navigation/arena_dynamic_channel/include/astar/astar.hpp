@@ -19,7 +19,7 @@
 
 //#define DEBUG
 
-namespace astar
+namespace timed_astar
 {
 
 /*
@@ -477,7 +477,33 @@ bool StateTimeAstar(const std::vector<double>& coords,
         // retrieve neighbor triangles in the target slice
         dl::neighborVertices(graph, parent->eid, pedestrians);
         dl::neighborTriangles(graph, parent->eid, neighbors, outgoings);
+        std::cout<<"debug s:"<<"***********************************"<<std::endl;
+        std::cout<<"current eid :"<<parent->eid<<std::endl;
+        for(size_t i=0;i<neighbors.size();i++){
+            std::cout<<"Try nearby neighbors :"<<int(neighbors[i])<<std::endl;
+        }
+
+         for(size_t i=0;i<outgoings.size();i++){
+            std::cout<<"Try nearby outgoings :"<<int(outgoings[i])<<std::endl;
+        }
+
+        std::vector<int> v1{10,20,30,40,50};
+        std::vector<int> v2{1,2,3,4,5,6,7,8,9};
+
+        for(size_t i=0;i<v2.size();i++){
+            std::cout<<"Try init v2 :"<<int(v2[i])<<std::endl;
+        }
+        v2.assign(v1.begin()+2,v1.begin()+3);
+        for(size_t i=0;i<v1.size();i++){
+            std::cout<<"Try v1 :"<<int(v1[i])<<std::endl;
+        }
+
+        for(size_t i=0;i<v2.size();i++){
+            std::cout<<"Try v2 :"<<int(v2[i])<<std::endl;
+        }
         
+
+        std::cout<<"debug e:"<<"***********************************"<<std::endl;
 
 #ifdef DEBUG
         std::cout << "parent eid: " << parent->eid << std::endl;

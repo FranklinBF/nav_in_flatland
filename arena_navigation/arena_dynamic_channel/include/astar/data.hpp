@@ -4,9 +4,15 @@
 #include "graph/accessor.hpp"
 #include "graph/delaunator.hpp"
 
+#include <Eigen/Eigen>
+#include <memory>
+#include <map>
+#include <unordered_map>
+#include <boost/functional/hash.hpp>
 
 
-namespace astar
+
+namespace timed_astar
 {
 
 /* delaunator types */
@@ -27,10 +33,21 @@ constexpr size_t PEDS_START = 6;
 
 
 /* hyperpara loaded from launch file */
+#define PI 3.14159265
+
 double SAFE_DIST = 1.0;
-double MAX_SPEED = 1.8;
-double TIME_HORIZON = 10.0; // time budget for
+
+double ROBOT_RADIUS = 0.3;
+double OBSTACLE_RADIUS   = 0.3;
+double MAX_SPEED    = 1.8;
+double AVG_SPEED    = 1.0;
+double MIN_SPEED    = 0.5;
+double MAX_ROT_SPEED = 0.523583; // rad/sec
+
+double TIME_HORIZON = 5.0; // time budget for
 double DELTA_T = 0.2;     // time interval between graphs
+size_t NUM_SAMPLE_EDGE=5;
+
 
 double FORD_HORIZON = 1.0;    // max time used for ICS test
 size_t ACTION_NUM = 72;
@@ -90,9 +107,15 @@ struct Vec2d
     friend bool operator <= (const Vec2d &a, const Vec2d &b);
     friend bool operator >= (const Vec2d &a, const Vec2d &b);
     friend double dot (const Vec2d &a, const Vec2d &b);
+    friend double cross (const Vec2d &a, const Vec2d &b);
 
     double sum() const {return x+y;}
-    double angle() const { return acos(y / x);}
+
+    double angle() const { 
+       double angle_rad=atan2(y,x);
+       return angle_rad<0?2*PI-angle_rad:angle_rad;
+    }
+
     double length() const { return sqrt(x*x + y*y);}
 };
 
@@ -114,6 +137,10 @@ Vec2d operator / (const Vec2d &a, const double scale) {
 
 double dot (const Vec2d &a, const Vec2d &b) {
     return a.x * b.x + a.y * b.y;
+}
+
+double cross (const Vec2d &a, const Vec2d &b) {
+    return a.x * b.y - a.y * b.x;
 }
 
 bool operator == (const Vec2d &a, const Vec2d &b) {
@@ -194,10 +221,116 @@ struct Node
         velocity.y = vy;
     }
 
+}; 
+
+struct PathNode
+{   
+    enum state
+	{
+		OPENSET = 1,
+		CLOSEDSET = 2,
+		UNDEFINED = 3
+	};
+    
+	enum state node_state{UNDEFINED};
+
+    //current
+    Index eid;              // the halfedge index = next
+    Index tid;              // the triangle index = floor(eid / 3.0)
+    Index sid;              // the slice index of timed graph
+
+    double time_elapsed;    // accumulated time
+
+    Vec2d pos;              // node placement position
+    //Vec2i pos_index;        // node placement position
+
+    double dir;             // [rad] current direction of the car
+
+    //input
+    double v_in;
+    double w_in;
+
+    //duration
+    double dur_v;
+    double dur_w;
+
+    //cost
+    double G, H;             // accumulated cost-to-go and heuristic
+
+    // parent node
+    std::shared_ptr<PathNode> parent;   // the parent node pointer
+    
+    PathNode(){
+        G=DBL_MAX;
+        H= 0.0;
+        parent=nullptr;
+        node_state=UNDEFINED;
+    };
+
+    void setTimedTriangle(const Vec2d &pos, const double &time, const std::vector<GraphPtr> &timed_graph){
+        namespace dl = delaunator;
+        this->pos=pos;
+        this->time_elapsed=time;
+        this->sid = std::min((size_t)(floor((time_elapsed - 0.0) /DELTA_T)),SLICE_NUM-1);
+        this->eid=dl::locateCurrentFace(timed_graph[this->sid].get(), pos.x, pos.y);
+        this->tid = static_cast<Index>(floor(eid / 3.0));
+    }
+
+    
+
+};
+
+template <typename T>
+struct matrix_hash : std::unary_function<Eigen::Vector3i, size_t> {
+  std::size_t operator()(Eigen::Vector3i const& matrix) const {
+    size_t seed = 0;
+    for (size_t i = 0; i < (size_t)matrix.size(); ++i) {
+      auto elem = *(matrix.data() + i);
+      seed ^= std::hash<typename Eigen::Vector3i::Scalar>()(elem) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+    }
+    return seed;
+  }
 };
 
 typedef std::shared_ptr<Edge> EdgePtr;
 typedef std::shared_ptr<Node> NodePtr;
+typedef std::shared_ptr<PathNode> PathNodePtr;
+
+
+class NodeComparator {
+ public:
+  bool operator()(const PathNodePtr& a, const PathNodePtr& b) {
+    return (a->G + a->H) > (b->G + b->H);
+  }
+};
+
+
+class PathNodeHashTable {
+private:
+  /* data: Eigen::Vector2i index, int time_index */ 
+  std::unordered_map<Eigen::Vector3i, PathNodePtr, matrix_hash<Eigen::Vector3i>> data_3d_;
+
+public:
+  PathNodeHashTable(/* args */) {
+  }
+  ~PathNodeHashTable() {
+  }
+
+  void insert(Vec2i pos_idx, int time_idx, PathNodePtr node) {
+    data_3d_.insert(std::make_pair(Eigen::Vector3i(pos_idx.x, pos_idx.y, time_idx), node));
+  }
+
+  PathNodePtr find(Vec2i pos_idx , int time_idx) {
+    auto iter = data_3d_.find(Eigen::Vector3i(pos_idx.x, pos_idx.y, time_idx));
+    return iter == data_3d_.end() ? NULL : iter->second;
+  }
+
+  void clear() {
+    data_3d_.clear();
+  }
+};
+
+
 
 
 }
