@@ -39,6 +39,7 @@ catkin_package(
 
 include_directories(
   include
+  include/arena_intermediate_planner
   ${catkin_INCLUDE_DIRS}
   ${Eigen3_INCLUDE_DIRS} 
   ${PCL_INCLUDE_DIRS}

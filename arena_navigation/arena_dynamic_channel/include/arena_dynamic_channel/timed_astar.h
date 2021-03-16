@@ -23,6 +23,9 @@
 
 
 #include "arena_mapping/mapping.h"
+//#include <arena_traj_planner/bspline/uniform_bspline.h>
+//#include <arena_traj_planner/bspline_opt/bspline_optimizer.h>
+
 
 
 #include <astar/astar_sample.hpp>
@@ -100,10 +103,6 @@ public:
     typedef std::shared_ptr<ObstacleInfo> Ptr;
 };
 
-
-
-
-
 class TimeAstarSearch{
 private:
     // a instance of graph
@@ -141,6 +140,8 @@ private:
     bool have_odom_;
     bool have_goal_;
      
+    // bspline
+    //BsplineOptimizer::Ptr bspline_optimizer_;
 
     // obstacle info
     std::vector<ObstacleInfo::Ptr> obs_info_provider_;
@@ -204,7 +205,6 @@ public:
     
     
 };
-
 
 inline void TimeAstarSearch::boundPosition(Vec2d& pos) {
 

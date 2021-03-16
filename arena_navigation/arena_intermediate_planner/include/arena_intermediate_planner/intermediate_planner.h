@@ -18,11 +18,11 @@
 #include "arena_path_search/kinodynamic_astar.h"
 
 // b-spline
-#include "arena_traj_planner/bspline_optimizer_esdf.h"
+#include <arena_traj_planner/bspline_opt/bspline_optimizer_esdf.h>
 
-#include "arena_traj_planner/uniform_bspline.h"
+#include "arena_traj_planner/bspline/uniform_bspline.h"
 #include "arena_traj_planner/bspline_optimizer_astar.h"
-#include "arena_traj_planner/polynomial_traj.h"
+#include <arena_traj_planner/polynomial/polynomial_traj.h>
 
 // plan container
 #include "arena_intermediate_planner/plan_container_mid.hpp"

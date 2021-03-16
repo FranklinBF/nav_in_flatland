@@ -8,6 +8,7 @@ Panels:
         - /my_robot1/Namespaces1
         - /Maps1
         - /plan_manager1
+        - /plan_manager1/timed_astar_wp1
         - /plan_manager1/timed-astar_path1
         - /Move_base1/Local plan dwa1
         - /Pose & Odoms1
@@ -385,7 +386,7 @@ Visualization Manager:
           Value: true
         - Class: rviz/Marker
           Enabled: true
-          Marker Topic: /plan_manager/vis_goal
+          Marker Topic: /vis_goal
           Name: goal
           Namespaces:
             {}
@@ -917,7 +918,7 @@ Visualization Manager:
           Marker Topic: /flatland_server/debug/model/obstacles_static_random_02
           Name: MarkerArray
           Namespaces:
-            "": true
+            {}
           Queue Size: 100
           Value: true
         - Class: rviz/MarkerArray
@@ -1061,7 +1062,7 @@ Visualization Manager:
           Marker Topic: /flatland_server/debug/model/obstacles_dynamic_random_02
           Name: MarkerArray
           Namespaces:
-            {}
+            "": true
           Queue Size: 100
           Value: true
         - Class: rviz/MarkerArray

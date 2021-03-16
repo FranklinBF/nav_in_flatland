@@ -7,8 +7,8 @@
 
 #include <ros/ros.h>
 
-#include <arena_traj_planner/uniform_bspline.h>
-#include <arena_traj_planner/polynomial_traj.h>
+#include "arena_traj_planner/bspline/uniform_bspline.h"
+#include <arena_traj_planner/polynomial/polynomial_traj.h>
 
 using std::vector;
 

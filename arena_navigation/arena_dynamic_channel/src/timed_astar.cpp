@@ -12,7 +12,6 @@ TimeAstarSearch::~TimeAstarSearch()
 
 }
 
-
 void TimeAstarSearch::init(ros::NodeHandle & nh){
 	/* init obstacle provider nodes */
 	node_=nh;
@@ -49,6 +48,11 @@ void TimeAstarSearch::init(ros::NodeHandle & nh){
 	/* map */
 	grid_map_.reset(new GridMap);
   	grid_map_->initMap(node_);
+
+    // bspline optimizer
+    //bspline_optimizer_.reset(new BsplineOptimizer);
+    //bspline_optimizer_->setParam(node_);
+    //bspline_optimizer_->setEnvironment(grid_map_);
  
     Eigen::Vector2d occ_map_origin,occ_map_size_2d;
 	grid_map_->getRegion(occ_map_origin, occ_map_size_2d);
@@ -227,7 +231,6 @@ void TimeAstarSearch::resetGraph(){
 
 	//std::cout<<"debug55---------------------"<<std::endl;
 }
-
 
 void TimeAstarSearch::StateTimeAstarSearch(){
     

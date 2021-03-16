@@ -7,8 +7,8 @@
 
 #include <ros/ros.h>
 
-#include <arena_traj_planner/uniform_bspline.h>
-#include <arena_traj_planner/polynomial_traj.h>
+#include "arena_traj_planner/bspline/uniform_bspline.h"
+#include <arena_traj_planner/polynomial/polynomial_traj.h>
 
 using std::vector;
 
@@ -334,8 +334,6 @@ struct MidData{
   ~MidData(){}
 };
 
-
-
 class GlobalTrajData
 {
   private:
@@ -549,5 +547,5 @@ struct LocalTrajData
     UniformBspline position_traj_, velocity_traj_, acceleration_traj_;
 };
 
-
+  
 #endif
