@@ -1,4 +1,4 @@
-#include "arena_traj_planner/bspline_optimizer_esdf.h"
+#include <arena_traj_planner/bspline_opt/bspline_optimizer_esdf.h>
 #include <nlopt.hpp>
 
 

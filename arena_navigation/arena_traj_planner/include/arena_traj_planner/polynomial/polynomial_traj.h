@@ -27,9 +27,7 @@ public:
   PolynomialTraj(/* args */)
   {
   }
-  ~PolynomialTraj()
-  {
-  }
+  ~PolynomialTraj(){}
 
   void reset()
   {

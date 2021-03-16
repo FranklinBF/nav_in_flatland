@@ -1,4 +1,4 @@
-#include <arena_traj_planner/polynomial_traj.h>
+#include <arena_traj_planner/polynomial/polynomial_traj.h>
 
 PolynomialTraj PolynomialTraj::minSnapTraj(const Eigen::MatrixXd &Pos, const Eigen::Vector2d &start_vel,
                                            const Eigen::Vector2d &end_vel, const Eigen::Vector2d &start_acc,

@@ -1,4 +1,4 @@
-#include "arena_traj_planner/uniform_bspline.h"
+#include "arena_traj_planner/bspline/uniform_bspline.h"
 #include <ros/ros.h>
 
 
@@ -21,22 +21,22 @@ void UniformBspline::setUniformBspline(const Eigen::MatrixXd &points, const int 
     p_ = order;
     interval_ = interval;
 
-    n_ = points.cols() - 1;
-    m_ = n_ + p_ + 1;
+    // control_points:   row_num: dimension , col_num: num of points
+    n_ = points.cols() - 1;           
+    m_ = n_ + p_ + 1;                         // p degree, n+1 control points, m = n+p+1
+    u_ = Eigen::VectorXd::Zero(m_ + 1);       // knots vector
 
-    u_ = Eigen::VectorXd::Zero(m_ + 1);
-
-    for (int i = 0; i <= m_; ++i)
+    for (int i = 0; i <= m_; ++i)             // uniform interval assign to knots vector
     {
-      if (i <= p_)
+      if (i <= p_)                            // 0,1,..,p
       {
         u_(i) = double(-p_ + i) * interval_;
       }
-      else if (i > p_ && i <= m_ - p_)
+      else if (i > p_ && i <= m_ - p_)        // p+1,p+2,...,m-p
       {
         u_(i) = u_(i - 1) + interval_;
       }
-      else if (i > m_ - p_)
+      else if (i > m_ - p_)                   // m-p+1,m-p+2,...m
       {
         u_(i) = u_(i - 1) + interval_;
       }
@@ -51,12 +51,12 @@ double UniformBspline::getInterval() { return interval_; }
 
 bool UniformBspline::getTimeSpan(double &um, double &um_p)
 {   
-    // if num of knot  if feasible or not
+    // check num of knot feasible or not
     if (p_ > u_.rows() || m_ - p_ > u_.rows())
       return false;
 
-    um = u_(p_);
-    um_p = u_(m_ - p_);
+    um = u_(p_);            // start from knot(p)
+    um_p = u_(m_ - p_);     // end at knot(m-p)
 
     return true;
 }
@@ -98,21 +98,9 @@ Eigen::VectorXd UniformBspline::evaluateDeBoor(const double &u)
 
     return d[p_];
 }
+//inline Eigen::VectorXd evaluateDeBoorT(const double &t) { return evaluateDeBoor(t + u_(p_)); } // use t \in [0, duration]
 
 /* evaluate b-spline derivative */
-UniformBspline UniformBspline::getDerivative()
-{
-    Eigen::MatrixXd ctp = getDerivativeControlPoints();
-    UniformBspline derivative(ctp, p_ - 1, interval_);
-
-    /* cut the first and last knot */
-    Eigen::VectorXd knot(u_.rows() - 2);
-    knot = u_.segment(1, u_.rows() - 2);
-    derivative.setKnot(knot);
-
-    return derivative;
-}
-
 Eigen::MatrixXd UniformBspline::getDerivativeControlPoints()
 {
     // The derivative of a b-spline is also a b-spline, its order become p_-1
@@ -126,7 +114,21 @@ Eigen::MatrixXd UniformBspline::getDerivativeControlPoints()
     return ctp;
 }
 
-/* 3D B-spline interpolation of points in point_set, with boundary vel&acc */
+UniformBspline UniformBspline::getDerivative()
+{
+    Eigen::MatrixXd ctp = getDerivativeControlPoints();
+    UniformBspline derivative(ctp, p_ - 1, interval_);
+
+    /* cut the first and last knot */
+    Eigen::VectorXd knot(u_.rows() - 2);
+    knot = u_.segment(1, u_.rows() - 2);
+    derivative.setKnot(knot);
+
+    return derivative;
+}
+
+
+/* 2D B-spline interpolation of points in point_set, with boundary vel&acc */
 // constraints
 // input : (K+2) points with boundary vel/acc; ts
 // output: (K+6) control_pts
@@ -386,12 +388,7 @@ bool UniformBspline::reallocateTime(bool show) {
   return fea;
 }
     
-
-
-
-
-
-
+    
 /* evaluate performance */
 double UniformBspline::getTimeSum()
 {

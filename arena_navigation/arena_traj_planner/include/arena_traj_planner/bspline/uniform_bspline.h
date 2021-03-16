@@ -20,8 +20,6 @@ private:
     int p_, n_, m_;     // p degree, n+1 control points, m = n+p+1
     Eigen::VectorXd u_; // knots vector
     double interval_;   // knot span \delta t
-
-    
     double limit_vel_, limit_acc_, limit_ratio_, feasibility_tolerance_; // physical limits and time adjustment ratio
 
 public:
@@ -41,7 +39,6 @@ public:
     double getInterval();
     bool getTimeSpan(double &um, double &um_p);
 
-
     // compute position / derivative
     Eigen::VectorXd evaluateDeBoor(const double &u);                                               // use u \in [up, u_mp]
     inline Eigen::VectorXd evaluateDeBoorT(const double &t) { return evaluateDeBoor(t + u_(p_)); } // use t \in [0, duration]
@@ -49,10 +46,7 @@ public:
     UniformBspline getDerivative();
     Eigen::MatrixXd getDerivativeControlPoints();
 
-
-
-
-    // 3D B-spline interpolation of points in point_set, with boundary vel&acc
+    // 2D B-spline interpolation of points in point_set, with boundary vel&acc
     // constraints
     // input : (K+2) points with boundary vel/acc; ts
     // output: (K+6) control_pts
@@ -71,7 +65,6 @@ public:
 
 
     /* for performance evaluation */
-
     double getTimeSum();
     double getLength(const double &res = 0.01);
     double getJerk();
