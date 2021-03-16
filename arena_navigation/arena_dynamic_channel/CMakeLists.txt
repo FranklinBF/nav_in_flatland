@@ -13,7 +13,6 @@ find_package(catkin REQUIRED
   geometry_msgs
   visualization_msgs
   arena_mapping
-  arena_traj_planner
 )
 
 find_package(Eigen3 REQUIRED)
@@ -47,7 +46,7 @@ catkin_package(
 ## Your package locations should be listed before other locations
 include_directories(
   include
-  include/thirdparty/fade2d
+  #include/thirdparty/fade2d
   include/astar
   include/graph
   ${catkin_INCLUDE_DIRS}
@@ -64,39 +63,39 @@ link_directories(
 )
 
 
-# add executable 1 or library
-add_executable( fade2d_test
-     src/test.cpp)
+# # add executable 1 or library
+# add_executable( fade2d_test
+#      src/test.cpp)
 
-target_link_libraries(fade2d_test 
-	${catkin_LIBRARIES}
-	libfade2d.so
-  libfade25d.so
-)
+# target_link_libraries(fade2d_test 
+# 	${catkin_LIBRARIES}
+# 	libfade2d.so
+#   libfade25d.so
+# )
 
 
-# add executable 2 or library
-add_executable(arena_dynamic_channel 
-              src/dual_graph_search.cpp
-)
+# # add executable 2 or library
+# add_executable(arena_dynamic_channel 
+#               src/dual_graph_search.cpp
+# )
 
-target_link_libraries(arena_dynamic_channel
-  ${catkin_LIBRARIES}
-  ${PCL_LIBRARIES}
-  libfade2d.so
-  libfade25d.so
-)
+# target_link_libraries(arena_dynamic_channel
+#   ${catkin_LIBRARIES}
+#   ${PCL_LIBRARIES}
+#   libfade2d.so
+#   libfade25d.so
+# )
 
-# add executable 2 or library
-add_executable(obstacle_collector 
-              src/obstacle_collector.cpp
-)
+# # add executable 2 or library
+# add_executable(obstacle_collector 
+#               src/obstacle_collector.cpp
+# )
 
-target_link_libraries(obstacle_collector
-  ${catkin_LIBRARIES}
-  ${PCL_LIBRARIES}
-  ${Boost_LIBRARIES}
-)
+# target_link_libraries(obstacle_collector
+#   ${catkin_LIBRARIES}
+#   ${PCL_LIBRARIES}
+#   ${Boost_LIBRARIES}
+# )
 
 
 # add executable 2 or library
