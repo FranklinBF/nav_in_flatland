@@ -1,8 +1,12 @@
 #include "arena_dynamic_channel/dynamic_obstacle.h"
 
-DynamicObstacleInfo::DynamicObstacleInfo(ros::NodeHandle &nh, std::string topic_name){
+DynamicObstacleInfo::DynamicObstacleInfo(ros::NodeHandle &nh, std::string topic_name,GridMap::Ptr grid_map){
     node_=nh;
     topic_name_=topic_name;
+
+    // gridmap
+    this->grid_map_=grid_map;
+    resolution_=grid_map_->getResolution();
 
     // init subscriber for obstacles state
     ros::NodeHandle public_nh_;
@@ -37,4 +41,43 @@ void DynamicObstacleInfo::updateOdomCallback(visualization_msgs::MarkerArray::Co
     pos_=curr_pos;
     last_time_=curr_time;
 
+    if(!is_init_){
+        updateDynamicOcc();
+    }
+
+}
+
+
+void DynamicObstacleInfo::updateDynamicOcc(){
+    // reset old occ
+    Eigen::Vector2d pos=pos_;
+    Eigen::Vector2d vel=vel_;
+    for(size_t i=0;i<last_occ_set_.size();++i){
+        grid_map_->setDynamicOccupancy(last_occ_set_[i],0);
+    }
+    // add new occ
+    
+    last_occ_set_.clear();
+    //int i=0;
+    //std::cout<<"topic="<<topic_name_<<"  pos="<<pos<<std::endl;
+
+    for(double x=pos(0)-radius_; x<pos(0)+radius_; x+=resolution_){
+        for(double y=pos(1)-radius_; y<pos(1)+radius_; y+=resolution_){
+            for(double t=0;t<0.2;t+=0.1){
+                // curr_pos
+                Eigen::Vector2d pt(x,y);
+                // future pos at time=t
+                pt=pt+vel*t;
+                grid_map_->setDynamicOccupancy(pt,1);
+                last_occ_set_.push_back(pt);
+                //i++;
+                //if(i==1){
+                //    std::cout<<"topic="<<topic_name_<<"  pt="<<pt<<std::endl;
+                //}
+                
+             
+                
+            }
+        }
+    } 
 }
