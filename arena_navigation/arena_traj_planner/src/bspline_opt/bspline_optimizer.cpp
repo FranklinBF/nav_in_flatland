@@ -46,6 +46,7 @@ std::vector<std::pair<int, int>> BsplineOptimizer::initControlPoints(Eigen::Matr
     /*** Segment the initial trajectory according to obstacles ***/
     constexpr int ENOUGH_INTERVAL = 2;
     double step_size = grid_map_->getResolution() / ((init_points.col(0) - init_points.rightCols(1)).norm() / (init_points.cols() - 1)) / 1.5;
+    ROS_WARN_STREAM("Segment 0: step_size="<<step_size);
     step_size=std::min(std::max(0.01,step_size),1.0);
     
 
@@ -54,8 +55,8 @@ std::vector<std::pair<int, int>> BsplineOptimizer::initControlPoints(Eigen::Matr
     int same_occ_state_times = ENOUGH_INTERVAL + 1;
     bool occ, last_occ = false;
     bool flag_got_start = false, flag_got_end = false, flag_got_end_maybe = false;
-    int i_end = (int)init_points.cols() - order_ - ((int)init_points.cols() - 2 * order_) / 3; // only check closed 2/3 points.
-    
+    int i_end = (int)init_points.cols() - order_ ;//- ((int)init_points.cols() - 2 * order_) / 3; // only check closed 2/3 points.
+    ROS_WARN_STREAM("Segment 0: i_end="<<i_end);
 
     // search for all segement in collision for the initial ctrl_pts
     for (int i = order_; i <= i_end; ++i)
@@ -64,10 +65,9 @@ std::vector<std::pair<int, int>> BsplineOptimizer::initControlPoints(Eigen::Matr
       // search for in_id & out_id for each segement between ctrl_pt[i-1] to ctrl_pt[i]
       for (double a = 1.0; a > 0.0; a -= step_size)
       { 
-      
-        occ = grid_map_->getFusedInflateOccupancy(a * init_points.col(i - 1) + (1 - a) * init_points.col(i));
- 
-
+        Eigen::Vector2d pos_to_check=a * init_points.col(i - 1) + (1 - a) * init_points.col(i);
+        occ = grid_map_->getFusedDynamicInflateOccupancy(pos_to_check);
+        
         if (occ && !last_occ)
         {
           if (same_occ_state_times > ENOUGH_INTERVAL || i == order_)
@@ -84,7 +84,7 @@ std::vector<std::pair<int, int>> BsplineOptimizer::initControlPoints(Eigen::Matr
           flag_got_end_maybe = true;
           same_occ_state_times = 0;
         }
-        else if(occ && last_occ)
+        else if(occ) //&& last_occ
         {
           ++same_occ_state_times;
         }
@@ -106,16 +106,18 @@ std::vector<std::pair<int, int>> BsplineOptimizer::initControlPoints(Eigen::Matr
       }
     }
     // cout << endl;
+    ROS_WARN_STREAM("Segment 1:******************");
+    for (size_t i = 0; i < segment_ids.size(); i++)
+    {
+      cout << "segment_ids=" << segment_ids[i].first << " ~ " << segment_ids[i].second << endl;
+    }
 
-    // for (size_t i = 0; i < segment_ids.size(); i++)
-    // {
-    //   cout << "segment_ids=" << segment_ids[i].first << " ~ " << segment_ids[i].second << endl;
-    // }
-
+    ROS_WARN_STREAM("Segment size: "<<segment_ids.size());
     // return in advance
     if (segment_ids.size() == 0)
     {
       vector<std::pair<int, int>> blank_ret;
+      ROS_WARN_STREAM("Segment 2: return in advance********* ");
       return blank_ret;
     }
 
@@ -169,6 +171,7 @@ std::vector<std::pair<int, int>> BsplineOptimizer::initControlPoints(Eigen::Matr
       bounds[i] = std::pair<int, int>(id_low_bound, id_up_bound);
     }
 
+    ROS_WARN_STREAM("Segment 3: calculate bounds finish********* ");
 
     /*** Adjust segment length ***/
     vector<std::pair<int, int>> adjusted_segment_ids(segment_ids.size());
@@ -206,6 +209,7 @@ std::vector<std::pair<int, int>> BsplineOptimizer::initControlPoints(Eigen::Matr
       }
     }
 
+    ROS_WARN_STREAM("Segment 4: Segment length finish********* ");
     // Used for return
     vector<std::pair<int, int>> final_segment_ids;
 
@@ -257,7 +261,7 @@ std::vector<std::pair<int, int>> BsplineOptimizer::initControlPoints(Eigen::Matr
             cps_.flag_temp[j] = true;
             for (double a = length; a >= 0.0; a -= grid_map_->getResolution())
             {
-              occ = grid_map_->getFusedInflateOccupancy((a / length) * intersection_point + (1 - a / length) * init_points.col(j));
+              occ = grid_map_->getFusedDynamicInflateOccupancy((a / length) * intersection_point + (1 - a / length) * init_points.col(j));
 
               if (occ || a < grid_map_->getResolution())
               {
@@ -345,13 +349,14 @@ std::vector<std::pair<int, int>> BsplineOptimizer::initControlPoints(Eigen::Matr
       }
     }
    
-   
+    ROS_WARN("Segment 5 end: final size= %f  ******************",final_segment_ids.size());
 
     return final_segment_ids;
 }
 
 std::vector<ControlPoints> BsplineOptimizer::distinctiveTrajs(vector<std::pair<int, int>> segments)
 {
+     ROS_WARN_STREAM("Distinct Traj 0:seg_size :"<<segments.size());
     if (segments.size() == 0) // will be invoked again later.
     {
         std::vector<ControlPoints> oneSeg;
@@ -368,7 +373,7 @@ std::vector<ControlPoints> BsplineOptimizer::distinctiveTrajs(vector<std::pair<i
     control_pts_buf.reserve(MAX_TRAJS);
     const double RESOLUTION = grid_map_->getResolution();
     const double CTRL_PT_DIST = (cps_.points.col(0) - cps_.points.col(cps_.size - 1)).norm() / (cps_.size - 1);
-
+    ROS_WARN_STREAM("Distinct Traj 1:seg_upbound :"<<seg_upbound);
     // Step 1. Find the opposite vectors and base points for every segment.
     std::vector<std::pair<ControlPoints, ControlPoints>> RichInfoSegs;
     for (int i = 0; i < seg_upbound; i++)
@@ -380,17 +385,17 @@ std::vector<ControlPoints> BsplineOptimizer::distinctiveTrajs(vector<std::pair<i
         RichInfoOneSeg.second = RichInfoOneSeg_temp;
         RichInfoSegs.push_back(RichInfoOneSeg);
 
-        // cout << "RichInfoOneSeg_temp, out" << endl;
-        // cout << "RichInfoSegs[" << i << "].first" << endl;
-        // for ( int k=0; k<RichInfoOneSeg_temp.size; k++ )
-        //   if ( RichInfoOneSeg_temp.base_point[k].size() > 0 )
-        //   {
-        //     cout << "###" << RichInfoOneSeg_temp.points.col(k).transpose() << endl;
-        //     for (int k2 = 0; k2 < RichInfoOneSeg_temp.base_point[k].size(); k2++)
-        //     {
-        //       cout << "      " << RichInfoOneSeg_temp.base_point[k][k2].transpose() << " @ " << RichInfoOneSeg_temp.direction[k][k2].transpose() << endl;
-        //     }
-        //   }
+        cout << "RichInfoOneSeg_temp, out" << endl;
+        cout << "RichInfoSegs[" << i << "].first" << endl;
+        for ( int k=0; k<RichInfoOneSeg_temp.size; k++ )
+          if ( RichInfoOneSeg_temp.base_point[k].size() > 0 )
+          {
+            cout << "###" << RichInfoOneSeg_temp.points.col(k).transpose() << endl;
+            for (int k2 = 0; k2 < RichInfoOneSeg_temp.base_point[k].size(); k2++)
+            {
+              cout << "      " << RichInfoOneSeg_temp.base_point[k][k2].transpose() << " @ " << RichInfoOneSeg_temp.direction[k][k2].transpose() << endl;
+            }
+          }
     }
 
     // cout << "A2" << endl;
@@ -412,7 +417,7 @@ std::vector<ControlPoints> BsplineOptimizer::distinctiveTrajs(vector<std::pair<i
                 {
                     Eigen::Vector2d pt(a * RichInfoSegs[i].first.points.col(j) + (1 - a) * RichInfoSegs[i].first.points.col(j + 1));
                     //cout << " " << grid_map_->getInflateOccupancy(pt) << " pt=" << pt.transpose() << endl;
-                    if (grid_map_->getFusedInflateOccupancy(pt))
+                    if (grid_map_->getFusedDynamicInflateOccupancy(pt))
                     {
                         occ_start_id = j;
                         occ_start_pt = pt;
@@ -433,7 +438,7 @@ std::vector<ControlPoints> BsplineOptimizer::distinctiveTrajs(vector<std::pair<i
                     Eigen::Vector2d pt(a * RichInfoSegs[i].first.points.col(j) + (1 - a) * RichInfoSegs[i].first.points.col(j - 1));
                     //cout << " " << grid_map_->getInflateOccupancy(pt) << " pt=" << pt.transpose() << endl;
 
-                    if (grid_map_->getFusedInflateOccupancy(pt))
+                    if (grid_map_->getFusedDynamicInflateOccupancy(pt))
                     {
                         occ_end_id = j;
                         occ_end_pt = pt;
@@ -514,15 +519,15 @@ std::vector<ControlPoints> BsplineOptimizer::distinctiveTrajs(vector<std::pair<i
                     base_pt_reverse = RichInfoSegs[i].first.points.col(j) + base_vec_reverse * (RichInfoSegs[i].first.base_point[j][0] - RichInfoSegs[i].first.points.col(j)).norm();
                 }
 
-                if (grid_map_->getFusedInflateOccupancy(base_pt_reverse)) // Search outward.
+                if (grid_map_->getFusedDynamicInflateOccupancy(base_pt_reverse)) // Search outward.
                 {
-                    double l_upbound = 5 * CTRL_PT_DIST; // "5" is the threshold.
+                    double l_upbound = 10 * CTRL_PT_DIST; // "5" is the threshold.
                     double l = RESOLUTION;
                     for (; l <= l_upbound; l += RESOLUTION)
                     {
                         Eigen::Vector2d base_pt_temp = base_pt_reverse + l * base_vec_reverse;
                         //cout << base_pt_temp.transpose() << endl;
-                        if (!grid_map_->getFusedInflateOccupancy(base_pt_temp))
+                        if (!grid_map_->getFusedDynamicInflateOccupancy(base_pt_temp))
                         {
                             RichInfoSegs[i].second.base_point[j][0] = base_pt_temp;
                             RichInfoSegs[i].second.direction[j][0] = base_vec_reverse;
@@ -583,15 +588,15 @@ std::vector<ControlPoints> BsplineOptimizer::distinctiveTrajs(vector<std::pair<i
             Eigen::Vector2d base_vec_reverse = -RichInfoSegs[i].first.direction[0][0];
             Eigen::Vector2d base_pt_reverse = RichInfoSegs[i].first.points.col(0) + base_vec_reverse * (RichInfoSegs[i].first.base_point[0][0] - RichInfoSegs[i].first.points.col(0)).norm();
 
-            if (grid_map_->getFusedInflateOccupancy(base_pt_reverse)) // Search outward.
+            if (grid_map_->getFusedDynamicInflateOccupancy(base_pt_reverse)) // Search outward.
             {
-                double l_upbound = 5 * CTRL_PT_DIST; // "5" is the threshold.
+                double l_upbound = 10 * CTRL_PT_DIST; // "5" is the threshold.
                 double l = RESOLUTION;
                 for (; l <= l_upbound; l += RESOLUTION)
                 {
                 Eigen::Vector2d base_pt_temp = base_pt_reverse + l * base_vec_reverse;
                 //cout << base_pt_temp.transpose() << endl;
-                if (!grid_map_->getFusedInflateOccupancy(base_pt_temp))
+                if (!grid_map_->getFusedDynamicInflateOccupancy(base_pt_temp))
                 {
                     RichInfoSegs[i].second.base_point[0][0] = base_pt_temp;
                     RichInfoSegs[i].second.direction[0][0] = base_vec_reverse;
@@ -842,9 +847,9 @@ bool BsplineOptimizer::rebound_optimize(double &final_cost)
             double tm, tmp;
             traj.getTimeSpan(tm, tmp);
             double t_step = (tmp - tm) / ((traj.evaluateDeBoorT(tmp) - traj.evaluateDeBoorT(tm)).norm() / grid_map_->getResolution());
-            for (double t = tm; t < tmp * 2 / 3; t += t_step) // Only check the closest 2/3 partition of the whole trajectory.
+            for (double t = tm; t < tmp ; t += t_step)//(double t = tm; t < tmp * 2 / 3; t += t_step) // Only check the closest 2/3 partition of the whole trajectory.
             {   
-                flag_occ = grid_map_->getFusedInflateOccupancy(traj.evaluateDeBoorT(t));
+                flag_occ = grid_map_->getFusedDynamicInflateOccupancy(traj.evaluateDeBoorT(t));
                 if (flag_occ)
                 {
                     //cout << "hit_obs, t=" << t << " P=" << traj.evaluateDeBoorT(t).transpose() << endl;
@@ -855,11 +860,11 @@ bool BsplineOptimizer::rebound_optimize(double &final_cost)
                         //      << cps_.points.col(2).transpose() << "\n"
                         //      << cps_.points.col(3).transpose() << "\n"
                         //      << cps_.points.col(4).transpose() << endl;
-                        ROS_WARN("First 3 control points in obstacles! return false, t=%f", t);
+                        ROS_WARN("First 3 control points in obstacles! return false, t=%f, t_step=%f", t,t_step);
                         return false;
                     }
 
-                break;
+                  break;
                 }
             }
 
@@ -986,7 +991,7 @@ bool BsplineOptimizer::refine_optimize()
       double t_step = (tmp - tm) / ((traj.evaluateDeBoorT(tmp) - traj.evaluateDeBoorT(tm)).norm() / grid_map_->getResolution()); // Step size is defined as the maximum size that can passes throgth every gird.
       for (double t = tm; t < tmp * 2 / 3; t += t_step)
       {
-        if (grid_map_->getFusedInflateOccupancy(traj.evaluateDeBoorT(t)))
+        if (grid_map_->getFusedDynamicInflateOccupancy(traj.evaluateDeBoorT(t)))
         {
           // cout << "Refined traj hit_obs, t=" << t << " P=" << traj.evaluateDeBoorT(t).transpose() << endl;
 
@@ -1402,7 +1407,7 @@ bool BsplineOptimizer::check_collision_and_rebound(void)
     for (int i = order_ - 1; i <= i_end; ++i)
     {
 
-      bool occ = grid_map_->getFusedInflateOccupancy(cps_.points.col(i));
+      bool occ = grid_map_->getFusedDynamicInflateOccupancy(cps_.points.col(i));
 
       /*** check if the new collision will be valid ***/
       if (occ)
@@ -1425,7 +1430,7 @@ bool BsplineOptimizer::check_collision_and_rebound(void)
         int j;
         for (j = i - 1; j >= 0; --j)
         {
-          occ = grid_map_->getFusedInflateOccupancy(cps_.points.col(j));
+          occ = grid_map_->getFusedDynamicInflateOccupancy(cps_.points.col(j));
           if (!occ)
           {
             in_id = j;
@@ -1440,7 +1445,7 @@ bool BsplineOptimizer::check_collision_and_rebound(void)
 
         for (j = i + 1; j < cps_.size; ++j)
         {
-          occ = grid_map_->getFusedInflateOccupancy(cps_.points.col(j));
+          occ = grid_map_->getFusedDynamicInflateOccupancy(cps_.points.col(j));
 
           if (!occ)
           {
@@ -1539,7 +1544,7 @@ bool BsplineOptimizer::check_collision_and_rebound(void)
               cps_.flag_temp[j] = true;
               for (double a = length; a >= 0.0; a -= grid_map_->getResolution())
               {
-                bool occ = grid_map_->getFusedInflateOccupancy((a / length) * intersection_point + (1 - a / length) * cps_.points.col(j));
+                bool occ = grid_map_->getFusedDynamicInflateOccupancy((a / length) * intersection_point + (1 - a / length) * cps_.points.col(j));
 
                 if (occ || a < grid_map_->getResolution())
                 {
