@@ -1,5 +1,8 @@
 <launch>
-<node pkg="arena_timespace_planner" name="plan_manager" type="time_space_planner_node" output="screen">
+<node pkg="arena_timespace_planner" name="time_space" type="time_space_planner_node" output="screen">
+    <!-- plan fsm -->
+    <rosparam file="$(find arena_timespace_planner)/launch/config/plan_fsm_param.yaml" command="load" ns="fsm"/> <!-- ns="global_costmap" -->
+    
     <!-- plan manager -->
     <rosparam file="$(find arena_timespace_planner)/launch/config/plan_manager_param.yaml" command="load" ns="plan_manager"/> <!-- ns="global_costmap" -->
     

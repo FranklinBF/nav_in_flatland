@@ -11,7 +11,7 @@ local_update_range_x: 10.0
 local_update_range_y: 10.0
 
 # inflations (meter)
-obstacles_inflation: 0.5
+obstacles_inflation: 0.3
 local_bound_inflate: 0.0
 
 # occupancy generation

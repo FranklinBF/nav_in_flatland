@@ -5,4 +5,4 @@ max_jerk: 4.0
 feasibility_tolerance: 0.05
 control_points_distance: 0.4
 use_distinctive_trajs: true
-local_time_horizon: 5.0
+local_time_horizon: 3.0

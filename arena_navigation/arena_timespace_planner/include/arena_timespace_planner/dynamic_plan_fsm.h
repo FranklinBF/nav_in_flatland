@@ -58,6 +58,7 @@ private:
     
     ros::Timer exec_timer_, safety_timer_;// vis_timer_;
     ros::Timer traj_tracker_timer_;
+    //ros::Timer dynamic_occ_map_timer_;
     
     // subscriber
     ros::Subscriber goal_sub_, odom_sub_;
@@ -78,10 +79,13 @@ private:
     void execFSMCallback(const ros::TimerEvent &e);
     void checkCollisionCallback(const ros::TimerEvent &e);
     void trackTrajCallback(const ros::TimerEvent &e);
+    //void updateDynamicMapCallback(const ros::TimerEvent& e);
     
     bool planFromCurrentTraj(const int trial_times=1 /*=1*/);
 
     bool checkCollision();
+    
+
     Eigen::Vector2d getNextWaypoint();
 
 

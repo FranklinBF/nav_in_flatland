@@ -25,7 +25,8 @@ void DynamicReplanFSM::init(ros::NodeHandle &nh)
     exec_timer_ = node_.createTimer(ros::Duration(0.01), &DynamicReplanFSM::execFSMCallback, this);
     safety_timer_ = node_.createTimer(ros::Duration(0.05), &DynamicReplanFSM::checkCollisionCallback, this);
     traj_tracker_timer_ = node_.createTimer(ros::Duration(0.01), &DynamicReplanFSM::trackTrajCallback, this);
-
+    //dynamic_occ_map_timer_= node_.createTimer(ros::Duration(1.0), &DynamicReplanFSM::updateDynamicMapCallback,this);
+    
     /* ros communication with public node */
     ros::NodeHandle public_nh;
   	goal_sub_ =public_nh.subscribe("goal", 1, &DynamicReplanFSM::goalCallback,this);
@@ -58,6 +59,7 @@ void DynamicReplanFSM::odomCallback(const nav_msgs::OdometryConstPtr& msg){
 
     auto euler = odom_orient_.toRotationMatrix().eulerAngles(0, 1, 2); // row,pitch,yaw
     odom_dir_=euler(2); 
+    odom_dir_=odom_dir_<0?2*PI+odom_dir_:odom_dir_;
     //cout<<"odom direction"<<odom_dir_*180/3.1415<<endl;
     have_odom_ = true;
 }
@@ -177,11 +179,12 @@ void DynamicReplanFSM::execFSMCallback(const ros::TimerEvent& e){
             Eigen::Vector2d curr_pos = odom_pos_;
             Eigen::Vector2d curr_vel = odom_vel_;
             double          curr_dir = odom_dir_;
+            Eigen::Vector2d target_vel = Eigen::Vector2d(0.0,0.0);
             //std::vector<std::pair<Eigen::Vector2d,Eigen::Vector2d>> line_sets;
             //bool success=planner_manager_->planMidTraj(curr_pos,curr_vel,curr_dir,mid_target_,line_sets);
             //visualizeLines(line_sets,0.2,Eigen::Vector4d(0, 1, 1, 1.0),vis_triangle_pub_);
             
-            bool success =planner_manager_->planLocalTraj(curr_pos,curr_vel,curr_dir,mid_target_,Eigen::Vector2d::Zero());
+            bool success =planner_manager_->planLocalTraj(curr_pos,curr_vel,curr_dir,mid_target_,target_vel);
 
             if(success){
                 target_traj_data_ = planner_manager_->local_traj_data_;
@@ -190,7 +193,11 @@ void DynamicReplanFSM::execFSMCallback(const ros::TimerEvent& e){
                 cout<<"[Plan FSM]MID_REPLAN Success"<<endl;
                 changeFSMExecState(EXEC_LOCAL, "FSM");
             }else{
-                target_traj_data_ = TargetTrajData();
+                // for debug
+                target_traj_data_ = planner_manager_->local_traj_data_;
+                visualizePath(target_traj_data_.getLocalPath(),vis_timed_astar_path_pub_);
+                
+                //target_traj_data_ = TargetTrajData();
                 ROS_ERROR("[Plan FSM]Failed to generate the mid trajectory!!!");
                 changeFSMExecState(GEN_NEW_GLOBAL, "FSM");
             }
@@ -244,14 +251,19 @@ bool DynamicReplanFSM::planFromCurrentTraj(const int trial_times){
     Eigen::Vector2d curr_pos = odom_pos_;
     Eigen::Vector2d curr_vel = odom_vel_;
     double          curr_dir = odom_dir_;
+    Eigen::Vector2d target_vel =Eigen::Vector2d(0.0,0.0);
 
-    bool success = planner_manager_->planLocalTraj(curr_pos,curr_vel,curr_dir,mid_target_,Eigen::Vector2d::Zero());
+    bool success = planner_manager_->planLocalTraj(curr_pos,curr_vel,curr_dir,mid_target_,target_vel);
     if(success){
         target_traj_data_ = planner_manager_->local_traj_data_;
         visualizePath(target_traj_data_.getLocalPath(),vis_timed_astar_path_pub_);
 
     }else{
-        target_traj_data_= TargetTrajData();
+        // for debug
+        target_traj_data_ = planner_manager_->local_traj_data_;
+        visualizePath(target_traj_data_.getLocalPath(),vis_timed_astar_path_pub_);
+        // real
+        //target_traj_data_= TargetTrajData();
     }
     
 }
@@ -309,8 +321,8 @@ void DynamicReplanFSM::trackTrajCallback(const ros::TimerEvent &e){
         v=0.0;
         w=0.0;
         target_traj_data_.getControlInput(t_cur,v,w);
-        ROS_INFO_STREAM("vel: "<<v);
-        ROS_INFO_STREAM("rot vel: "<<w);
+        //ROS_INFO_STREAM("vel: "<<v);
+        //ROS_INFO_STREAM("rot vel: "<<w);
     }
     twist_cmd.angular.x=0.0;
     twist_cmd.angular.y=0.0;
@@ -346,6 +358,7 @@ Eigen::Vector2d DynamicReplanFSM::getNextWaypoint(){
 
     return next_wp;
 }
+
 
 /* --------------------visualization---------------------------- */
 void DynamicReplanFSM::visualizePoints(const std::vector<Eigen::Vector2d>& point_set, double pt_size, const Eigen::Vector4d& color, const ros::Publisher & pub) {

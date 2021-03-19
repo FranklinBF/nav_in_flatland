@@ -1,0 +1,4 @@
+# FSM parameters (fsm/)
+goal_tolerance: 0.5
+subgoal_tolerance: 2.0
+replan_time_thresh: 0.5
