@@ -47,6 +47,26 @@
   <arg name="obs5_pose_y" default="4.0"/>
   <arg name="obs5_pose_a" default="3.0"/>
 
+  <arg name="obs6_pose_x" default="7.0"/>
+  <arg name="obs6_pose_y" default="1.0"/>
+  <arg name="obs6_pose_a" default="1.0"/>
+
+  <arg name="obs7_pose_x" default="11.0"/>
+  <arg name="obs7_pose_y" default="10.0"/>
+  <arg name="obs7_pose_a" default="8.0"/>
+
+  <arg name="obs8_pose_x" default="9.0"/>
+  <arg name="obs8_pose_y" default="7.0"/>
+  <arg name="obs8_pose_a" default="5.0"/>
+
+  <arg name="obs9_pose_x" default="15.0"/>
+  <arg name="obs9_pose_y" default="14.0"/>
+  <arg name="obs9_pose_a" default="0.0"/>
+
+  <arg name="obs10_pose_x" default="9.0"/>
+  <arg name="obs10_pose_y" default="16.0"/>
+  <arg name="obs10_pose_a" default="1.0"/>
+
   <node name="spawn_model" pkg="rosservice" type="rosservice"
     args="call --wait /spawn_model &quot;{
       yaml_path: '$(find simulator_setup)/robot/myrobot.model.yaml',
@@ -96,13 +116,53 @@
       "
     />
 
-     <node name="spawn_model5" pkg="rosservice" type="rosservice"
+     <node name="spawn_model6" pkg="rosservice" type="rosservice"
+    args="
+      call --wait /spawn_model &quot;{
+      yaml_path: '$(find simulator_setup)/obstacles/walker.model.yaml',
+      name: 'obs_dynamic6',
+      ns: '',
+      pose: {x: $(arg obs6_pose_x), y: $(arg obs6_pose_y), theta: $(arg obs6_pose_a)}}&quot;
+      "
+    />
+
+    <node name="spawn_model7" pkg="rosservice" type="rosservice"
+    args="
+      call --wait /spawn_model &quot;{
+      yaml_path: '$(find simulator_setup)/obstacles/walker.model.yaml',
+      name: 'obs_dynamic7',
+      ns: '',
+      pose: {x: $(arg obs7_pose_x), y: $(arg obs7_pose_y), theta: $(arg obs7_pose_a)}}&quot;
+      "
+    />
+
+    <node name="spawn_model8" pkg="rosservice" type="rosservice"
+    args="
+      call --wait /spawn_model &quot;{
+      yaml_path: '$(find simulator_setup)/obstacles/walker.model.yaml',
+      name: 'obs_dynamic8',
+      ns: '',
+      pose: {x: $(arg obs8_pose_x), y: $(arg obs8_pose_y), theta: $(arg obs8_pose_a)}}&quot;
+      "
+    />
+
+    <node name="spawn_model9" pkg="rosservice" type="rosservice"
+    args="
+      call --wait /spawn_model &quot;{
+      yaml_path: '$(find simulator_setup)/obstacles/walker.model.yaml',
+      name: 'obs_dynamic9',
+      ns: '',
+      pose: {x: $(arg obs9_pose_x), y: $(arg obs9_pose_y), theta: $(arg obs9_pose_a)}}&quot;
+      "
+    />
+
+    <node name="spawn_model10" pkg="rosservice" type="rosservice"
     args="
       call --wait /spawn_model &quot;{
       yaml_path: '$(find simulator_setup)/obstacles/walker.model.yaml',
       name: 'obs_dynamic5',
       ns: '',
-      pose: {x: $(arg obs5_pose_x), y: $(arg obs5_pose_y), theta: $(arg obs5_pose_a)}}&quot;
+      pose: {x: $(arg obs10_pose_x), y: $(arg obs10_pose_y), theta: $(arg obs10_pose_a)}}&quot;
       "
     />
 

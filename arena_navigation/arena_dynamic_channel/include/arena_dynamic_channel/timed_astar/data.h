@@ -1,15 +1,12 @@
-#ifndef _DATA_HPP_
-#define _DATA_HPP_
-
-#include "graph/accessor.hpp"
-#include "graph/delaunator.hpp"
-
+#pragma once
 #include <Eigen/Eigen>
 #include <memory>
 #include <map>
 #include <unordered_map>
 #include <boost/functional/hash.hpp>
 
+#include "arena_dynamic_channel/graph/accessor.h"
+#include "arena_dynamic_channel/graph/delaunator.h"
 
 
 namespace timed_astar
@@ -30,40 +27,42 @@ constexpr size_t PHASE2_INDEX = 5;
 constexpr size_t PHASE3_INDEX = 4;
 constexpr size_t PHASE4_INDEX = 3;
 constexpr size_t PEDS_START = 6;
-
-
-/* hyperpara loaded from launch file */
 #define PI 3.14159265
 
-double SAFE_DIST = 1.0;
+/* hyperpara loaded from launch file */
+struct TimedAstarParam{
+    // Node allocate num
+    int ALLOCATE_NUM;
+    
+    // REACH
+    double GOAL_RADIUS;
 
-double ROBOT_RADIUS = 0.3;
-double OBSTACLE_RADIUS   = 0.3;
-double MAX_SPEED    = 1.8;
-double AVG_SPEED    = 1.0;
-double MIN_SPEED    = 0.5;
-double MAX_ROT_SPEED = 0.523583; // rad/sec
+    // distance
+    double SAFE_DIST;
+    double ROBOT_RADIUS;
+    double OBSTACLE_RADIUS;
 
-double TIME_HORIZON = 5.0; // time budget for
-double DELTA_T = 0.2;     // time interval between graphs
-size_t NUM_SAMPLE_EDGE=5;
+    // action sample
+    double MAX_SPEED;   
+    double AVG_SPEED;  
+    double MIN_SPEED;
 
+    double MAX_ROT_SPEED; // rad/sec
 
-double FORD_HORIZON = 1.0;    // max time used for ICS test
-size_t ACTION_NUM = 72;
+    
+    // sample on edge
+    int NUM_SAMPLE_EDGE;
 
-double CELL_SIZE = 0.1; // cell size of sdf map
-double SDF_INTVL = 0.4; // time interval between sdfs
-size_t SDF_NUM = 15;
-
-
+    // resolution
+    double RESOLUTION;
+    double TIME_RESOLUTION;
+    
+    // time 
+    double TIME_HORIZON;
+    size_t TIME_SLICE_NUM = static_cast<size_t>(round(TIME_HORIZON / TIME_RESOLUTION));
+};
 
 /* build in hyperpara */
-// const double GOAL_RADIUS = MAX_SPEED * DELTA_T * 2;
-const double GOAL_RADIUS = 0.2;
-const size_t OPT_STEPS = static_cast<size_t>(round(FORD_HORIZON / DELTA_T));
-const size_t MIN_STEPS = static_cast<size_t>(fmin(OPT_STEPS, 3)); // at least forward 2 steps
-const size_t SLICE_NUM = static_cast<size_t>(round(TIME_HORIZON / DELTA_T));
 const Index NONE_INDEX = std::numeric_limits<Index>::max();
 
 
@@ -84,9 +83,6 @@ struct Vec2i
     Vec2i(const Vec2i& vec): x(vec.x), y(vec.y) {}
     friend bool operator == (const Vec2i &a, const Vec2i &b);
 };
-bool operator == (const Vec2i& a, const Vec2i& b){
-    return (a.x == b.x && a.y == b.y);
-}
 
 
 struct Vec2d
@@ -113,51 +109,11 @@ struct Vec2d
 
     double angle() const { 
        double angle_rad=atan2(y,x);
-       return angle_rad<0?2*PI-angle_rad:angle_rad;
+       return angle_rad<0? 2*PI+angle_rad : angle_rad;
     }
 
     double length() const { return sqrt(x*x + y*y);}
 };
-
-Vec2d operator + (const Vec2d &a, const Vec2d &b) {
-    return Vec2d(a.x + b.x, a.y + b.y);
-}
-Vec2d operator - (const Vec2d &a, const Vec2d &b) {
-    return Vec2d(a.x - b.x, a.y - b.y);
-}
-Vec2d operator * (const Vec2d &a, const Vec2d &b) {
-    return Vec2d(a.x * b.x, a.y * b.y);
-}
-Vec2d operator * (const Vec2d &a, const double scale) {
-    return Vec2d(a.x * scale, a.y * scale);
-}
-Vec2d operator / (const Vec2d &a, const double scale) {
-    return Vec2d(a.x / scale, a.y / scale);
-}
-
-double dot (const Vec2d &a, const Vec2d &b) {
-    return a.x * b.x + a.y * b.y;
-}
-
-double cross (const Vec2d &a, const Vec2d &b) {
-    return a.x * b.y - a.y * b.x;
-}
-
-bool operator == (const Vec2d &a, const Vec2d &b) {
-    return (fabs(a.x - b.x) < DBL_EPSILON  && fabs(a.y - b.y) < DBL_EPSILON);
-}
-bool operator < (const Vec2d &a, const Vec2d &b) {
-    return (a.x < b.x) && (a.y < b.y);
-}
-bool operator <= (const Vec2d &a, const Vec2d &b) {
-    return (a.x <= b.x) && (a.y <= b.y);
-}
-bool operator > (const Vec2d &a, const Vec2d &b) {
-    return (a.x > b.x) && (a.y > b.y);
-}
-bool operator >= (const Vec2d &a, const Vec2d &b) {
-    return (a.x >= b.x) && (a.y >= b.y);
-}
 
 
 struct Edge
@@ -241,7 +197,7 @@ struct PathNode
 
     double time_elapsed;    // accumulated time
 
-    Vec2d pos;              // node placement position
+    Vec2d pos;                // node placement position
     //Vec2i pos_index;        // node placement position
 
     double dir;             // [rad] current direction of the car
@@ -267,11 +223,11 @@ struct PathNode
         node_state=UNDEFINED;
     };
 
-    void setTimedTriangle(const Vec2d &pos, const double &time, const std::vector<GraphPtr> &timed_graph){
+    void setTimedTriangle(const Vec2d &pos, const double &time, const std::vector<GraphPtr> &timed_graph, double time_resolution, size_t slice_num ){
         namespace dl = delaunator;
         this->pos=pos;
         this->time_elapsed=time;
-        this->sid = std::min((size_t)(floor((time_elapsed - 0.0) /DELTA_T)),SLICE_NUM-1);
+        this->sid = std::min((size_t)(floor((time_elapsed - 0.0) / time_resolution)),slice_num-1);
         this->eid=dl::locateCurrentFace(timed_graph[this->sid].get(), pos.x, pos.y);
         this->tid = static_cast<Index>(floor(eid / 3.0));
     }
@@ -330,9 +286,5 @@ public:
   }
 };
 
-
-
-
 }
 
-#endif

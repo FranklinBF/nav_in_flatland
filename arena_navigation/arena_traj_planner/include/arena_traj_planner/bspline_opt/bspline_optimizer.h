@@ -106,7 +106,7 @@ public:
   //void setDroneId(const int drone_id);
 
   // optional inputs
-  void setLocalTargetPt(const Eigen::Vector2d local_target_pt) { local_target_pt_ = local_target_pt; };
+  void setLocalTargetPt( const Eigen::Vector2d local_target_pt) { local_target_pt_ = local_target_pt; };
 
   ControlPoints getControlPoints() { return cps_; };
 

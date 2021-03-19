@@ -13,6 +13,7 @@ find_package(catkin REQUIRED
   geometry_msgs
   visualization_msgs
   arena_mapping
+  arena_traj_planner
 )
 
 find_package(Eigen3 REQUIRED)
@@ -35,7 +36,7 @@ find_package(Boost REQUIRED COMPONENTS system)
 catkin_package(
   INCLUDE_DIRS include
   LIBRARIES arena_dynamic_channel
-  CATKIN_DEPENDS roscpp rospy std_msgs nav_msgs geometry_msgs arena_mapping
+  CATKIN_DEPENDS roscpp rospy std_msgs nav_msgs geometry_msgs arena_mapping arena_traj_planner
   #DEPENDS system_lib
 )
 ###########
@@ -47,8 +48,8 @@ catkin_package(
 include_directories(
   include
   #include/thirdparty/fade2d
-  include/astar
-  include/graph
+  #include/astar
+  #include/graph
   ${catkin_INCLUDE_DIRS}
   ${Eigen3_INCLUDE_DIRS} 
   ${PCL_INCLUDE_DIRS}
@@ -60,6 +61,22 @@ include_directories(
 link_directories(
     lib
     ${catkin_LIB_DIRS} 
+)
+
+
+# Declare a C++ library
+add_library(arena_dynamic_channel
+  src/timed_astar/dynamic_obstacle.cpp 
+  src/timed_astar/timed_astar_anytime.cpp
+  src/timed_astar/data.cpp
+  src/graph/delaunator.cpp
+  src/graph/accessor.cpp
+  src/timed_astar_search.cpp
+)
+
+target_link_libraries(arena_dynamic_channel
+  ${catkin_LIBRARIES}
+  ${PCL_LIBRARIES}
 )
 
 
@@ -98,16 +115,16 @@ link_directories(
 # )
 
 
-# add executable 2 or library
-add_executable(timed_astar 
-              src/timed_astar.cpp
-)
+# # add executable 2 or library
+# add_executable(timed_astar 
+#               src/timed_astar_node.cpp
+# )
 
-target_link_libraries(timed_astar
-  ${catkin_LIBRARIES}
-  ${PCL_LIBRARIES}
-  ${Boost_LIBRARIES}
-)
+# target_link_libraries(timed_astar
+#   ${catkin_LIBRARIES}
+#   ${PCL_LIBRARIES}
+#   ${Boost_LIBRARIES}
+# )
 
 
 

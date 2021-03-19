@@ -1,0 +1,19 @@
+# kinodynamic Astar (kino_astar/)
+allocate_num: 100000    # allocated memory num for search
+horizon: 100.0          # planning horizon, here as global planner we make it big
+max_vel: 3.0
+max_acc: 4.0
+w_time: 10.0            # for calculating g-cost
+
+max_tau: 0.6            # delta_time
+init_max_tau: 0.8       # init delta_time
+
+goal_tolerance: 0.5     # goal tolerance
+vel_margin: 0.0         # [no use]
+
+resolution_astar: 0.1   # (meter)
+time_resolution: 0.8    # (sec)
+
+lambda_heu: 0.1         # coeff for heuritic
+
+check_num: 5            # for collision check of each action

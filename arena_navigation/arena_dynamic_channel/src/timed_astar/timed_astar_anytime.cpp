@@ -1,26 +1,8 @@
-#ifndef _ASTAR_SAMPLE_HPP_
-#define _ASTAR_SAMPLE_HPP_
 
-#include <vector>
-#include <functional>
-#include <set>
-#include <cmath>
-#include <queue>
-#include <iostream>
-#include <memory>
-#include <algorithm>
-
-#include <Eigen/Eigen>
-
-#include "graph/delaunator.hpp"
-#include "graph/accessor.hpp"
-#include "data.hpp"
-
-namespace dl = delaunator;
+#include "arena_dynamic_channel/timed_astar/timed_astar_anytime.h"
 
 namespace timed_astar
 {
-
 bool solveRoot(double a0, double a1, double a2, double &x1, double &x2){
     // calculate companion matrix of the polynomial
 	Eigen::Matrix2d Compan;
@@ -106,101 +88,13 @@ bool getTwoLineIntersection(const Vec2d & p1, const Vec2d &p2,const Vec2d &q1, c
         return false;
     }
 
-
-
-
 }
 
 
-class TimedAstar{
+void TimedAstar::init(GridMap::Ptr grid_map,TimedAstarParam param){
+    // param
+    param_=param;
 
-private:
-    // time search graph
-    std::vector<GraphPtr> timed_graph_;
-
-    // init and goal condition
-    Vec2d start_pos_;
-    Vec2d goal_pos_;
-    
-    // search param
-    std::vector<double> action_v_set_;
-    std::vector<double> action_w_set_;
-    double SAFE_DIST_;
-    double ROBOT_RADIUS_;
-    double OBSTACLE_RADIUS_; 
-    double TIME_HORIZON_;
-    size_t SLICE_NUM_;
-    double GOAL_RADIUS_;
-    size_t NUM_SAMPLE_EDGE_;
-    
-
-    // map
-    GridMap::Ptr grid_map_;
-    Vec2d occ_map_origin_,occ_map_size_2d_;
-    double resolution_, inv_resolution_;
-    
-    // time
-    double time_origin_;// record the time planed, later for trajectory generation
-    double time_resolution_, inv_time_resolution_;
-
-    // open_list
-    std::priority_queue<PathNodePtr, std::vector<PathNodePtr>, NodeComparator> open_list_;
-    
-    // expanded_list(is needed because no fixed grid/array can be used to index the expanded node)
-    PathNodeHashTable expanded_nodes_; //(check with node state OPENSET/CLOSESET/UNDEFINED)
-
-    // trace nodes
-    std::vector<PathNodePtr> final_path_nodes_;
-
-    // save visted nodes, place node in fixed vector to save memory
-    std::vector<PathNodePtr> path_node_pool_;
-    int ALLOCATE_NUM_;
-    int use_node_num_;
-
-    // counter
-    int  iter_num_;
-    
-    Vec2i posToIndex(Vec2d pos);
-
-    int timeToIndex(double time);
-
-    void getTimedGraph(const std::vector<double>& coords,const std::vector<double>& speeds,
-                        const std::vector<double>& angles,std::vector<GraphPtr>& timed_graph);
-
-    bool getNeighborNodes(PathNodePtr &curr_node, std::vector<PathNodePtr> & neighbor_ptr_set,std::vector<double> & edge_cost_set);
-
-    double estimateHeuristic(Vec2d robot_pos,Vec2d goal_pos, Vec2d start_pos);
-
-    bool checkCollision(const PathNodePtr &curr_node, PathNodePtr &next_node,Graph *graph_t, double & dist_to_collid, double & time_to_collid);
-
-    double computeCollisionTime(const Vec2d &p_ir, const Vec2d &v_ir, const double &duration);
-
-    void retrievePath(PathNodePtr end_node);
-
-public:
-    
-
-    TimedAstar(){}
-    ~TimedAstar(){};
-    typedef std::shared_ptr<TimedAstar> Ptr;
-
-    void init(GridMap::Ptr grid_map);
-    void reset();
-    
-    bool TimeAstarSearch(const std::vector<double>& coords,const std::vector<double>& speeds,
-                    const std::vector<double>& angles,const Vec2d& robot,const Vec2d& goal,
-                    const double & dir_start,const double & time_start);
-
-
-    std::vector<Vec2d> getPath();
-
-    void getGraph(GraphPtr &graph_t, const double time);
-
-                    
-};
-
-void TimedAstar::init(GridMap::Ptr grid_map){
-    
     //init map 
     grid_map_ = grid_map;
     
@@ -209,15 +103,15 @@ void TimedAstar::init(GridMap::Ptr grid_map){
     occ_map_origin_=Vec2d(occ_map_origin(0),occ_map_origin(1));     
     occ_map_size_2d_=Vec2d(occ_map_size_2d(0),occ_map_size_2d(1));  
     
-    resolution_= CELL_SIZE;
+    resolution_= param.RESOLUTION;
     inv_resolution_=1.0/resolution_;
     
     //init time 
-    time_resolution_=DELTA_T;
+    time_resolution_=param.TIME_RESOLUTION;
     inv_time_resolution_=1.0/time_resolution_;
     
     // init graph nodes pool
-    ALLOCATE_NUM_=10000;
+    ALLOCATE_NUM_=param.ALLOCATE_NUM;
     path_node_pool_.resize(ALLOCATE_NUM_);
     for (int i = 0; i < ALLOCATE_NUM_; i++)
   	{
@@ -228,16 +122,20 @@ void TimedAstar::init(GridMap::Ptr grid_map){
     use_node_num_=0;
     iter_num_=0;
     
-    action_v_set_={MIN_SPEED,AVG_SPEED,MAX_SPEED};
-    action_w_set_={MAX_ROT_SPEED};
+    MAX_SPEED_=param.MAX_SPEED;
+    AVG_SPEED_=param.AVG_SPEED;
+    MIN_SPEED_=param.MIN_SPEED;
+    MAX_ROT_SPEED_=param.MAX_ROT_SPEED;
+    action_v_set_={param.MAX_SPEED,param.AVG_SPEED,param.MIN_SPEED};
+    action_w_set_={param.MAX_ROT_SPEED};
     
-    SAFE_DIST_= SAFE_DIST;
-    ROBOT_RADIUS_= ROBOT_RADIUS;
-    OBSTACLE_RADIUS_= OBSTACLE_RADIUS;  
-    TIME_HORIZON_= TIME_HORIZON;
-    SLICE_NUM_= SLICE_NUM;
-    GOAL_RADIUS_=GOAL_RADIUS;
-    NUM_SAMPLE_EDGE_=NUM_SAMPLE_EDGE;
+    SAFE_DIST_      = param.SAFE_DIST;
+    ROBOT_RADIUS_   = param.ROBOT_RADIUS;
+    OBSTACLE_RADIUS_= param.OBSTACLE_RADIUS;  
+    TIME_HORIZON_   = param.TIME_HORIZON;
+    SLICE_NUM_      = param.TIME_SLICE_NUM;
+    GOAL_RADIUS_    = param.GOAL_RADIUS;
+    NUM_SAMPLE_EDGE_= param.NUM_SAMPLE_EDGE;
     
 }
 
@@ -290,7 +188,7 @@ void TimedAstar::getTimedGraph(const std::vector<double>& coords,
     auto y_goal = coords[GOAL_INDEX*2+1];
 
     // discretize the time space
-    for (size_t t = 0; t < SLICE_NUM; ++t) {
+    for (size_t t = 0; t < SLICE_NUM_; ++t) {
         std::vector<double> coord_t, speed_t, angle_t;
 
         // push init and goal
@@ -306,8 +204,8 @@ void TimedAstar::getTimedGraph(const std::vector<double>& coords,
         // time evolution
         // std::cout << "new node:" << std::endl;
         for (size_t i = 4; i < coords.size(); i += 2) {
-            auto xi = coords[i] + speeds[i] * DELTA_T * t;
-            auto yi = coords[i+1] + speeds[i+1] * DELTA_T * t;
+            auto xi = coords[i] + speeds[i] * time_resolution_ * t;
+            auto yi = coords[i+1] + speeds[i+1] * time_resolution_ * t;
             if (xi < x_min || xi > x_max || yi < y_min || yi > y_max){
                 continue;
             }
@@ -359,7 +257,7 @@ bool TimedAstar::TimeAstarSearch(const std::vector<double>& coords,
     start_node->parent     = nullptr;
     start_node->pos        =start_pos_;
     start_node->dir        =dir_start;
-    start_node->setTimedTriangle(start_pos_,0.0,timed_graph_);
+    start_node->setTimedTriangle(start_pos_,0.0,timed_graph_,time_resolution_,SLICE_NUM_);
     start_node->G          = 0.0;
     start_node->H          =estimateHeuristic(start_pos_,goal_pos_,start_pos_);
     start_node->node_state = PathNode::OPENSET;
@@ -430,7 +328,7 @@ bool TimedAstar::TimeAstarSearch(const std::vector<double>& coords,
                 neigbor_node->G=tmp_g_score;
                 neigbor_node->H=estimateHeuristic(neigbor_node->pos,goal_pos_,curr_node->pos);
                 
-                neigbor_node->setTimedTriangle(neigbor_node->pos,neigbor_node->time_elapsed,timed_graph_);
+                neigbor_node->setTimedTriangle(neigbor_node->pos,neigbor_node->time_elapsed,timed_graph_,time_resolution_,SLICE_NUM_);
                 
                 neigbor_node->node_state=PathNode::OPENSET;
                 // add to openlist
@@ -471,7 +369,7 @@ bool TimedAstar::TimeAstarSearch(const std::vector<double>& coords,
                         pro_node->w_in=neigbor_node->w_in;
                         pro_node->dur_v=neigbor_node->dur_v;
                         pro_node->dur_w=neigbor_node->dur_w;
-                        pro_node->setTimedTriangle(neigbor_node->pos,neigbor_node->time_elapsed,timed_graph_);
+                        pro_node->setTimedTriangle(neigbor_node->pos,neigbor_node->time_elapsed,timed_graph_,time_resolution_,SLICE_NUM_);
                         
                     }
                     
@@ -483,6 +381,7 @@ bool TimedAstar::TimeAstarSearch(const std::vector<double>& coords,
     // check if find anynode
     if (goal_nearest_node == nullptr) {
         std::cout<<"[time astar search]: done[1] not found any thing---------------"<<std::endl;
+        retrievePath(start_node);
         return false;
     }
     std::cout << "*************************************************" << std::endl;
@@ -492,11 +391,13 @@ bool TimedAstar::TimeAstarSearch(const std::vector<double>& coords,
         ancestor = goal_nearest_node;
         std::cout << "not reach goal" << std::endl;
     }
+    // retrieve path
+    retrievePath(ancestor);
+    std::cout << " goal reached " << std::endl;
     std::cout << "path size" << final_path_nodes_.size()<<std::endl;
     std::cout << "use node num: " << use_node_num_ << std::endl;
     std::cout << "iter num: " << iter_num_ << std::endl;
-    // retrieve path
-    retrievePath(ancestor);
+    
     return true;
 }
 
@@ -623,10 +524,11 @@ bool TimedAstar::getNeighborNodes(PathNodePtr &curr_node, std::vector<PathNodePt
     auto goal_eid = dl::locateCurrentFace(graph_t, goal_pos_.x, goal_pos_.y);
     double curr_goal_diff = (curr_node->pos - goal_pos_).length();
     
-    if(floor(curr_eid / 3.0)==floor(goal_eid / 3.0) || curr_goal_diff<SAFE_DIST )//
+    if(floor(curr_eid / 3.0)==floor(goal_eid / 3.0) || curr_goal_diff<SAFE_DIST_ )//
     {   // if in same triangle or near to the goal 
         
         samples.push_back(goal_pos_);
+        std::cout<<"GOAL is in same triangle"<<std::endl;
         
 
     }else{
@@ -695,8 +597,8 @@ bool TimedAstar::getNeighborNodes(PathNodePtr &curr_node, std::vector<PathNodePt
 
                 //calculate edge cost
                 double k;
-                k=1.0;
-                double edge_cost =k*next_node->dur_w + next_node->dur_v;
+                k=2.0;
+                double edge_cost =next_node->dur_v + k*next_node->dur_w;
 
                 // pushback node & edge cost
                 neighbor_ptr_set.push_back(next_node);
@@ -717,9 +619,9 @@ double TimedAstar::estimateHeuristic(Vec2d robot_pos,Vec2d goal_pos, Vec2d start
     double dir_goal_robot=(goal_pos-robot_pos).angle();
     double dir_diff = std::abs(dir_goal_robot-dir_start_robot);
     dir_diff=dir_diff>PI?2*PI-dir_diff:dir_diff;
-    double dur_dir = dir_diff/MAX_ROT_SPEED;
-	double dur_arrive = (robot_pos-goal_pos).length()/MIN_SPEED;
-    return dur_arrive+dur_dir;
+    double dur_dir = dir_diff/MAX_ROT_SPEED_;
+	double dur_arrive = (robot_pos-goal_pos).length()/MIN_SPEED_;
+    return dur_arrive + 3.0*dur_dir;
 }
 
 void TimedAstar::retrievePath(PathNodePtr end_node)
@@ -736,13 +638,72 @@ void TimedAstar::retrievePath(PathNodePtr end_node)
   std::reverse(final_path_nodes_.begin(), final_path_nodes_.end());
 }
 
-std::vector<Vec2d> TimedAstar::getPath(){
-    std::vector<Vec2d> waypoints;
+std::vector<Eigen::Vector2d> TimedAstar::getPath(){
+    std::vector<Eigen::Vector2d> waypoints;
     for(size_t i=0;i<final_path_nodes_.size();++i){
-        waypoints.push_back(final_path_nodes_[i]->pos);
+        waypoints.push_back(Eigen::Vector2d(final_path_nodes_[i]->pos.x,final_path_nodes_[i]->pos.y));
     }
     return waypoints;
 }
+
+std::vector<Eigen::Vector2d> TimedAstar::getTrajectory(double ts, double local_time_horizon){
+    std::vector<Eigen::Vector2d> point_set;
+    double total_time=0.0;
+    for(size_t i=0;i<final_path_nodes_.size()-1;++i){
+        PathNodePtr curr_node=final_path_nodes_[i];
+        PathNodePtr next_node=final_path_nodes_[i+1];
+        
+        double t_curr=0;
+        Vec2d v_robot =Vec2d(next_node->v_in *cos(next_node->dir),next_node->v_in*sin(next_node->dir));
+    
+        // first
+        Vec2d pos_curr  =curr_node->pos;
+        point_set.push_back(Eigen::Vector2d(pos_curr.x,pos_curr.y));
+        //still & rotate
+        while(t_curr < next_node->dur_w){
+            pos_curr = pos_curr + v_robot*(0.2* ts);
+            std::cout<<" ******curr time:"<<total_time<<std::endl;
+            std::cout<<" ******node posw:"<<pos_curr.x <<"   "<<pos_curr.y<<std::endl;
+            point_set.push_back(Eigen::Vector2d(pos_curr.x,pos_curr.y));
+            t_curr=t_curr + ts;
+            //total_time=total_time+ts;
+            if(total_time>local_time_horizon) return point_set;
+        }
+        // run straight
+        t_curr=0.0;
+        while(t_curr < next_node->dur_v-0.2*next_node->dur_w){
+            pos_curr = pos_curr + v_robot * ts;
+            std::cout<<" ******curr time:"<<total_time<<std::endl;
+            std::cout<<" ******node posv:"<<pos_curr.x <<"   "<<pos_curr.y<<std::endl;
+            point_set.push_back(Eigen::Vector2d(pos_curr.x,pos_curr.y));
+            t_curr=t_curr + ts;
+            total_time=total_time+ts;
+            if(total_time>local_time_horizon) return point_set;
+        }
+    }
+    
+    // final part of trajectory
+    PathNodePtr last_node=final_path_nodes_[final_path_nodes_.size()-1];
+    double dist_to_goal=(last_node->pos - goal_pos_).length();
+    if(dist_to_goal > GOAL_RADIUS_){
+        double dir   =  (goal_pos_-last_node->pos).angle();
+        Vec2d v_robot =Vec2d(param_.MIN_SPEED * cos(dir), param_.MIN_SPEED * sin(dir));
+        double t = dist_to_goal / param_.MIN_SPEED;
+        Vec2d pos_curr=last_node->pos;
+        while(t>0){
+            pos_curr = pos_curr + v_robot* ts;
+            std::cout<<" ******curr time:"<<total_time<<std::endl;
+            std::cout<<" ******node pos last:"<<pos_curr.x <<"   "<<pos_curr.y<<std::endl;
+            point_set.push_back(Eigen::Vector2d(pos_curr.x,pos_curr.y));
+            t=t-ts;
+            total_time=total_time+ts;
+            if(total_time>local_time_horizon) return point_set;
+        }
+    }
+
+    return point_set;
+}
+
 
 Vec2i TimedAstar::posToIndex(Vec2d pos){
     Vec2d temp=(pos-occ_map_origin_)*inv_resolution_;
@@ -763,8 +724,4 @@ void TimedAstar::getGraph(GraphPtr &graph_t, const double time=0.0){
 }
 
 
-
-
 }
-
-#endif

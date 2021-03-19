@@ -19,9 +19,9 @@ void BsplineOptimizerESDF::setParam(ros::NodeHandle& nh) {
     nh.param("optimization_ESDF/lambda3", lambda3_, 0.00001);
     nh.param("optimization_ESDF/lambda4", lambda4_, 0.01);
     nh.param("optimization_ESDF/lambda5", lambda5_, -1.0);
-    nh.param("optimization_ESDF/lambda6", lambda6_, -1.0);
+    //nh.param("optimization_ESDF/lambda6", lambda6_, -1.0);
     nh.param("optimization_ESDF/lambda7", lambda7_, 100.0);
-    nh.param("optimization_ESDF/lambda8", lambda8_, -1.0);
+    
 
     nh.param("optimization_ESDF/dist0", dist0_, 0.4);
     nh.param("optimization_ESDF/max_vel", max_vel_, 3.0);

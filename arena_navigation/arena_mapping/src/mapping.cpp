@@ -13,7 +13,7 @@ void GridMap::initMap(ros::NodeHandle& nh){
     
     // check if use esdf
     node_.param("sdf_map/use_occ_esdf", mp_.use_occ_esdf_, true);
-
+    
     // local map size
     node_.param("sdf_map/local_update_range_x", mp_.local_update_range_(0), 5.5);
     node_.param("sdf_map/local_update_range_y", mp_.local_update_range_(1), 5.5);
@@ -53,11 +53,7 @@ void GridMap::initMap(ros::NodeHandle& nh){
     x_origin=static_map_.info.origin.position.x;                              // coordinate of left-bottom corner of the map, in meter
     y_origin=static_map_.info.origin.position.y;                              // coordinate of left-bottom corner of the map, in meter
     mp_.map_origin_ = Eigen::Vector2d(x_origin, y_origin);                    // left-bottom corner  w.r.t coordinate origin
-
-    std::cout << "x_size: " <<  x_size << std::endl;
-    std::cout << "y_size: " <<  y_size << std::endl;
-    std::cout << "x_origin: " << x_origin << std::endl;
-    std::cout << "y_origin: " << y_origin << std::endl;
+    
    
     // size in pixel of global map
     //for (int i = 0; i < 2; ++i) mp_.map_pixel_num_(i) = ceil(mp_.map_size_(i) / mp_.resolution_);
@@ -107,7 +103,8 @@ void GridMap::initMap(ros::NodeHandle& nh){
     md_.occupancy_buffer_ = std::vector<double>(md_.buffer_size_, mp_.clamp_min_log_ - mp_.unknown_flag_); // save state_occu probability [mp_.clamp_min_log_,mp_.clamp_max_log_]
     md_.occupancy_buffer_neg_ = std::vector<char>(md_.buffer_size_, 0);
     md_.occupancy_buffer_inflate_ = std::vector<char>(md_.buffer_size_, 0);                                // save is_occ {0,1}, 0 free, 1 occ 
-    md_.occupancy_buffer_static_inflate_=std::vector<char>(md_.buffer_size_, 0);                           // static map buffer
+    md_.occupancy_buffer_static_inflate_=std::vector<char>(md_.buffer_size_, 0); // static map buffer
+    md_.occupancy_buffer_dynamic_inflate_=std::vector<char>(md_.buffer_size_, 0);
     
 
     // global distance map buffer
@@ -135,6 +132,12 @@ void GridMap::initMap(ros::NodeHandle& nh){
 
     
     /* show map param */
+    std::cout << "use_occ_esdf: " << mp_.use_occ_esdf_<<std::endl; 
+    std::cout << "x_size: " <<  x_size << std::endl;
+    std::cout << "y_size: " <<  y_size << std::endl;
+    std::cout << "x_origin: " << x_origin << std::endl;
+    std::cout << "y_origin: " << y_origin << std::endl;
+    
     std::cout << "x_size_pix: " << mp_.map_pixel_num_(0) << std::endl;
     std::cout << "y_size_pix: " << mp_.map_pixel_num_(1) << std::endl;
     std::cout << "x_map_max_idx: " << mp_.map_max_idx_(0) << std::endl;

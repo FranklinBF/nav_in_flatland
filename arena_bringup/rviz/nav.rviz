@@ -6,12 +6,9 @@ Panels:
       Expanded:
         - /Global Options1
         - /my_robot1/Namespaces1
-        - /Maps1
-        - /plan_manager1
-        - /plan_manager1/timed_astar_wp1
-        - /plan_manager1/timed-astar_path1
         - /Move_base1/Local plan dwa1
         - /Pose & Odoms1
+        - /Obstacles1
       Splitter Ratio: 0.6515986919403076
     Tree Height: 797
   - Class: rviz/Selection
@@ -365,12 +362,12 @@ Visualization Manager:
           Radius: 0.029999999329447746
           Shaft Diameter: 0.10000000149011612
           Shaft Length: 0.10000000149011612
-          Topic: /globalPlan
+          Topic: /vis_global_path
           Unreliable: false
           Value: true
         - Class: rviz/Marker
           Enabled: true
-          Marker Topic: /plan_manager/vis_landmarks_
+          Marker Topic: /vis_landmarks_
           Name: landmarks
           Namespaces:
             {}
@@ -397,7 +394,7 @@ Visualization Manager:
           Marker Topic: /vis_triangle
           Name: vis_triangle
           Namespaces:
-            lines: true
+            {}
           Queue Size: 100
           Value: true
         - Class: rviz/Marker
@@ -405,7 +402,7 @@ Visualization Manager:
           Marker Topic: /vis_wps_timed_astar
           Name: timed_astar_wp
           Namespaces:
-            "": true
+            {}
           Queue Size: 100
           Value: true
         - Alpha: 1
@@ -918,7 +915,7 @@ Visualization Manager:
           Marker Topic: /flatland_server/debug/model/obstacles_static_random_02
           Name: MarkerArray
           Namespaces:
-            {}
+            "": true
           Queue Size: 100
           Value: true
         - Class: rviz/MarkerArray
@@ -1062,7 +1059,7 @@ Visualization Manager:
           Marker Topic: /flatland_server/debug/model/obstacles_dynamic_random_02
           Name: MarkerArray
           Namespaces:
-            "": true
+            {}
           Queue Size: 100
           Value: true
         - Class: rviz/MarkerArray
@@ -1191,6 +1188,46 @@ Visualization Manager:
           Value: true
       Enabled: true
       Name: Dynamic Obstacles
+    - Class: rviz/MarkerArray
+      Enabled: true
+      Marker Topic: /flatland_server/debug/model/obs_dynamic6
+      Name: MarkerArray
+      Namespaces:
+        "": true
+      Queue Size: 100
+      Value: true
+    - Class: rviz/MarkerArray
+      Enabled: true
+      Marker Topic: /flatland_server/debug/model/obs_dynamic7
+      Name: MarkerArray
+      Namespaces:
+        "": true
+      Queue Size: 100
+      Value: true
+    - Class: rviz/MarkerArray
+      Enabled: true
+      Marker Topic: /flatland_server/debug/model/obs_dynamic8
+      Name: MarkerArray
+      Namespaces:
+        "": true
+      Queue Size: 100
+      Value: true
+    - Class: rviz/MarkerArray
+      Enabled: true
+      Marker Topic: /flatland_server/debug/model/obstacles_static_random_00
+      Name: MarkerArray
+      Namespaces:
+        "": true
+      Queue Size: 100
+      Value: true
+    - Class: rviz/MarkerArray
+      Enabled: true
+      Marker Topic: /flatland_server/debug/model/obs_dynamic9
+      Name: MarkerArray
+      Namespaces:
+        "": true
+      Queue Size: 100
+      Value: true
   Enabled: true
   Global Options:
     Background Color: 0; 0; 0
@@ -1231,11 +1268,11 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Scale: 22.264793395996094
+      Scale: 15.99230670928955
       Target Frame: <Fixed Frame>
       Value: TopDownOrtho (rviz)
-      X: 11.09702205657959
-      Y: 16.943876266479492
+      X: 23.187223434448242
+      Y: 25.170583724975586
     Saved: ~
 Window Geometry:
   Displays:

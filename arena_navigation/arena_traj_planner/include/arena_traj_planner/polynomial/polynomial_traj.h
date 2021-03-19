@@ -285,7 +285,7 @@ public:
   {
     int num = 0;
     mean_a = 0.0, max_a = -1.0;
-    for (int s = 0; s < times.size(); ++s)
+    for (size_t s = 0; s < times.size(); ++s)
     {
       int order = cxs[s].size();
       Eigen::VectorXd ax(order - 2), ay(order - 2);

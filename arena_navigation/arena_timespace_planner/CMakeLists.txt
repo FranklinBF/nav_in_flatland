@@ -11,7 +11,7 @@ find_package(catkin REQUIRED COMPONENTS
   arena_mapping
   arena_path_search
   arena_traj_planner
-  #arena_dynamic_channel
+  arena_dynamic_channel
   geometry_msgs
   nav_msgs
   roscpp
@@ -118,7 +118,7 @@ set(Eigen3_INCLUDE_DIRS ${EIGEN3_INCLUDE_DIR})
 catkin_package(
   INCLUDE_DIRS include
   LIBRARIES arena_timespace_planner
-  CATKIN_DEPENDS arena_mapping arena_path_search arena_traj_planner visualization_msgs geometry_msgs nav_msgs roscpp rospy sensor_msgs std_msgs
+  CATKIN_DEPENDS arena_mapping arena_path_search arena_traj_planner arena_dynamic_channel visualization_msgs geometry_msgs nav_msgs roscpp rospy sensor_msgs std_msgs
 #  DEPENDS system_lib
 )
 
@@ -138,6 +138,7 @@ include_directories(
 
 add_executable(time_space_planner_node
     src/dynamic_plan_manager.cpp 
+    src/dynamic_plan_fsm.cpp 
   )
 
 target_link_libraries(time_space_planner_node

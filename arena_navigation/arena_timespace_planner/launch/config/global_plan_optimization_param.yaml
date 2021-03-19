@@ -1,0 +1,26 @@
+# global traj bspline optimization (optimization_ESDF/)
+order: 3
+
+dist0: 0.5
+max_vel: 3.0
+max_acc: 4.0
+
+lambda1: 10.0     # smooth
+lambda2: 5.0      # distance
+lambda3: 0.00001  # feasibility
+lambda4: 0.01     # endpoint
+lambda5: 1.5      # guide [no need]
+lambda6: 10.0     #       [no need]
+lambda7: 100.0    # waypoint 
+
+max_iteration_num1: 2
+max_iteration_num2: 300
+max_iteration_num3: 200
+max_iteration_num4: 200
+
+max_iteration_time1: 0.0001
+max_iteration_time2: 0.005
+max_iteration_time3: 0.003
+max_iteration_time4: 0.003
+
+

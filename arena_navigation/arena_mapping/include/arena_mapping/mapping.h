@@ -87,6 +87,7 @@ struct MappingData {
   std::vector<double> occupancy_buffer_;
   std::vector<char>   occupancy_buffer_inflate_;
   std::vector<char>   occupancy_buffer_static_inflate_;
+  std::vector<char>   occupancy_buffer_dynamic_inflate_;
 
   std::vector<char>   occupancy_buffer_neg_;             // for esdf
   std::vector<double> distance_buffer_;
