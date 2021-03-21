@@ -48,7 +48,8 @@ std::vector<std::pair<int, int>> BsplineOptimizer::initControlPoints(Eigen::Matr
     double step_size = grid_map_->getResolution() / ((init_points.col(0) - init_points.rightCols(1)).norm() / (init_points.cols() - 1)) / 1.5;
     ROS_WARN_STREAM("Segment 0: step_size="<<step_size);
     step_size=std::min(std::max(0.01,step_size),1.0);
-    
+    step_size=0.01;
+    ROS_WARN_STREAM("Segment 0.2: step_size="<<step_size);
 
     int in_id, out_id;
     vector<std::pair<int, int>> segment_ids;
@@ -66,6 +67,7 @@ std::vector<std::pair<int, int>> BsplineOptimizer::initControlPoints(Eigen::Matr
       for (double a = 1.0; a > 0.0; a -= step_size)
       { 
         Eigen::Vector2d pos_to_check=a * init_points.col(i - 1) + (1 - a) * init_points.col(i);
+
         occ = grid_map_->getFusedDynamicInflateOccupancy(pos_to_check);
         
         if (occ && !last_occ)
@@ -458,7 +460,7 @@ std::vector<ControlPoints> BsplineOptimizer::distinctiveTrajs(vector<std::pair<i
                 RichInfoSegs.erase(RichInfoSegs.begin() + i);
                 seg_upbound--;
                 i--;
-
+                ROS_WARN_STREAM("Distinct Traj 2.1: start end pt in collsion :");
                 continue;
 
                 // cout << "RichInfoSegs[" << i << "].first" << endl;
@@ -521,7 +523,10 @@ std::vector<ControlPoints> BsplineOptimizer::distinctiveTrajs(vector<std::pair<i
 
                 if (grid_map_->getFusedDynamicInflateOccupancy(base_pt_reverse)) // Search outward.
                 {
-                    double l_upbound = 10 * CTRL_PT_DIST; // "5" is the threshold.
+                    double l_upbound = 5 * CTRL_PT_DIST; // "5" is the threshold.
+                    if(l_upbound<1.5){
+                      l_upbound=1.5;
+                    }
                     double l = RESOLUTION;
                     for (; l <= l_upbound; l += RESOLUTION)
                     {
