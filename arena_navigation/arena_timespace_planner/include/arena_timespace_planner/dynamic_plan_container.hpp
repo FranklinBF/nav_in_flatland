@@ -288,10 +288,10 @@ public:
     }
 
     void getControlInput(double t_curr, double &v, double &w){
-        Eigen::Vector2d pos = pos_traj_.evaluateDeBoorT(t_curr);
+        //Eigen::Vector2d pos = pos_traj_.evaluateDeBoorT(t_curr);
         Eigen::Vector2d vel = vel_traj_.evaluateDeBoorT(t_curr);
         Eigen::Vector2d acc = acc_traj_.evaluateDeBoorT(t_curr);
-        Eigen::Vector2d jerk= jerk_traj_.evaluateDeBoorT(t_curr);
+        //Eigen::Vector2d jerk= jerk_traj_.evaluateDeBoorT(t_curr);
         v=vel.norm();
         if(std::abs(v)>10.0){
             v=10.0;

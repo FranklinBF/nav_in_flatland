@@ -103,10 +103,11 @@ void TimedAstar::init(GridMap::Ptr grid_map,TimedAstarParam param){
     occ_map_origin_=Vec2d(occ_map_origin(0),occ_map_origin(1));     
     occ_map_size_2d_=Vec2d(occ_map_size_2d(0),occ_map_size_2d(1));  
     
+    // resolution
     resolution_= param.RESOLUTION;
     inv_resolution_=1.0/resolution_;
     
-    //init time 
+    // time resolution
     time_resolution_=param.TIME_RESOLUTION;
     inv_time_resolution_=1.0/time_resolution_;
     
@@ -136,7 +137,7 @@ void TimedAstar::init(GridMap::Ptr grid_map,TimedAstarParam param){
     SLICE_NUM_      = param.TIME_SLICE_NUM;
     GOAL_RADIUS_    = param.GOAL_RADIUS;
     NUM_SAMPLE_EDGE_= param.NUM_SAMPLE_EDGE;
-    
+
 }
 
 void TimedAstar::reset()
@@ -186,7 +187,7 @@ void TimedAstar::getTimedGraph(const std::vector<double>& coords,
     //auto y_init = coords[INIT_INDEX*2+1];
     auto x_goal = coords[GOAL_INDEX*2];
     auto y_goal = coords[GOAL_INDEX*2+1];
-
+    
     // discretize the time space
     for (size_t t = 0; t < SLICE_NUM_; ++t) {
         std::vector<double> coord_t, speed_t, angle_t;
@@ -233,7 +234,7 @@ bool TimedAstar::TimeAstarSearch(const std::vector<double>& coords,
                     const double & dir_start,
                     const double & time_start){
 
-                  
+             
     // reset
     reset();
     start_pos_  = robot;
@@ -243,15 +244,14 @@ bool TimedAstar::TimeAstarSearch(const std::vector<double>& coords,
 
     // init time_graphs
     getTimedGraph(coords, speeds, angles, timed_graph_);
-
-    
+     
     // locate robot in start graph
     auto init_eid = dl::locateCurrentFace(timed_graph_[0].get(), start_pos_.x, start_pos_.y);
     if (init_eid == NONE_INDEX) {
         std::cout << "Invalid start position!" << std::endl;
         return false;
     }
-    
+  
     // seed the start node
     PathNodePtr start_node = std::make_shared<PathNode>(); //path_node_pool_[0];
     start_node->parent     = nullptr;
@@ -276,7 +276,6 @@ bool TimedAstar::TimeAstarSearch(const std::vector<double>& coords,
     double nearest_dist = DBL_MAX;
     PathNodePtr goal_reached_node(nullptr);
     PathNodePtr goal_nearest_node(nullptr);
-    
     while (!open_list_.empty()) {
         PathNodePtr curr_node = open_list_.top();
         
@@ -305,14 +304,14 @@ bool TimedAstar::TimeAstarSearch(const std::vector<double>& coords,
         std::vector<PathNodePtr> neighbor_ptr_set;
         std::vector<double> edge_cost_set;
         getNeighborNodes(curr_node,neighbor_ptr_set,edge_cost_set);
-        
+       
         PathNodePtr neigbor_node;
         double tmp_g_score;
 
         // discover new node from neighbors
         for(size_t i=0;i<neighbor_ptr_set.size();++i)
         {   
-           
+            
             neigbor_node=neighbor_ptr_set[i];
             tmp_g_score =curr_node->G + edge_cost_set[i];
             

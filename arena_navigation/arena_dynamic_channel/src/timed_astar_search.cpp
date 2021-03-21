@@ -4,6 +4,8 @@ TimedAstarSearch::~TimedAstarSearch(){}
 
 void TimedAstarSearch::init(ros::NodeHandle & nh,GridMap::Ptr grid_map, std::vector<DynamicObstacleInfo::Ptr> obs_info_provider){
     node_=nh;
+
+    // init parameters
     node_.param("timed_astar/allocate_num",         tap_.ALLOCATE_NUM,      10000);
     node_.param("timed_astar/goal_tolerance",       tap_.GOAL_RADIUS,       0.2);
 
@@ -16,9 +18,10 @@ void TimedAstarSearch::init(ros::NodeHandle & nh,GridMap::Ptr grid_map, std::vec
     node_.param("timed_astar/max_rot_vel",          tap_.MAX_ROT_SPEED,     0.52);
 
     node_.param("timed_astar/time_horizon",         tap_.TIME_HORIZON,      5.0);
-    node_.param("timed_astar/time_resolution",      tap_.TIME_RESOLUTION,   0.2);
+    node_.param("timed_astar/time_resolution",      tap_.TIME_RESOLUTION,   1.2);
     node_.param("timed_astar/resolution",           tap_.RESOLUTION,        0.1);
     node_.param("timed_astar/num_sample_edge",      tap_.NUM_SAMPLE_EDGE,   5);
+    tap_.TIME_SLICE_NUM=static_cast<size_t>(round(tap_.TIME_HORIZON / tap_.TIME_RESOLUTION));
 
     // init map
     this->grid_map_ = grid_map;
@@ -42,6 +45,8 @@ bool TimedAstarSearch::stateTimeAstarSearch(const Eigen::Vector2d & start_pos,
                                             std::vector<Eigen::Vector2d> &start_end_derivatives,
                                             std::vector<std::pair<Eigen::Vector2d,Eigen::Vector2d>> &line_sets){
 
+
+    
     // init
     std::vector<double> coords;
     std::vector<double> speeds;
@@ -103,12 +108,13 @@ bool TimedAstarSearch::stateTimeAstarSearch(const Eigen::Vector2d & start_pos,
         speeds.push_back(obs_vel(0));
         speeds.push_back(obs_vel(1));
     }
-
+   
     // timed_astar_search
     bool success;
     success=timed_astar_planner_->TimeAstarSearch(coords,speeds,angles,Eigen2dToVec2d(start_pos),Eigen2dToVec2d(end_pos) ,start_dir,0.0);
-    getTriangleEdges(line_sets);
     
+    getTriangleEdges(line_sets); // for visualization
+ 
     std::cout<<"----------------timed astar finish 1"<<std::endl;
     if(success){
         double t_sample_step=ts;
@@ -116,6 +122,7 @@ bool TimedAstarSearch::stateTimeAstarSearch(const Eigen::Vector2d & start_pos,
         //std::vector<Eigen::Vector2d> point_set, start_end_derivatives;
         Eigen::MatrixXd ctrl_pts;
         point_set=timed_astar_planner_->getTrajectory(t_sample_step,local_time_horizon);
+   
         // if too few points, means near to goal, return false
         if(point_set.size()<3){
             return false;

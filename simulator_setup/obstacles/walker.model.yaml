@@ -15,8 +15,8 @@ plugins:
     name: Tween 
     body: walker
     delta: [5, 3, 3.141592]
-    duration: 5.0
-    mode: loop
+    duration: 10.0
+    mode: yoyo
     easing: quadraticInOut
   
   # - type: ModelTfPublisher

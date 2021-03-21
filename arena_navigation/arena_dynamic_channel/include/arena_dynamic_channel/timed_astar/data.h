@@ -59,7 +59,7 @@ struct TimedAstarParam{
     
     // time 
     double TIME_HORIZON;
-    size_t TIME_SLICE_NUM = static_cast<size_t>(round(TIME_HORIZON / TIME_RESOLUTION));
+    size_t TIME_SLICE_NUM; 
 };
 
 /* build in hyperpara */
@@ -228,7 +228,9 @@ struct PathNode
         this->pos=pos;
         this->time_elapsed=time;
         this->sid = std::min((size_t)(floor((time_elapsed - 0.0) / time_resolution)),slice_num-1);
+        
         this->eid=dl::locateCurrentFace(timed_graph[this->sid].get(), pos.x, pos.y);
+        
         this->tid = static_cast<Index>(floor(eid / 3.0));
     }
 

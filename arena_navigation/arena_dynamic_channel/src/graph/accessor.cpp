@@ -194,12 +194,12 @@ bool locateCurrentFace(const Delaunator* graph,
 }
 
 size_t locateCurrentFace(const Delaunator* graph, const double px, const double py) {
-
+   
     // at least a triangle is found
     if (graph->triangles.size() == 0) {
         throw std::runtime_error("No triangle found!");
     }
-
+    
     for (size_t i = 0; i < graph->triangles.size(); i+=3) {
         auto ax = graph->coords[2 * graph->triangles[i]];
         auto ay = graph->coords[2 * graph->triangles[i] + 1];
@@ -209,11 +209,13 @@ size_t locateCurrentFace(const Delaunator* graph, const double px, const double 
 
         auto cx = graph->coords[2 * graph->triangles[i+2]];
         auto cy = graph->coords[2 * graph->triangles[i+2] + 1];
-
+        
         if (isInsideTriangle(px, py, ax, ay, bx, by, cx, cy)) {
+           
             return i;
         }
     }
+    std::cout<<"locate 4-----------------------"<<std::endl;
     return INVALID_INDEX;
 }
 

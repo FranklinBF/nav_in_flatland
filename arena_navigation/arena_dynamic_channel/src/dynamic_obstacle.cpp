@@ -3,6 +3,10 @@
 DynamicObstacleInfo::DynamicObstacleInfo(ros::NodeHandle &nh, std::string topic_name,GridMap::Ptr grid_map){
     node_=nh;
     topic_name_=topic_name;
+    // get  radius param
+    node_.param("timed_astar/robot_radius",       obstacle_radius_,    0.3);
+    node_.param("timed_astar/inflation_radius",   inflation_radius_,   0.3);
+    radius_=obstacle_radius_+inflation_radius_;
 
     // gridmap
     this->grid_map_=grid_map;
@@ -11,7 +15,9 @@ DynamicObstacleInfo::DynamicObstacleInfo(ros::NodeHandle &nh, std::string topic_
     // init subscriber for obstacles state
     ros::NodeHandle public_nh_;
     obs_odom_sub_=public_nh_.subscribe(topic_name_, 1, &DynamicObstacleInfo::updateOdomCallback,this);
-        
+    std::string vel_topic_name=topic_name_+"_vel";
+    obs_vel_pub_ =public_nh_.advertise<std_msgs::Float32>(vel_topic_name,1);
+
     // init pos, vel, is_init
     pos_=Eigen::Vector2d::Zero();
     vel_=Eigen::Vector2d::Zero();
@@ -44,14 +50,17 @@ void DynamicObstacleInfo::updateOdomCallback(visualization_msgs::MarkerArray::Co
     if(!is_init_){
         updateDynamicOcc();
     }
+    std_msgs::Float32 velocity;
+    velocity.data=vel_.norm();
+    obs_vel_pub_.publish(velocity);
 
 }
 
-
 void DynamicObstacleInfo::updateDynamicOcc(){
     // reset old occ
-    Eigen::Vector2d pos=pos_;
     Eigen::Vector2d vel=vel_;
+    Eigen::Vector2d pos=pos_+0.1*vel_;  //pos after 0.1s
+    
     for(size_t i=0;i<last_occ_set_.size();++i){
         grid_map_->setDynamicOccupancy(last_occ_set_[i],0);
     }

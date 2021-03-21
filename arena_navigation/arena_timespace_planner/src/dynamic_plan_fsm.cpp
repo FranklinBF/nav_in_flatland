@@ -23,7 +23,7 @@ void DynamicReplanFSM::init(ros::NodeHandle &nh)
 
     /* callback */
     exec_timer_ = node_.createTimer(ros::Duration(0.01), &DynamicReplanFSM::execFSMCallback, this);
-    safety_timer_ = node_.createTimer(ros::Duration(0.05), &DynamicReplanFSM::checkCollisionCallback, this);
+    //safety_timer_ = node_.createTimer(ros::Duration(0.05), &DynamicReplanFSM::checkCollisionCallback, this);
     traj_tracker_timer_ = node_.createTimer(ros::Duration(0.01), &DynamicReplanFSM::trackTrajCallback, this);
     //dynamic_occ_map_timer_= node_.createTimer(ros::Duration(1.0), &DynamicReplanFSM::updateDynamicMapCallback,this);
     
@@ -45,7 +45,6 @@ void DynamicReplanFSM::init(ros::NodeHandle &nh)
 
     vis_local_path_pub_ =       public_nh.advertise<visualization_msgs::Marker>("vis_local_path", 20);
 }
-
 
 void DynamicReplanFSM::odomCallback(const nav_msgs::OdometryConstPtr& msg){
 
@@ -180,11 +179,14 @@ void DynamicReplanFSM::execFSMCallback(const ros::TimerEvent& e){
             Eigen::Vector2d curr_vel = odom_vel_;
             double          curr_dir = odom_dir_;
             Eigen::Vector2d target_vel = Eigen::Vector2d(0.0,0.0);
-            //std::vector<std::pair<Eigen::Vector2d,Eigen::Vector2d>> line_sets;
-            //bool success=planner_manager_->planMidTraj(curr_pos,curr_vel,curr_dir,mid_target_,line_sets);
-            //visualizeLines(line_sets,0.2,Eigen::Vector4d(0, 1, 1, 1.0),vis_triangle_pub_);
+            std::vector<std::pair<Eigen::Vector2d,Eigen::Vector2d>> line_sets;
             
-            bool success =planner_manager_->planLocalTraj(curr_pos,curr_vel,curr_dir,mid_target_,target_vel);
+            bool success=planner_manager_->planMidTraj(curr_pos,curr_vel,curr_dir,mid_target_,line_sets);
+            
+            visualizeLines(line_sets,0.2,Eigen::Vector4d(0, 1, 1, 1.0),vis_triangle_pub_);
+            
+            
+            //bool success =planner_manager_->planLocalTraj(curr_pos,curr_vel,curr_dir,mid_target_,target_vel);
 
             if(success){
                 target_traj_data_ = planner_manager_->local_traj_data_;
@@ -285,7 +287,7 @@ void DynamicReplanFSM::checkCollisionCallback(const ros::TimerEvent& e) {
     ros::Time time_now = ros::Time::now();
     double t_curr = (time_now- target_traj_data_.start_time_).toSec();
     Eigen::Vector2d p_curr = target_traj_data_.pos_traj_.evaluateDeBoorT(t_curr);
-    const double CLEARANCE = 0.5;
+    //const double CLEARANCE = 0.5;
     constexpr double time_step = 0.01;
     double t_2_3 = target_traj_data_.duration_ * 2 / 3;
 

@@ -15,6 +15,7 @@
 //#include <geometry_msgs/PoseStamped.h>
 
 #include <visualization_msgs/MarkerArray.h>
+#include <std_msgs/Float32.h>
 
 #include <vector>
 #include <arena_mapping/mapping.h>
@@ -28,13 +29,17 @@ public:
     ros::NodeHandle node_;
     std::string topic_name_;
     ros::Subscriber obs_odom_sub_;
+    ros::Publisher obs_vel_pub_;
 
     Eigen::Vector2d pos_;
     Eigen::Vector2d vel_;
     double last_time_;
     bool is_init_;
 
-    double radius_=0.5;
+    
+    double obstacle_radius_;
+    double inflation_radius_;
+    double radius_;
     std::vector<Eigen::Vector2d> last_occ_set_;
 
     Eigen::Vector2d getPosition(){

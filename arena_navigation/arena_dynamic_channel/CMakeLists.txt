@@ -66,7 +66,7 @@ link_directories(
 
 # Declare a C++ library
 add_library(arena_dynamic_channel
-  src/timed_astar/dynamic_obstacle.cpp 
+  src/dynamic_obstacle.cpp 
   src/timed_astar/timed_astar_anytime.cpp
   src/timed_astar/data.cpp
   src/graph/delaunator.cpp
