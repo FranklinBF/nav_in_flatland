@@ -161,12 +161,16 @@ bool DynamicPlanManager::planMidTraj(const Eigen::Vector2d & start_pos,const Eig
   double ts=0.1;
   double local_time_horizon=pp_.local_time_horizon_;
   bool success;
-  ROS_WARN_STREAM("mid1------------------------");
+
   success=mid_planner_timed_astar_->stateTimeAstarSearch(start_pos,start_vel,start_dir,end_pos,ts,local_time_horizon, point_set,start_end_derivatives,line_sets);
   if(!success) return false;
-  ROS_WARN_STREAM("mid2------------------------");
+  
+
+
+
+
+
   UniformBspline mid_traj;
-  ROS_WARN_STREAM("start  mid optimize");
   bool optimize_success=optimizeBsplineTraj(ts,point_set,start_end_derivatives,mid_traj);
   if(!optimize_success){
     Eigen::MatrixXd ctrl_pts;
@@ -186,12 +190,13 @@ bool DynamicPlanManager::planLocalTraj( Eigen::Vector2d & start_pos, Eigen::Vect
   // generate oneshot intial traj
   double dist = (start_pos - target_pos).norm();
   double time = pow(pp_.max_vel_, 2) / pp_.max_acc_ > dist ? sqrt(dist / pp_.max_acc_) : (dist - pow(pp_.max_vel_, 2) / pp_.max_acc_) / pp_.max_vel_ + 2 * pp_.max_vel_ / pp_.max_acc_;//double time =dist / pp_.max_vel_;
-
+  
   PolynomialTraj init_traj;
   init_traj = PolynomialTraj::one_segment_traj_gen(start_pos, start_vel, Eigen::Vector2d::Zero(), target_pos, target_vel, Eigen::Vector2d::Zero(), time);
-  //ROS_WARN_STREAM("-----------------------------3");
+
+
   // get pointset and derivatives
-  vector<Eigen::Vector2d> first_point_set, point_set, start_end_derivatives;
+  std::vector<Eigen::Vector2d> point_set, start_end_derivatives;
   double local_time_horizon=pp_.local_time_horizon_;
   double ts = dist > 0.1 ? pp_.ctrl_pt_dist_ / pp_.max_vel_ * 1.5 : pp_.ctrl_pt_dist_ / pp_.max_vel_ * 5;
   double t_first, t;
@@ -199,14 +204,26 @@ bool DynamicPlanManager::planLocalTraj( Eigen::Vector2d & start_pos, Eigen::Vect
   bool flag_too_far;
   ts *= 1.5; // ts will be divided by 1.5 in the next
   t_first=0.2;
+
+  if(t_first>init_traj.getTimeSum()){ // make sure not exceed the range
+    return false;
+  }
+  
+
   do{
     ts /= 1.5;
+
     point_set.clear();
+
     flag_too_far = false;
-    Eigen::Vector2d last_pt = init_traj.evaluate(t_first);
+    Eigen::Vector2d last_pt = init_traj.evaluate(t_first); // t_first should not exceed getTimeSum()
+ 
     for ( t = t_first; t < time; t += ts)
-    {
-      Eigen::Vector2d pt = init_traj.evaluate(t);
+    { 
+      if(t>init_traj.getTimeSum()) break;             // t should not exceed getTimeSum()
+      
+      Eigen::Vector2d pt = init_traj.evaluate(t);         
+   
       if ((last_pt - pt).norm() > pp_.ctrl_pt_dist_ * 1.5)
       {
         flag_too_far = true;
@@ -217,27 +234,35 @@ bool DynamicPlanManager::planLocalTraj( Eigen::Vector2d & start_pos, Eigen::Vect
         break;
       }
       last_pt = pt;
+
       point_set.push_back(pt);
+
     }
   } while (flag_too_far || point_set.size() < 7); // To make sure the initial path has enough points.
   t -= ts;
   //ROS_WARN_STREAM("-----------------------------4");
   // adjust the last intial control point
   Eigen::Vector2d last_pt=point_set.back();
+
   adjustStartAndTargetPoint(start_pos,last_pt);
+
   point_set[point_set.size()-1]=last_pt;
 
+  // initial rotation part of the traj
+  double new_dir, diff_dir;
+  new_dir=atan2((target_pos-start_pos)(1),(target_pos-start_pos)(0));
+  new_dir=new_dir<0?2*PI+new_dir:new_dir;
+  diff_dir = std::abs(new_dir-start_dir);
 
-  // // initial rotation part of the traj
-  // Eigen::Vector2d init_vel=init_traj.evaluateVel(t/2);
-  // Eigen::Vector2d init_rot_pos= start_pos + init_vel/init_vel.norm()*0.01;
-  // double new_dir, diff_dir;
-  // new_dir=atan2(init_vel(1),init_vel(0));
-  // new_dir=new_dir<0?2*PI+new_dir:new_dir;
-  // diff_dir = std::abs(new_dir-start_dir);
-  // for(double t_rot=0;t_rot<diff_dir/0.5;t_rot+=0.1){
-  //   //point_set.insert(point_set.begin(), init_rot_pos);
-  // }
+  if(diff_dir>PI*0.25){
+    ts=ts*1.5; 
+  }else if(diff_dir>PI*0.50){
+    point_set.insert(point_set.begin(),start_pos);
+    point_set.insert(point_set.begin(),start_pos+start_vel*0.1);
+    point_set.insert(point_set.begin(),start_pos);
+  }
+
+  
   // ROS_WARN_STREAM("new dir="<<new_dir*180/PI);
   // ROS_WARN_STREAM("diff dir="<<diff_dir*180/PI);
 
@@ -257,6 +282,7 @@ bool DynamicPlanManager::planLocalTraj( Eigen::Vector2d & start_pos, Eigen::Vect
   // optimize trajectory
   UniformBspline local_traj;
   bool optimize_success=optimizeBsplineTraj(ts,point_set,start_end_derivatives,local_traj);
+
   ROS_WARN_STREAM("-----------------------------6");
   if(!optimize_success){
     Eigen::MatrixXd ctrl_pts;
