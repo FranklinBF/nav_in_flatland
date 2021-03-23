@@ -50,7 +50,8 @@ private:
     double goal_tolerance_;         // meter
     double subgoal_tolerance_;      // meter
     double t_replan_thresh_;        // sec
-    
+    int subgoal_drl_mode_;       // 0: spacial horizon, 1:time_astar
+    double subgoal_pub_period_;
 
 
     /* ROS utils */
@@ -58,6 +59,7 @@ private:
     
     ros::Timer exec_timer_, safety_timer_;// vis_timer_;
     ros::Timer traj_tracker_timer_;
+    ros::Timer subgoal_DRL_timer_;
     //ros::Timer dynamic_occ_map_timer_;
     
     // subscriber
@@ -65,9 +67,11 @@ private:
 
     // publisher
     ros::Publisher cmd_vel_pub_;
+    ros::Publisher subgoal_DRL_pub_;
     
     // vis publisher
     ros::Publisher vis_goal_pub_;
+    ros::Publisher vis_subgoal_drl_pub_;
     ros::Publisher vis_global_path_pub_,vis_landmark_pub_;
     ros::Publisher vis_triangle_pub_,vis_timed_astar_path_pub_,vis_timed_astar_wp_pub_;
     ros::Publisher vis_local_path_pub_,vis_local_multi_path_pub_;
@@ -79,6 +83,7 @@ private:
     void execFSMCallback(const ros::TimerEvent &e);
     void checkCollisionCallback(const ros::TimerEvent &e);
     void trackTrajCallback(const ros::TimerEvent &e);
+    void updateSubgoalDRLCallback(const ros::TimerEvent &e);
     //void updateDynamicMapCallback(const ros::TimerEvent& e);
     
     bool planFromCurrentTraj(const int trial_times=1 /*=1*/);
@@ -87,6 +92,8 @@ private:
     
 
     Eigen::Vector2d getNextWaypoint();
+    bool getSubgoalSpacialHorizon(Eigen::Vector2d &subgoal);
+    bool getSubgoalTimedAstar(Eigen::Vector2d &subgoal);
 
 
     /* helper functions */

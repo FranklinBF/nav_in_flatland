@@ -1074,15 +1074,15 @@ void BsplineOptimizer::combineCostRebound(const double *x, double *grad, double 
 
     // calcMovingObjCost(cps_.points, f_mov_objs, g_mov_objs);
     //calcSwarmCost(cps_.points, f_swarm, g_swarm);
-    calcTerminalCost( cps_.points, f_terminal, g_terminal );
+    //calcTerminalCost( cps_.points, f_terminal, g_terminal );
 
 
-    f_combine = lambda1_ * f_smoothness + new_lambda2_ * f_distance + lambda3_ * f_feasibility + lambda2_ * f_terminal;
+    f_combine = lambda1_ * f_smoothness + new_lambda2_ * f_distance + lambda3_ * f_feasibility;// + lambda2_ * f_terminal;
     //f_combine = lambda1_ * f_smoothness + new_lambda2_ * f_distance + lambda3_ * f_feasibility + new_lambda2_ * f_swarm + lambda2_ * f_terminal;
     //f_combine = lambda1_ * f_smoothness + new_lambda2_ * f_distance + lambda3_ * f_feasibility + new_lambda2_ * f_mov_objs;
     //printf("origin %f %f %f %f\n", f_smoothness, f_distance, f_feasibility, f_combine);
  
-    Eigen::MatrixXd grad_2D = lambda1_ * g_smoothness + new_lambda2_ * g_distance + lambda3_ * g_feasibility + lambda2_ * g_terminal;
+    Eigen::MatrixXd grad_2D = lambda1_ * g_smoothness + new_lambda2_ * g_distance + lambda3_ * g_feasibility;// + lambda2_ * g_terminal;
     //Eigen::MatrixXd grad_2D = lambda1_ * g_smoothness + new_lambda2_ * g_distance + lambda3_ * g_feasibility + new_lambda2_ * g_swarm + lambda2_ * g_terminal;
     //Eigen::MatrixXd grad_3D = lambda1_ * g_smoothness + new_lambda2_ * g_distance + lambda3_ * g_feasibility + new_lambda2_ * g_mov_objs;
     memcpy(grad, grad_2D.data() + 2 * order_, n * sizeof(grad[0]));

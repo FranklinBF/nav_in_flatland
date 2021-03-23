@@ -15,8 +15,13 @@ void DynamicReplanFSM::init(ros::NodeHandle &nh)
     node_.param("fsm/subgoal_tolerance", subgoal_tolerance_, 2.0);
     node_.param("fsm/replan_time_thresh", t_replan_thresh_, 0.5); 
 
-    
+    node_.param("fsm/planning_horizen", planning_horizen_, 3.0);
+    node_.param("fsm/subgoal_drl_mode", subgoal_drl_mode_, 1);
+    node_.param("fsm/subgoal_pub_period", subgoal_pub_period_, 0.5);
 
+
+
+ 
     /* initialize main modules */
     planner_manager_.reset(new DynamicPlanManager);
     planner_manager_->initPlanModules(node_);
@@ -25,6 +30,7 @@ void DynamicReplanFSM::init(ros::NodeHandle &nh)
     exec_timer_ = node_.createTimer(ros::Duration(0.01), &DynamicReplanFSM::execFSMCallback, this);
     safety_timer_ = node_.createTimer(ros::Duration(0.05), &DynamicReplanFSM::checkCollisionCallback, this);
     traj_tracker_timer_ = node_.createTimer(ros::Duration(0.01), &DynamicReplanFSM::trackTrajCallback, this);
+    subgoal_DRL_timer_ = node_.createTimer(ros::Duration(0.05), &DynamicReplanFSM::updateSubgoalDRLCallback, this);
     //dynamic_occ_map_timer_= node_.createTimer(ros::Duration(1.0), &DynamicReplanFSM::updateDynamicMapCallback,this);
     
     /* ros communication with public node */
@@ -33,6 +39,7 @@ void DynamicReplanFSM::init(ros::NodeHandle &nh)
   	odom_sub_ = public_nh.subscribe("odom", 1, &DynamicReplanFSM::odomCallback, this);
 
     cmd_vel_pub_ =public_nh.advertise<geometry_msgs::Twist>("cmd_vel",1000);
+    subgoal_DRL_pub_  = nh.advertise<geometry_msgs::PoseStamped>("subgoal",10);
 
     /* visualization */
     vis_goal_pub_ =	        public_nh.advertise<visualization_msgs::Marker>("vis_goal", 20);
@@ -43,7 +50,10 @@ void DynamicReplanFSM::init(ros::NodeHandle &nh)
     vis_timed_astar_path_pub_= public_nh.advertise<nav_msgs::Path>("vis_path_timed_astar", 20);
     vis_timed_astar_wp_pub_ =  public_nh.advertise<visualization_msgs::Marker>("vis_wps_timed_astar", 20);
 
-    vis_local_path_pub_ =       public_nh.advertise<visualization_msgs::Marker>("vis_local_path", 20);
+    vis_local_path_pub_ =public_nh.advertise<visualization_msgs::Marker>("vis_local_path", 20);
+
+    vis_subgoal_drl_pub_ = public_nh.advertise<visualization_msgs::Marker>("vis_subgoal", 20);
+
 }
 
 void DynamicReplanFSM::odomCallback(const nav_msgs::OdometryConstPtr& msg){
@@ -334,6 +344,109 @@ void DynamicReplanFSM::trackTrajCallback(const ros::TimerEvent &e){
     twist_cmd.linear.z =0.0;
     
     cmd_vel_pub_.publish(twist_cmd);
+}
+
+void DynamicReplanFSM::updateSubgoalDRLCallback(const ros::TimerEvent &e){
+    
+    bool subgoal_success=false;
+    Eigen::Vector2d subgoal;
+    switch (subgoal_drl_mode_) {
+        /* --------------Spacial horizon ---------------*/
+        case 0: {
+            subgoal_success=getSubgoalSpacialHorizon(subgoal);
+            break;
+        }
+        /* --------------Timed astar ---------------*/
+        case 1:{
+            subgoal_success=getSubgoalTimedAstar(subgoal);
+            break;
+        }
+        /* --------------Others ---------------*/
+        default: {
+            ROS_ERROR_STREAM("Not valid subgoal mode"<<subgoal_drl_mode_);
+            break;
+        }
+    }
+    if(subgoal_success){
+        geometry_msgs::PoseStamped pose_stamped;
+        pose_stamped.header.stamp=ros::Time::now();
+        pose_stamped.header.frame_id = "map";
+        pose_stamped.pose.position.x=subgoal(0);
+        pose_stamped.pose.position.y=subgoal(1);
+        pose_stamped.pose.position.z=0.0;
+        subgoal_DRL_pub_.publish(pose_stamped);
+
+        // vis subgoal
+        std::vector<Eigen::Vector2d> point_set;
+        point_set.push_back(subgoal);
+        visualizePoints(point_set,0.8,Eigen::Vector4d(1, 0, 1, 1.0),vis_subgoal_drl_pub_);
+    }
+        
+}
+
+bool DynamicReplanFSM::getSubgoalSpacialHorizon(Eigen::Vector2d &subgoal){
+    double dist_to_goal=(odom_pos_-end_pos_).norm();
+    
+    // if near goal
+    if(dist_to_goal<planning_horizen_){
+        subgoal = end_pos_;
+        return true;
+    }
+
+    // select the nearst waypoint on global path
+    int subgoal_id=0;
+    std::vector<Eigen::Vector2d> global_path=planner_manager_->global_data_.getGlobalPath();
+
+    for(size_t i=0;i<global_path.size();i++){
+        Eigen::Vector2d wp_pt=global_path[i];
+        double dist_to_robot=(odom_pos_-wp_pt).norm();
+
+        if((dist_to_robot<planning_horizen_+subgoal_tolerance_)&&(dist_to_robot>planning_horizen_-subgoal_tolerance_)){
+            if(i>subgoal_id){
+                subgoal_id=i;
+            }
+        }
+    }
+    
+    if(subgoal_id>0){
+        subgoal=global_path[subgoal_id];
+        return true;
+    }else{
+        return false;
+    }
+
+}
+
+bool DynamicReplanFSM::getSubgoalTimedAstar(Eigen::Vector2d &subgoal){
+    double dist_to_goal=(odom_pos_-end_pos_).norm();
+    
+    // if near goal
+    if(dist_to_goal<planning_horizen_){
+        subgoal = end_pos_;
+        return true;
+    }
+
+    // select the nearst waypoint on global path
+    int subgoal_id=0;
+    std::vector<Eigen::Vector2d> global_path=target_traj_data_.getLocalPath();
+
+    for(size_t i=0;i<global_path.size();i++){
+        Eigen::Vector2d wp_pt=global_path[i];
+        double dist_to_robot=(odom_pos_-wp_pt).norm();
+
+        if((dist_to_robot<planning_horizen_+subgoal_tolerance_)&&(dist_to_robot>planning_horizen_-subgoal_tolerance_)){
+            if(i>subgoal_id){
+                subgoal_id=i;
+            }
+        }
+    }
+    
+    if(subgoal_id>0){
+        subgoal=global_path[subgoal_id];
+        return true;
+    }else{
+        return false;
+    }
 }
 
 

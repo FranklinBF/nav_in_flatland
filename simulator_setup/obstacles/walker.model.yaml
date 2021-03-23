@@ -15,7 +15,7 @@ plugins:
     name: Tween 
     body: walker
     delta: [5, 3, 3.141592]
-    duration: 25.0
+    duration: 5.0
     mode: loop
     easing: quadraticInOut
   

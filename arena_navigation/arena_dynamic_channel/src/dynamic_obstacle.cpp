@@ -4,10 +4,10 @@ DynamicObstacleInfo::DynamicObstacleInfo(ros::NodeHandle &nh, std::string topic_
     node_=nh;
     topic_name_=topic_name;
     // get  radius param
-    node_.param("timed_astar/robot_radius",       obstacle_radius_,    0.3);
-    node_.param("timed_astar/inflation_radius",   inflation_radius_,   0.3);
-    node_.param("timed_astar/prediction_forward_time",   prediction_forward_time_,   0.3);
-    node_.param("timed_astar/sensor_range",   sensor_range_,   3.0);
+    node_.param("dynamic_obstacle/obstacle_radius",    obstacle_radius_,    0.3);
+    node_.param("dynamic_obstacle/inflation_radius",   inflation_radius_,   0.3);
+    node_.param("dynamic_obstacle/prediction_forward_time", prediction_forward_time_,   0.3);
+    node_.param("dynamic_obstacle/sensor_range",   sensor_range_,   3.0);
     radius_=obstacle_radius_+inflation_radius_;
 
     // gridmap
@@ -93,7 +93,7 @@ void DynamicObstacleInfo::updateDynamicOcc(){
 
     for(double x=pos(0)-radius_; x<pos(0)+radius_; x+=resolution_){
         for(double y=pos(1)-radius_; y<pos(1)+radius_; y+=resolution_){
-            for(double t=std::max(0.0,forward_time-0.2);t<forward_time;t+=0.1){
+            for(double t=std::max(0.0,std::min(0.1,forward_time-0.3));t<forward_time;t+=0.1){
                 // curr_pos
                 Eigen::Vector2d pt(x,y);
                 // future pos at time=t

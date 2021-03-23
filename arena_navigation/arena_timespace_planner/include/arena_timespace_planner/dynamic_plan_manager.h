@@ -76,13 +76,13 @@ public:
     
     bool optimizeGlobalTraj(double ts,std::vector<Eigen::Vector2d> point_set, std::vector<Eigen::Vector2d> start_end_derivatives, UniformBspline & bspline_traj);
     
-    bool planMidTraj(const Eigen::Vector2d & start_pos,const Eigen::Vector2d & start_vel, const double & start_dir, const Eigen::Vector2d & end_pos,std::vector<std::pair<Eigen::Vector2d,Eigen::Vector2d>> &line_sets);
+    bool planMidTraj( Eigen::Vector2d & start_pos, Eigen::Vector2d & start_vel,  double & start_dir,  Eigen::Vector2d & end_pos,std::vector<std::pair<Eigen::Vector2d,Eigen::Vector2d>> &line_sets);
 
     bool planLocalTraj( Eigen::Vector2d & start_pos, Eigen::Vector2d & start_vel,  double & start_dir,  Eigen::Vector2d & target_pos, Eigen::Vector2d & target_vel);
     
     bool genOneshotTraj(Eigen::Vector2d & start_pos, Eigen::Vector2d & start_vel,  double & start_dir,  Eigen::Vector2d & target_pos, Eigen::Vector2d & target_vel, UniformBspline & oneshot_traj);
 
-    bool optimizeBsplineTraj(double ts,std::vector<Eigen::Vector2d> point_set, std::vector<Eigen::Vector2d> start_end_derivatives, UniformBspline & mid_traj);
+    bool optimizeBsplineTraj(double ts,std::vector<Eigen::Vector2d> point_set, std::vector<Eigen::Vector2d> start_end_derivatives, UniformBspline & optimized_traj);
 
     bool checkCollision(const Eigen::Vector2d &pos);
 
