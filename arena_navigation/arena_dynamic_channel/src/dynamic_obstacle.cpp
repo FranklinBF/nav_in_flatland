@@ -6,6 +6,8 @@ DynamicObstacleInfo::DynamicObstacleInfo(ros::NodeHandle &nh, std::string topic_
     // get  radius param
     node_.param("timed_astar/robot_radius",       obstacle_radius_,    0.3);
     node_.param("timed_astar/inflation_radius",   inflation_radius_,   0.3);
+    node_.param("timed_astar/prediction_forward_time",   prediction_forward_time_,   0.3);
+    node_.param("timed_astar/sensor_range",   sensor_range_,   3.0);
     radius_=obstacle_radius_+inflation_radius_;
 
     // gridmap
@@ -17,6 +19,9 @@ DynamicObstacleInfo::DynamicObstacleInfo(ros::NodeHandle &nh, std::string topic_
     obs_odom_sub_=public_nh_.subscribe(topic_name_, 1, &DynamicObstacleInfo::updateOdomCallback,this);
     std::string vel_topic_name=topic_name_+"_vel";
     obs_vel_pub_ =public_nh_.advertise<std_msgs::Float32>(vel_topic_name,1);
+
+    // init subscriber for robot state
+    robot_odom_sub_ = public_nh_.subscribe("odom", 1, &DynamicObstacleInfo::updateRobotOdomCallback,this);
 
     // init pos, vel, is_init
     pos_=Eigen::Vector2d::Zero();
@@ -56,14 +61,30 @@ void DynamicObstacleInfo::updateOdomCallback(visualization_msgs::MarkerArray::Co
 
 }
 
+void DynamicObstacleInfo::updateRobotOdomCallback(const nav_msgs::OdometryConstPtr msg){
+
+    robot_pos_=Eigen::Vector2d(msg->pose.pose.position.x,msg->pose.pose.position.y);
+    robot_vel_=Eigen::Vector2d(msg->twist.twist.linear.x,msg->twist.twist.linear.y);
+}
+
 void DynamicObstacleInfo::updateDynamicOcc(){
     // reset old occ
-    Eigen::Vector2d vel=vel_;
-    Eigen::Vector2d pos=pos_+0.1*vel_;  //pos after 0.1s
-    
     for(size_t i=0;i<last_occ_set_.size();++i){
         grid_map_->setDynamicOccupancy(last_occ_set_[i],0);
     }
+
+    // check if obstacle is within the sensor range
+    double dist_to_robot=(pos_-robot_pos_).norm();
+    if(dist_to_robot > sensor_range_){
+        return;
+    }
+    // calculate forward_time
+    double forward_time= dist_to_robot/(vel_-robot_vel_).norm();
+    forward_time = std::min(forward_time,prediction_forward_time_);
+    Eigen::Vector2d vel=vel_;
+    Eigen::Vector2d pos=pos_+forward_time*vel_;  //pos after 0.1s
+    
+    
     // add new occ
     
     last_occ_set_.clear();
@@ -72,7 +93,7 @@ void DynamicObstacleInfo::updateDynamicOcc(){
 
     for(double x=pos(0)-radius_; x<pos(0)+radius_; x+=resolution_){
         for(double y=pos(1)-radius_; y<pos(1)+radius_; y+=resolution_){
-            for(double t=0;t<0.2;t+=0.1){
+            for(double t=std::max(0.0,forward_time-0.2);t<forward_time;t+=0.1){
                 // curr_pos
                 Eigen::Vector2d pt(x,y);
                 // future pos at time=t

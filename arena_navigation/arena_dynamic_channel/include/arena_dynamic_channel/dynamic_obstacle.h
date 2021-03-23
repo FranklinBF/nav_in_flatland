@@ -11,7 +11,7 @@
 
 #include"boost/algorithm/string.hpp"
 
-//#include <nav_msgs/Odometry.h>
+#include <nav_msgs/Odometry.h>
 //#include <geometry_msgs/PoseStamped.h>
 
 #include <visualization_msgs/MarkerArray.h>
@@ -29,14 +29,19 @@ public:
     ros::NodeHandle node_;
     std::string topic_name_;
     ros::Subscriber obs_odom_sub_;
+    ros::Subscriber robot_odom_sub_;
     ros::Publisher obs_vel_pub_;
+
+    Eigen::Vector2d robot_pos_;
+    Eigen::Vector2d robot_vel_;
+    double sensor_range_;
 
     Eigen::Vector2d pos_;
     Eigen::Vector2d vel_;
     double last_time_;
     bool is_init_;
 
-    
+    double prediction_forward_time_;
     double obstacle_radius_;
     double inflation_radius_;
     double radius_;
@@ -54,7 +59,9 @@ public:
     ~DynamicObstacleInfo(){std::cout<<"DELTETED obstacle info object "<<std::endl;}
     
     void updateOdomCallback(visualization_msgs::MarkerArray::ConstPtr msg);
-    
+
+    void updateRobotOdomCallback(const nav_msgs::OdometryConstPtr msg);
+  
     void updateDynamicOcc();
 
     typedef std::shared_ptr<DynamicObstacleInfo> Ptr;
