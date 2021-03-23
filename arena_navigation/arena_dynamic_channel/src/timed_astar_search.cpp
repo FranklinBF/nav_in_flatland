@@ -22,7 +22,7 @@ void TimedAstarSearch::init(ros::NodeHandle & nh,GridMap::Ptr grid_map, std::vec
     node_.param("timed_astar/resolution",           tap_.RESOLUTION,        0.1);
     node_.param("timed_astar/num_sample_edge",      tap_.NUM_SAMPLE_EDGE,   5);
     tap_.TIME_SLICE_NUM=static_cast<size_t>(round(tap_.TIME_HORIZON / tap_.TIME_RESOLUTION));
-
+    tap_.SAFE_DIST =tap_.ROBOT_RADIUS + tap_.OBSTACLE_RADIUS;
     // init map
     this->grid_map_ = grid_map;
     grid_map_->getRegion(occ_map_origin_, occ_map_size_2d_);

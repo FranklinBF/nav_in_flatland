@@ -654,30 +654,30 @@ std::vector<Eigen::Vector2d> TimedAstar::getTrajectory(double ts, double local_t
         
         double t_curr=0;
         Vec2d v_robot =Vec2d(next_node->v_in *cos(next_node->dir),next_node->v_in*sin(next_node->dir));
-    
+        v_robot=v_robot*next_node->dur_v/(next_node->dur_v+next_node->dur_w);
         // first
         Vec2d pos_curr  =curr_node->pos;
         point_set.push_back(Eigen::Vector2d(pos_curr.x,pos_curr.y));
         //still & rotate
-        while(t_curr < next_node->dur_w){
-            pos_curr = pos_curr + v_robot*(0.2* ts);
-            std::cout<<" ******curr time:"<<total_time<<std::endl;
-            std::cout<<" ******node posw:"<<pos_curr.x <<"   "<<pos_curr.y<<std::endl;
-            point_set.push_back(Eigen::Vector2d(pos_curr.x,pos_curr.y));
-            t_curr=t_curr + ts;
-            //total_time=total_time+ts;
-            if(total_time>local_time_horizon) return point_set;
-        }
+        // while(t_curr < next_node->dur_w){
+        //     pos_curr = pos_curr + v_robot*(0.01* ts);
+        //     std::cout<<" ******curr time:"<<total_time<<std::endl;
+        //     std::cout<<" ******node posw:"<<pos_curr.x <<"   "<<pos_curr.y<<std::endl;
+        //     point_set.push_back(Eigen::Vector2d(pos_curr.x,pos_curr.y));
+        //     t_curr=t_curr + 0.01*ts;
+        //     //total_time=total_time+ts;
+        //     if(total_time>local_time_horizon) return point_set;
+        // }
         // run straight
         t_curr=0.0;
-        while(t_curr < next_node->dur_v-0.2*next_node->dur_w){
+        while(t_curr < next_node->dur_v-0.00001*next_node->dur_w){
             pos_curr = pos_curr + v_robot * ts;
             std::cout<<" ******curr time:"<<total_time<<std::endl;
             std::cout<<" ******node posv:"<<pos_curr.x <<"   "<<pos_curr.y<<std::endl;
             point_set.push_back(Eigen::Vector2d(pos_curr.x,pos_curr.y));
             t_curr=t_curr + ts;
             total_time=total_time+ts;
-            if(total_time>local_time_horizon) return point_set;
+            //if(total_time>local_time_horizon) return point_set;
         }
     }
     
@@ -696,7 +696,7 @@ std::vector<Eigen::Vector2d> TimedAstar::getTrajectory(double ts, double local_t
             point_set.push_back(Eigen::Vector2d(pos_curr.x,pos_curr.y));
             t=t-ts;
             total_time=total_time+ts;
-            if(total_time>local_time_horizon) return point_set;
+            //if(total_time>local_time_horizon) return point_set;
         }
     }
 

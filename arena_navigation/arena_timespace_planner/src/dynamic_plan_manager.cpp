@@ -165,11 +165,6 @@ bool DynamicPlanManager::planMidTraj(const Eigen::Vector2d & start_pos,const Eig
   success=mid_planner_timed_astar_->stateTimeAstarSearch(start_pos,start_vel,start_dir,end_pos,ts,local_time_horizon, point_set,start_end_derivatives,line_sets);
   if(!success) return false;
   
-
-
-
-
-
   UniformBspline mid_traj;
   bool optimize_success=optimizeBsplineTraj(ts,point_set,start_end_derivatives,mid_traj);
   if(!optimize_success){
@@ -181,6 +176,115 @@ bool DynamicPlanManager::planMidTraj(const Eigen::Vector2d & start_pos,const Eig
   local_traj_data_.resetData(mid_traj);
   return true;
 }
+
+bool DynamicPlanManager::genOneshotTraj(Eigen::Vector2d & start_pos, Eigen::Vector2d & start_vel,  double & start_dir,  Eigen::Vector2d & target_pos, Eigen::Vector2d & target_vel, UniformBspline & oneshot_traj){
+  // compute total time of traj
+  double dist = (start_pos - target_pos).norm();
+  double time = pow(pp_.max_vel_, 2) / pp_.max_acc_ > dist ? sqrt(dist / pp_.max_acc_) : (dist - pow(pp_.max_vel_, 2) / pp_.max_acc_) / pp_.max_vel_ + 2 * pp_.max_vel_ / pp_.max_acc_;//double time =dist / pp_.max_vel_;
+  
+  // init_one_segment_traj
+  PolynomialTraj init_traj;
+  init_traj = PolynomialTraj::one_segment_traj_gen(start_pos, start_vel, Eigen::Vector2d::Zero(), target_pos, target_vel, Eigen::Vector2d::Zero(), time);
+
+  // get point_set sample from init_one_segment_traj
+  std::vector<Eigen::Vector2d> point_set;
+  double local_time_horizon=pp_.local_time_horizon_;
+  double ts = dist > 0.1 ? pp_.ctrl_pt_dist_ / pp_.max_vel_ * 1.5 : pp_.ctrl_pt_dist_ / pp_.max_vel_ * 5;
+  double t_first, t;
+  t_first=std::min(0.2,init_traj.getTimeSum());
+  
+  if(t_first<0.01){ // make sure not exceed the range
+    ROS_ERROR_STREAM("[Oneshot traj] Too short time of traj ");
+    return false;
+  }
+
+  bool flag_too_far;
+  ts *= 1.5; // ts will be divided by 1.5 in the next
+  do{
+    ts /= 1.5;
+    point_set.clear();
+    flag_too_far = false;
+    Eigen::Vector2d last_pt = init_traj.evaluate(t_first); // t_first should not exceed getTimeSum()
+
+    for ( t = t_first; t < init_traj.getTimeSum(); t += ts) // t should not exceed getTimeSum()
+    { 
+      Eigen::Vector2d pt = init_traj.evaluate(t);         
+    
+      if ((last_pt - pt).norm() > pp_.ctrl_pt_dist_ * 1.5)
+      {
+        flag_too_far = true;
+        break;
+      }
+
+      if(t>local_time_horizon){
+        break;
+      }
+      last_pt = pt;
+
+      point_set.push_back(pt);
+
+    }
+  } while (flag_too_far || point_set.size() < 7); // To make sure the initial path has enough points.
+  t -= ts;
+
+  // check if last pt is in collision or not
+  while(checkCollision(init_traj.evaluate(t)) && t+ts<init_traj.getTimeSum()){
+    t+=ts;
+    Eigen::Vector2d pt = init_traj.evaluate(t);
+    point_set.push_back(pt);
+
+  }
+
+  // adjust direction part of the traj too make traj easy to track for non-holomonic robot
+  double new_dir, diff_dir;
+  new_dir=atan2((target_pos-start_pos)(1),(target_pos-start_pos)(0));
+  new_dir=new_dir<0?2*PI+new_dir:new_dir;
+  diff_dir = std::abs(new_dir-start_dir);
+
+  if(diff_dir>PI*0.25){
+    ts=ts*1.5; 
+  }else if(diff_dir>PI*0.50){
+    point_set.insert(point_set.begin(),start_pos);
+    point_set.insert(point_set.begin(),start_pos+start_vel*0.1);
+    point_set.insert(point_set.begin(),start_pos);
+  }
+
+  // check if enough points
+  if(point_set.size()<3){
+    ROS_ERROR("[Oneshot traj]point_set size<3");
+    return false;
+  }
+
+  // get derivatives
+  std::vector<Eigen::Vector2d> start_end_derivatives;
+  start_end_derivatives.push_back(init_traj.evaluateVel(0));
+  start_end_derivatives.push_back(init_traj.evaluateVel(t));
+  start_end_derivatives.push_back(init_traj.evaluateAcc(0));
+  start_end_derivatives.push_back(init_traj.evaluateAcc(t));
+
+  //optimize traj if start_pos is not in collision
+  UniformBspline bspline_traj;
+  bool optimize_success;
+  if(!checkCollision(start_pos)){
+    bspline_optimizer_->setLocalTargetPt(target_pos);
+    optimize_success=optimizeBsplineTraj(ts,point_set,start_end_derivatives,bspline_traj);
+  }else{
+    optimize_success=false;
+  }
+
+  if(!optimize_success){
+    // if optimize failed, use unoptimized traj
+    Eigen::MatrixXd ctrl_pts;
+    UniformBspline::parameterizeToBspline(ts, point_set, start_end_derivatives, ctrl_pts);
+    bspline_traj = UniformBspline(ctrl_pts, 3, ts);
+  }else{
+    /* */
+  }
+  // assign resulted  traj
+  oneshot_traj = bspline_traj;
+  return true;
+}
+
 
 bool DynamicPlanManager::planLocalTraj( Eigen::Vector2d & start_pos, Eigen::Vector2d & start_vel,  double & start_dir,  Eigen::Vector2d & target_pos, Eigen::Vector2d & target_vel ){
   //ROS_WARN_STREAM("-----------------------------1");
@@ -240,14 +344,21 @@ bool DynamicPlanManager::planLocalTraj( Eigen::Vector2d & start_pos, Eigen::Vect
     }
   } while (flag_too_far || point_set.size() < 7); // To make sure the initial path has enough points.
   t -= ts;
+  
+  if(checkCollision(init_traj.evaluate(t))) {
+    t=t+ts;
+    do{
+      if(t>init_traj.getTimeSum()-ts) break;
+      Eigen::Vector2d pt = init_traj.evaluate(t);
+      point_set.push_back(pt); 
+      t=t+ts;
+
+    }while(checkCollision(init_traj.evaluate(t)));
+  }
+  t -= ts;
+  
   //ROS_WARN_STREAM("-----------------------------4");
-  // adjust the last intial control point
-  Eigen::Vector2d last_pt=point_set.back();
-
-  adjustStartAndTargetPoint(start_pos,last_pt);
-
-  point_set[point_set.size()-1]=last_pt;
-
+  
   // initial rotation part of the traj
   double new_dir, diff_dir;
   new_dir=atan2((target_pos-start_pos)(1),(target_pos-start_pos)(0));
@@ -262,6 +373,14 @@ bool DynamicPlanManager::planLocalTraj( Eigen::Vector2d & start_pos, Eigen::Vect
     point_set.insert(point_set.begin(),start_pos);
   }
 
+  
+  // adjust the last intial control point
+  for(size_t i=1;i<3;i++){
+    Eigen::Vector2d last_pt=point_set[point_set.size()-i];
+    adjustStartAndTargetPoint(start_pos,last_pt);
+    point_set[point_set.size()-i]=last_pt;
+  }
+  
   
   // ROS_WARN_STREAM("new dir="<<new_dir*180/PI);
   // ROS_WARN_STREAM("diff dir="<<diff_dir*180/PI);
