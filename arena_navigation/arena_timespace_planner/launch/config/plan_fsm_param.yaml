@@ -1,4 +1,4 @@
-
+use_drl: &use_drl false
 subgoal_mode: &subgoal_mode 0                           # 0: spacial horizon 1:timed_astar
 subgoal_pub_period: &subgoal_pub_period 0.5             # sec
 goal_tolerance: &goal_tolerance 0.5
@@ -23,6 +23,7 @@ fsm/subgoal_pub_period: *subgoal_pub_period
 fsm/replan_time_thresh: 0.5
 fsm/subgoal_drl_mode: *subgoal_mode
 fsm/planning_horizen: *planning_horizen
+fsm/use_drl: *use_drl
 
 # ----------------------------------------------------------------------------------
 # 2. Plan manager parameter (plan_manager/)

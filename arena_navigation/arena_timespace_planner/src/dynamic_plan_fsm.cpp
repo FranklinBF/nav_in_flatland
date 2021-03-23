@@ -19,9 +19,9 @@ void DynamicReplanFSM::init(ros::NodeHandle &nh)
     node_.param("fsm/subgoal_drl_mode", subgoal_drl_mode_, 1);
     node_.param("fsm/subgoal_pub_period", subgoal_pub_period_, 0.5);
 
-
-
- 
+    bool use_drl;
+    node_.param("fsm/use_drl", use_drl, false);
+    
     /* initialize main modules */
     planner_manager_.reset(new DynamicPlanManager);
     planner_manager_->initPlanModules(node_);
@@ -29,10 +29,12 @@ void DynamicReplanFSM::init(ros::NodeHandle &nh)
     /* callback */
     exec_timer_ = node_.createTimer(ros::Duration(0.01), &DynamicReplanFSM::execFSMCallback, this);
     safety_timer_ = node_.createTimer(ros::Duration(0.05), &DynamicReplanFSM::checkCollisionCallback, this);
-    traj_tracker_timer_ = node_.createTimer(ros::Duration(0.01), &DynamicReplanFSM::trackTrajCallback, this);
+    if(!use_drl){
+        traj_tracker_timer_ = node_.createTimer(ros::Duration(0.01), &DynamicReplanFSM::trackTrajCallback, this);
+    }
     subgoal_DRL_timer_ = node_.createTimer(ros::Duration(0.05), &DynamicReplanFSM::updateSubgoalDRLCallback, this);
     //dynamic_occ_map_timer_= node_.createTimer(ros::Duration(1.0), &DynamicReplanFSM::updateDynamicMapCallback,this);
-    
+
     /* ros communication with public node */
     ros::NodeHandle public_nh;
   	goal_sub_ =public_nh.subscribe("goal", 1, &DynamicReplanFSM::goalCallback,this);
